@@ -1,0 +1,10 @@
+Add the six school logo files to this folder with these exact names:
+
+hersey.png
+prospect.png
+buffalo-grove.png
+rolling-meadows.png
+elk-grove.png
+wheeling.png
+
+Until a logo is added, the site shows the school's initials in its place.
