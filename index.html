@@ -924,7 +924,7 @@ function tickChart(){
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
   chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true}, wq:'', guide:false,
-  trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:2000} };
+  trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000} };
 const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
 
 /* ---------- views ---------- */
@@ -1163,18 +1163,19 @@ function vTrade(){
     const m = P.mm, rate = m.rate, isIn = tr.mmDir==='in', avail = isIn ? P.cash : m.bal;
     const amt = Math.min(tr.mmAmt, avail), tooMuch = tr.mmAmt > avail + 0.005 || amt <= 0;
     const newBal = isIn ? m.bal + amt : m.bal - amt, perDayNew = newBal*rate/100/365;
-    body = `<div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="disp" style="font-size:30px;color:var(--white)">Money market</span><span style="color:var(--dim);font-size:16px">Earns interest every day · move money anytime</span></span>
-        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:40px;color:var(--white)">${money(m.bal)}</span><span class="num" style="font-size:17px;color:var(--cd)">${rate.toFixed(2)}% · +${money(mmPerDay())} a day</span></span></div>
+    const amtPerDay = tr.mmAmt*rate/100/365, amtMonth = tr.mmAmt*(Math.pow(1+rate/100/365,30)-1);
+    body = `
       <div class="side">
-        <button type="button" class="buy" aria-pressed="${isIn}" data-act="mmdir:in"><span class="w" style="font-size:26px">Move in</span><span class="d">From cash to money market</span></button>
-        <button type="button" class="buy" aria-pressed="${!isIn}" data-act="mmdir:out"><span class="w" style="font-size:26px">Move out</span><span class="d">From money market to cash</span></button>
+        <button type="button" class="buy" aria-pressed="${isIn}" data-act="mmdir:in"><span class="w" style="font-size:26px">Move in</span><span class="d">${money(P.cash)} in cash</span></button>
+        <button type="button" class="buy" aria-pressed="${!isIn}" data-act="mmdir:out"><span class="w" style="font-size:26px">Move out</span><span class="d">${money(m.bal)} in money market</span></button>
       </div>
       <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="mmamt:-" aria-label="Less money">−</button><span class="v" style="min-width:150px">${whole(tr.mmAmt)}</span><button type="button" data-act="mmamt:+" aria-label="More money">+</button><button type="button" data-act="mmamt:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div class="line"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:19px;color:var(--muted)">${isIn?'Earns about':'Stops earning about'}</span><span class="num" style="font-size:15px;color:var(--dim)">+${money(amtPerDay)} a day · ${rate.toFixed(2)}% a year</span></span><span class="num ${isIn?'up':''}" style="font-size:36px;${isIn?'':'color:var(--soft)'}">+${money(amtMonth)}<span style="font-size:18px;color:var(--dim)"> /month</span></span></div>
       <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
         <span class="label">How your money moves</span>
         <ol class="flow">${isIn ? `
           <li><span class="fwhen">Now</span><span class="num famt">−${whole(tr.mmAmt)}</span><span class="fwhat">Leaves your cash and goes into the money market.</span></li>
-          <li><span class="fwhen">Every day</span><span class="num famt up">+${money(perDayNew)}</span><span class="fwhat">Interest is added to your balance, and tomorrow you earn interest on that too.</span></li>
+          <li><span class="fwhen">Every day</span><span class="num famt up">+${money(amtPerDay)}</span><span class="fwhat">Interest is added to your balance, and tomorrow you earn interest on that too.</span></li>
           <li><span class="fwhen">Anytime</span><span class="num famt">No penalty</span><span class="fwhat">Move it back to cash whenever you want to buy something.</span></li>` : `
           <li><span class="fwhen">Now</span><span class="num famt up">+${whole(tr.mmAmt)}</span><span class="fwhat">Comes back to your cash, ready to invest right away.</span></li>
           <li><span class="fwhen">From then on</span><span class="num famt">$0.00</span><span class="fwhat">Money in cash stops earning interest.</span></li>
@@ -1296,7 +1297,7 @@ function act(a, el){
     case 'sec': UI.sec = v===''?null:+v; break;
     case 'open': UI.drawer=v; break;
     case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; break;
-    case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0}; break; }
+    case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.mmAmt=1000; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0}; break; }
     case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(Math.min(1,p.n),Math.min(p.n, Math.floor(UI.sheet.n)+(v==='+'?1:-1))); break; }
     case 'sell': {
       const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); const n = Math.min(UI.sheet.n,p.n), price = prices[sym];
@@ -1309,14 +1310,14 @@ function act(a, el){
       UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:g}; break;
     }
     case 'dismiss': P.notes = []; save(); break;
-    case 'type': tr.type=v; tr.done=null; tr.side='buy'; tr.n=10; tr.q=''; break;
+    case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.n=10; tr.q=''; break;
     case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; break;
     case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
-    case 'mmdir': tr.mmDir = v; tr.mmAmt = Math.min(tr.mmAmt, Math.max(500, v==='in' ? P.cash : P.mm.bal)); break;
+    case 'mmdir': tr.mmDir = v; tr.mmAmt = 1000; break;
     case 'mmamt': { const avail = tr.mmDir==='in' ? P.cash : P.mm.bal;
       tr.mmAmt = v==='all' ? avail : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
-    case 'newtrade': tr.done=null; tr.n=10; break;
+    case 'newtrade': tr.done=null; tr.mmAmt=1000; tr.n=10; break;
     case 'submit': {
       const sym = tr.pick[tr.type], price = prices[sym], n = tr.n, cost = price*n; if (cost>P.cash) return;
       const side = (tr.type==='bond'||tr.side==='buy') ? 'long' : 'short';
