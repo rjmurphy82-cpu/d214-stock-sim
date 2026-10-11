@@ -179,6 +179,27 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .mini div{display:grid;grid-template-columns:14px minmax(0,1fr) 60px 90px 84px;gap:10px;align-items:center;min-height:34px;border-top:1px solid var(--line);font-family:var(--mono);font-size:14px}
 .empty{color:var(--dim);font-size:15px}
 
+/* charts */
+.chartgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;padding-block:28px 64px}
+.chead{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.tf{display:flex;gap:6px;flex-wrap:wrap}
+.tf button{min-height:42px;min-width:48px;padding:0 12px;border:1px solid var(--line-2);border-radius:6px;font-family:var(--mono);font-size:14px;color:var(--soft)}
+.tf button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.ohlc{display:flex;gap:16px;flex-wrap:wrap;min-height:22px;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chartbox{position:relative;height:470px;max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.keys{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.keys span{display:flex;align-items:center;gap:7px}
+.side-card{display:flex;flex-direction:column;gap:12px;padding:20px 22px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
+.wl{display:flex;flex-direction:column;gap:2px;max-height:430px;overflow-y:auto;margin-inline:-8px}
+.wl button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;width:100%;padding:9px 10px;border-radius:6px;text-align:left}
+.wl button:hover{background:var(--card-hi)}
+.wl button[aria-pressed="true"]{background:var(--red-tint);box-shadow:inset 0 0 0 1px var(--red)}
+.trow{display:grid;grid-template-columns:76px minmax(0,1fr) 96px minmax(0,1.1fr);gap:14px;align-items:center;min-height:54px;border-top:1px solid var(--line);font-size:16px}
+.trow .vd{font-size:14px;color:var(--muted)}
+@media (max-width:1000px){.chartgrid{grid-template-columns:1fr}.wl{max-height:300px}}
+@media (max-width:700px){.chartbox{height:350px}.trow{grid-template-columns:64px minmax(0,1fr) auto;padding-block:8px}.trow .vd{grid-column:2/4}}
+
 @media (max-width:900px){
   .panels{grid-template-columns:1fr}
   .row{grid-template-columns:34px 40px minmax(0,1fr) 96px;gap:12px;padding:0 10px}
@@ -203,6 +224,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
       <a href="#standings" data-route="standings">Standings</a>
       <a href="#portfolio" data-route="portfolio">My Portfolio</a>
       <a href="#checkup" data-route="checkup">Checkup</a>
+      <a href="#charts" data-route="charts">Charts</a>
       <a href="#trade" data-route="trade">Trade</a>
     </nav>
   </div>
@@ -212,6 +234,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 <main id="app"></main>
 <div id="overlay"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (function(){
 'use strict';
@@ -244,9 +267,18 @@ const START = () => ({
     {sym:'AMD',n:40,b:157.00,s:172.40,d:'11 days'},{sym:'TSLA',n:25,b:242.13,s:262.10,d:'16 days'},{sym:'GOOGL',n:18,b:150.65,s:162.45,d:'9 days'},
     {sym:'PLTR',n:50,b:38.40,s:32.04,d:'6 days'},{sym:'SHOP',n:30,b:79.85,s:72.82,d:'14 days'}
   ],
-  tradesWeek: 2
+  tradesWeek: 2,
+  // when each trade happened, in trading days ago (drives the arrows on the chart)
+  log: [
+    {sym:'NVDA',act:'buy',n:30,price:812.40,ago:34},{sym:'AAPL',act:'buy',n:60,price:214.10,ago:52},{sym:'COST',act:'buy',n:12,price:842.00,ago:40},
+    {sym:'JPM',act:'buy',n:50,price:191.20,ago:45},{sym:'XOM',act:'buy',n:70,price:121.80,ago:28},{sym:'BND',act:'buy',n:100,price:72.60,ago:50},
+    {sym:'GBTC',act:'buy',n:120,price:50.10,ago:22},{sym:'AMZN',act:'short',n:30,price:188.40,ago:12},
+    {sym:'TSLA',act:'buy',n:25,price:242.13,ago:30},{sym:'TSLA',act:'sell',n:25,price:262.10,ago:14},
+    {sym:'GOOGL',act:'buy',n:18,price:150.65,ago:20},{sym:'GOOGL',act:'sell',n:18,price:162.45,ago:11}
+  ]
 });
 let P = load() || START();
+if (!P.log) P.log = START().log;
 function load(){ try{ const t = localStorage.getItem('d214sim'); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
 function save(){ try{ localStorage.setItem('d214sim', JSON.stringify(P)); }catch(e){} }
 
@@ -349,10 +381,228 @@ function holdsOf(s){
   return h.map(x=>({...x,w:x.v/value*100}));
 }
 
+/* ---------- chart data (sample; the live app loads daily and minute bars from Massive) ---------- */
+const ABOUT = {
+  SPY:['Index fund','Tracks the S&P 500, the 500 largest U.S. companies.'], NVDA:['Semiconductors','Designs the chips that power AI and gaming.'],
+  AAPL:['Technology','Makes the iPhone, Mac, and iPad.'], COST:['Consumer staples','Runs membership warehouse stores.'],
+  JPM:['Financials','The largest bank in the United States.'], XOM:['Energy','Produces and refines oil and natural gas.'],
+  AMZN:['Retail and cloud','Online shopping plus Amazon Web Services.'], TSLA:['Autos','Makes electric cars and batteries.'],
+  MSFT:['Technology','Makes Windows, Office, and the Azure cloud.'], GOOGL:['Communication','Owns Google Search and YouTube.'],
+  META:['Communication','Owns Facebook, Instagram, and WhatsApp.'], V:['Financials','Runs the Visa card payment network.'],
+  BND:['Bond fund','Holds thousands of U.S. bonds at once.'], AGG:['Bond fund','Tracks the broad U.S. bond market.'],
+  TLT:['Bond fund','Holds long-term U.S. Treasury bonds.'], SHY:['Bond fund','Holds short-term U.S. Treasury bonds.'],
+  GBTC:['Crypto fund','Tracks the price of bitcoin.'], ETHE:['Crypto fund','Tracks the price of ether.']
+};
+const START_MULT = {SPY:.62,NVDA:.10,AAPL:.5,COST:.4,JPM:.55,XOM:.38,AMZN:.6,TSLA:.85,MSFT:.5,GOOGL:.55,META:.45,V:.6,BND:.93,AGG:.95,TLT:1.3,SHY:.97,GBTC:.35,ETHE:.6};
+const TDATES = (function(){ const out=[], now=new Date(); let t = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  while (out.length<1300){ const dt=new Date(t), w=dt.getUTCDay(); if (w!==0 && w!==6) out.push(dt.toISOString().slice(0,10)); t -= 86400000; }
+  return out.reverse(); })();
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dLabel = t => { const [y,m,d] = t.split('-'); return MONTHS[+m-1]+' '+(+d)+(y!==TDATES[TDATES.length-1].slice(0,4)?', '+y:''); };
+const logDate = l => l.date || TDATES[TDATES.length-1-l.ago];
+const fmtVol = v => v>=1e9 ? (v/1e9).toFixed(2)+'B' : v>=1e6 ? (v/1e6).toFixed(1)+'M' : Math.round(v/1e3)+'K';
+const sgnp = v => (v>=0?'+':'')+v.toFixed(2)+'%';
+const CACHE = {};
+function volOf(sym){ return ({NVDA:.03,TSLA:.034,META:.024,GBTC:.04,ETHE:.045,TLT:.009,SHY:.0015})[sym] || ({stock:.017,bond:.004,crypto:.04,index:.010})[MARKET[sym][1]]; }
+function seriesFor(sym){
+  if (CACHE[sym]) return CACHE[sym];
+  const N = TDATES.length, vol = volOf(sym), now = MARKET[sym][2];
+  let h = 2166136261; for (const ch of sym){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); }
+  let s = h>>>0;
+  const rnd = () => { s = (s + 0x6D2B79F5)|0; let t = Math.imul(s ^ (s>>>15), 1|s); t = (t + Math.imul(t ^ (t>>>7), 61|t)) ^ t; return ((t ^ (t>>>14))>>>0)/4294967296; };
+  const gauss = () => { let u=0, v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  // random walk pinned to the starting level, each sample trade price, and today's price
+  const anchors = [{i:0,p:now*(START_MULT[sym]||0.6)}];
+  START().log.filter(l=>l.sym===sym).forEach(l=>anchors.push({i:N-1-l.ago, p:l.price}));
+  anchors.push({i:N-1,p:now}); anchors.sort((a,b)=>a.i-b.i);
+  const lp = new Array(N); lp[0] = Math.log(anchors[0].p);
+  for (let k=1;k<anchors.length;k++){
+    const a=anchors[k-1], b=anchors[k]; if (b.i<=a.i) continue;
+    const inc=[]; let S=0; for (let j=a.i+1;j<=b.i;j++){ S += gauss()*vol; inc.push(S); }
+    const corr = (Math.log(b.p)-Math.log(a.p)-S)/(b.i-a.i);
+    for (let j=a.i+1;j<=b.i;j++) lp[j] = Math.log(a.p) + inc[j-a.i-1] + corr*(j-a.i);
+  }
+  const baseVol = ({stock:2.2e7,bond:6e6,crypto:5e6,index:6e7})[MARKET[sym][1]] * (sym==='NVDA'?10 : sym==='TSLA'?4 : 1);
+  const daily = [];
+  for (let k=0;k<N;k++){
+    const c = Math.exp(lp[k]), o = k ? Math.exp(lp[k-1])*(1+gauss()*vol*0.25) : c;
+    const hi = Math.max(o,c)*(1+Math.abs(gauss())*vol*0.5), lo = Math.min(o,c)*(1-Math.abs(gauss())*vol*0.5);
+    const mv = k ? Math.abs(lp[k]-lp[k-1])/vol : 1;
+    daily.push({time:TDATES[k], open:o, high:hi, low:lo, close:c, vol:Math.round(baseVol*(0.6+0.4*rnd()+0.35*mv))});
+  }
+  return CACHE[sym] = {daily};
+}
+const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
+function weekly(d){
+  const out=[]; let cur=null, key=null;
+  d.forEach(b=>{ const dt = new Date(b.time+'T00:00:00Z'); const mon = new Date(dt - ((dt.getUTCDay()+6)%7)*86400000).toISOString().slice(0,10);
+    if (mon!==key){ key=mon; cur={...b}; out.push(cur); } else { cur.high=Math.max(cur.high,b.high); cur.low=Math.min(cur.low,b.low); cur.close=b.close; cur.vol+=b.vol; } });
+  return out;
+}
+function sma(bars,n){ const out=[]; let sum=0; bars.forEach((b,i)=>{ sum+=b.close; if(i>=n) sum-=bars[i-n].close; if(i>=n-1) out.push({time:b.time, value:sum/n}); }); return out; }
+function markersFor(sym, times){
+  const toT = date => { let lo=0, hi=times.length-1, ans=times[0]; while(lo<=hi){ const mid=(lo+hi)>>1; if (times[mid]<=date){ ans=times[mid]; lo=mid+1; } else hi=mid-1; } return ans; };
+  const sty = {buy:['belowBar','arrowUp','#45c08a','Buy'], sell:['aboveBar','arrowDown','#f0606f','Sell'], short:['aboveBar','arrowDown','#e0b45a','Short'], cover:['belowBar','arrowUp','#6b8fbf','Close short']};
+  return (P.log||[]).filter(l=>l.sym===sym).map(l=>{ const s=sty[l.act]; return {time:toT(logDate(l)), position:s[0], shape:s[1], color:s[2], text:s[3]+' '+l.n}; })
+    .sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
+}
+function verdict(l, price){
+  const ch = (price/l.price-1)*100, up = ch>=0;
+  const t = {buy:[up,up?'Up since you bought':'Down since you bought'], sell:[!up,up?'Rose after you sold':'Dropped after you sold'],
+    short:[!up,up?'Up since you shorted':'Down since you shorted'], cover:[up,up?'Rose after you closed':'Dropped after you closed']}[l.act];
+  return {ch, good:t[0], text:t[1]};
+}
+
+function vCharts(){
+  const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
+  const d = seriesFor(sym).daily, N = d.length;
+  const span = {'1M':21,'3M':63,'6M':126,'1Y':252,'5Y':N-1}[c.tf];
+  const rng = (price/d[N-1-span].close-1)*100;
+  const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years'}[c.tf];
+  const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
+  const avgVol = d.slice(-63).reduce((a,b)=>a+b.vol,0)/63;
+  const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
+  const owned = []; P.pos.forEach(p=>{ if (!owned.includes(p.sym)) owned.push(p.sym); });
+  const wl = owned.concat(Object.keys(MARKET).filter(s=>!owned.includes(s)));
+  const mine = P.pos.filter(p=>p.sym===sym);
+  const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
+  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${k==='ma'&&c.cmp?'disabled':''}>${l}</button>`;
+  const wk = c.tf==='5Y';
+  const keys = c.cmp
+    ? `<span><i style="width:20px;height:3px;background:#ef5b70;display:block"></i>${sym}</span><span><i style="width:20px;border-top:2px dashed #8a97a8;display:block"></i>S&amp;P 500</span>`
+    : (c.ma?`<span><i style="width:20px;height:3px;background:#c9a34e;display:block"></i>${wk?'10-week':'50-day'} average</span><span><i style="width:20px;height:3px;background:#6b8fbf;display:block"></i>${wk?'40-week':'200-day'} average</span>`:'');
+  const markKeys = c.marks ? `<span style="color:var(--up)">▲ your buys</span><span style="color:var(--down)">▼ your sells</span><span style="color:var(--warn)">▼ shorts</span>` : '';
+  const news = [['What to watch when '+m[0]+' reports earnings','2 hours ago'],[info[0]+' stocks lead the market this week','Yesterday'],['Analysts debate where '+m[0]+' goes next','3 days ago']];
+  return `
+  <div class="wrap"><div class="chartgrid">
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="chead">
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+          <div class="who"><span class="num" style="font-size:40px;font-weight:500;color:var(--white)">${sym}</span><span style="font-size:18px;color:var(--dim)">${m[0]}</span>
+            ${mine.map(p=>`<span class="tag" style="color:${p.side==='short'?'var(--warn)':'var(--link)'}">${p.side==='short'?'YOU’RE SHORT':'YOU OWN'}</span>`).join('')}</div>
+          <div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
+            <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(price)}</span>
+            <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
+            <span class="num ${cls(rng)}" style="font-size:17px">${pct(rng)} ${tfLabel}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>
+      </div>
+      <div class="spread" style="flex-wrap:wrap;gap:12px">
+        <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
+        <div class="frow">${tog('ma','Moving averages')}${tog('cmp','Compare to S&amp;P 500')}${tog('marks','My trades')}</div>
+      </div>
+      <div class="ohlc" id="ohlc"></div>
+      <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}"></div>
+      <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)">
+        <span class="keys">${keys}${markKeys}</span>
+        <span>Sample prices · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
+      </div>
+      <div class="side-card" style="gap:2px;margin-top:8px">
+        <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
+        ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
+          return `<div class="trow"><span class="num" style="color:var(--dim);font-size:14px">${dLabel(logDate(l))}</span><span style="color:var(--white)"><b>${w} ${l.n}</b> <span style="color:var(--muted)">at ${money(l.price)}</span></span><span class="num ${v.good?'up':'down'}" style="text-align:right">${pct(v.ch)}</span><span class="vd">${v.text}</span></div>`; }).join('')
+          : `<p class="empty">You haven’t traded ${sym} yet. Your buys and sells will show up here and as arrows on the chart.</p>`}
+      </div>
+    </div>
+    <aside style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="side-card"><span class="label">Watchlist</span>
+        <div class="wl">${wl.map(s=>{ const ch=(prices[s]/prev[s]-1)*100; return `<button type="button" aria-pressed="${s===sym}" data-act="csym:${s}">
+          <span class="num" style="color:var(--white);font-size:16px">${s}${owned.includes(s)?' <span style="color:var(--link);font-size:11px;letter-spacing:.1em">● OWN</span>':''}</span>
+          <span class="num" data-px="${s}" style="text-align:right;color:var(--white)">${prices[s].toFixed(2)}</span>
+          <span style="font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${MARKET[s][0]}</span>
+          <span class="num ${cls(ch)}" data-pc="${s}" style="text-align:right;font-size:13px">${pct(ch)}</span></button>`; }).join('')}</div>
+      </div>
+      <div class="side-card"><span class="label">About ${sym}</span>
+        <span style="font-size:17px;color:var(--white)">${info[1]}</span>
+        <span class="tag" style="color:var(--muted);align-self:flex-start">${info[0].toUpperCase()}</span>
+        <div class="kv" style="padding-top:6px">
+          <span><span class="k">52-week high</span><span class="v">${money(hi52)}</span></span><span><span class="k">52-week low</span><span class="v">${money(lo52)}</span></span>
+          <span><span class="k">Avg daily volume</span><span class="v">${fmtVol(avgVol)}</span></span><span><span class="k">From 52-wk high</span><span class="v ${cls(price/hi52-1)}">${((price/hi52-1)*100).toFixed(1)}%</span></span>
+        </div>
+        ${mine.map(p=>`<div style="padding-top:12px;border-top:1px solid var(--line);font-size:16px;color:var(--soft)">${p.side==='short'?'Short':'You own'} <b style="color:var(--white)">${p.n}</b> shares at ${money(p.b)} avg · <span class="num ${cls(posGain(p))}">${signed2(posGain(p))}</span></div>`).join('')}
+      </div>
+      <div class="side-card"><span class="label">News</span>
+        ${news.map(([hd,t])=>`<div style="display:flex;flex-direction:column;gap:3px;padding-top:10px;border-top:1px solid var(--line)"><span style="font-size:16px;color:var(--white)">${esc(hd)}</span><span style="font-size:13px;color:var(--dim)">${t}</span></div>`).join('')}
+        <span style="font-size:13px;color:var(--dim)">Sample headlines. The live version shows real news from the Massive feed.</span>
+      </div>
+    </aside>
+  </div></div>`;
+}
+
+let CH = null;
+function mountChart(){
+  const el = document.getElementById('chart'); if (!el) return;
+  if (!window.LightweightCharts){ el.innerHTML = '<p class="empty" style="padding:24px">The chart didn’t load. Check your connection and refresh the page.</p>'; return; }
+  const c = UI.chart, sym = c.sym, wk = c.tf==='5Y';
+  const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], prices[sym]);
+  const bars = wk ? weekly(daily) : daily;
+  const fromIdx = wk ? 0 : bars.length-1-({'1M':21,'3M':63,'6M':126,'1Y':252})[c.tf];
+  const chart = LightweightCharts.createChart(el, {autoSize:true,
+    layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:true},
+    grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
+    rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3}, crosshair:{mode:0}});
+  const out = {chart, sym, bars, cmp:!!c.cmp};
+  const marks = c.marks ? markersFor(sym, bars.map(b=>b.time)) : [];
+  let spyBars = null;
+  if (c.cmp){
+    const sd = seriesFor('SPY').daily.slice(); sd[L] = liveBar(sd[L], prices.SPY);
+    spyBars = wk ? weekly(sd) : sd;
+    out.b0 = bars[fromIdx].close; out.sb0 = spyBars[fromIdx].close;
+    const fmt = {type:'custom', minMove:0.01, formatter:v=>(v>=0?'+':'')+v.toFixed(1)+'%'};
+    const spyS = chart.addLineSeries({color:'#8a97a8', lineWidth:2, lineStyle:2, priceFormat:fmt, priceLineVisible:false});
+    spyS.setData(spyBars.map(b=>({time:b.time, value:(b.close/out.sb0-1)*100})));
+    const me = chart.addLineSeries({color:'#ef5b70', lineWidth:3, priceFormat:fmt});
+    me.setData(bars.map(b=>({time:b.time, value:(b.close/out.b0-1)*100})));
+    if (marks.length) me.setMarkers(marks);
+    out.main = me;
+  } else {
+    const candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f'});
+    candle.priceScale().applyOptions({scaleMargins:{top:0.08, bottom:0.24}});
+    candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+    const volS = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:'', lastValueVisible:false, priceLineVisible:false});
+    volS.priceScale().applyOptions({scaleMargins:{top:0.8, bottom:0}});
+    volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,.32)':'rgba(240,96,111,.32)'})));
+    if (c.ma){
+      const opt = col => ({color:col, lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+      chart.addLineSeries(opt('#c9a34e')).setData(sma(bars, wk?10:50));
+      chart.addLineSeries(opt('#6b8fbf')).setData(sma(bars, wk?40:200));
+    }
+    if (marks.length) candle.setMarkers(marks);
+    out.main = candle;
+  }
+  if (wk) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
+  const leg = document.getElementById('ohlc');
+  out.showAt = (i) => {
+    if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
+    if (out.cmp){ const sb = spyBars[i];
+      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>`; }
+    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>`;
+  };
+  out.hover = false;
+  chart.subscribeCrosshairMove(p => { const has = p && p.logical!==undefined && p.logical!==null && p.point; out.hover = !!has; out.showAt(has ? Math.round(p.logical) : bars.length-1); });
+  out.showAt(bars.length-1);
+  CH = out;
+}
+function tickChart(){
+  if (!CH) return;
+  const sym = CH.sym, p = prices[sym], i = CH.bars.length-1;
+  CH.bars[i] = liveBar(CH.bars[i], p); const b = CH.bars[i];
+  if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
+  else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
+  if (!CH.hover) CH.showAt(i);
+  const chg = (p/prev[sym]-1)*100, pe = document.getElementById('cPrice'), ce = document.getElementById('cChg');
+  if (pe) pe.textContent = money(p);
+  if (ce){ ce.textContent = pct(chg)+' today'; ce.className = 'num '+cls(chg); }
+  document.querySelectorAll('[data-px]').forEach(e=>{ e.textContent = prices[e.dataset.px].toFixed(2); });
+  document.querySelectorAll('[data-pc]').forEach(e=>{ const s=e.dataset.pc, ch=(prices[s]/prev[s]-1)*100; e.textContent = pct(ch); e.className = 'num '+cls(ch); });
+}
+
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
+  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true},
   trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, term:6, cd:5000} };
-const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','trade'].includes(h) ? h : 'standings'; };
+const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
 
 /* ---------- views ---------- */
 function vStandings(){
@@ -602,7 +852,7 @@ function vTrade(){
         <input id="search" type="text" autocomplete="off" placeholder="${tr.type==='stock'?'Search a company or ticker':'Search a fund or ticker'}" value="${esc(tr.q)}">
         <div class="frow" id="chips">${chipsHtml()}</div>
       </div>
-      <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white)">${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span></span>
+      <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white)">${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
       ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
         :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest and usually moves less than stocks.</span></div>`}
@@ -688,7 +938,7 @@ function vSheet(){
     const [,sym,side] = sh.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); if(!p){ UI.sheet=null; return ''; }
     const isShort = side==='short', n = Math.min(sh.n, p.n), price = prices[sym];
     const g = isShort ? (p.b-price)*n : (price-p.b)*n;
-    html = `<div><h2 class="h2" style="font-size:40px">${isShort?'Close '+sym+' short':'Sell '+sym}</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${MARKET[sym][0]}</p></div>
+    html = `<div><h2 class="h2" style="font-size:40px">${isShort?'Close '+sym+' short':'Sell '+sym}</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${MARKET[sym][0]}</p><button type="button" class="chip" data-act="chartsym:${sym}" style="min-height:38px;margin-top:10px">View chart</button></div>
       <div class="kv"><span><span class="k">${isShort?'Shorted at':'Bought at'}</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
         <span><span class="k">Shares</span><span class="v">${p.n}</span></span><span><span class="k">Gain so far</span><span class="v ${cls(posGain(p))}">${signed2(posGain(p))}</span></span></div>
       ${WHY[sym]?`<p class="disp" style="margin:0;font-weight:700;font-style:italic;font-size:17px;color:var(--fg)">“${WHY[sym]}” <span style="font-family:var(--body);font-style:normal;font-weight:400;font-size:14px;color:var(--dim)">your reason when you bought</span></p>`:''}
@@ -718,6 +968,7 @@ function act(a, el){
       if (side==='long'){ P.cash += n*price; g=(price-p.b)*n; P.closed.push({sym,n,b:p.b,s:price,d:'just now'}); }
       else { P.cash += n*(2*p.b-price); g=(p.b-price)*n; P.closed.push({sym:sym+' (short)',n,b:price,s:price+(p.b-price),d:'just now'}); }
       p.n -= n; if (p.n<=0) P.pos = P.pos.filter(x=>x!==p);
+      P.log.push({sym, act:side==='long'?'sell':'cover', n, price, date:TDATES[TDATES.length-1]});
       P.tradesWeek++; save();
       UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+n+' '+sym, p:g}; break;
     }
@@ -735,6 +986,7 @@ function act(a, el){
       P.cash -= cost;
       const ex = P.pos.find(x=>x.sym===sym&&x.side===side);
       if (ex){ ex.b = (ex.b*ex.n + price*n)/(ex.n+n); ex.n += n; } else P.pos.push({sym,side,n,b:price});
+      P.log.push({sym, act:side==='long'?'buy':'short', n, price, date:TDATES[TDATES.length-1]});
       P.tradesWeek++; save();
       tr.done = {title:(side==='long'?'Bought ':'Shorted ')+n+' '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
     }
@@ -744,6 +996,12 @@ function act(a, el){
       P.cash -= tr.cd; P.cds.push({id:Date.now(),amt:tr.cd,rate:rates[tr.term],term:tr.term,accrued:0,matures:dates[tr.term]}); P.tradesWeek++; save();
       tr.done = {title:'Opened '+whole(tr.cd)+' CD', sub:tr.term+' months at '+rates[tr.term].toFixed(2)+'%'}; break;
     }
+    case 'csym': UI.chart.sym = v; break;
+    case 'tf': UI.chart.tf = v; break;
+    case 'ctog': UI.chart[v] = !UI.chart[v]; break;
+    case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
+    case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1]==='index' ? 'stock' : MARKET[sym][1];
+      tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
     case 'reset': P = START(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
   }
   render();
@@ -758,7 +1016,9 @@ function render(){
   const r = route();
   document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current', a.dataset.route===r?'page':'false'));
   const app = document.getElementById('app');
-  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : vTrade();
+  if (CH){ CH.chart.remove(); CH = null; }
+  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
+  if (r==='charts') mountChart();
   document.getElementById('overlay').innerHTML = vDrawer() + vSheet();
   renderTape(false);
 }
@@ -775,8 +1035,9 @@ window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; rende
 
 /* sample price movement: stands in for the 15-minute refresh from the market data feed */
 setInterval(()=>{
-  if (UI.sheet || UI.drawer || document.activeElement && document.activeElement.id==='search') { Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); }); renderTape(true); return; }
   Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); });
+  if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
+  if (UI.sheet || UI.drawer || document.activeElement && document.activeElement.id==='search') { renderTape(true); return; }
   const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
 }, 8000);
 
