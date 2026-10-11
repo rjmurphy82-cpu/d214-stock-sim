@@ -181,7 +181,9 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 
 /* charts */
 .chartgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;padding-block:28px 64px}
-.chead{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.chead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px}
+.rng{min-width:17ch;font-size:16px}
+@media (max-width:600px){.chead{grid-template-columns:1fr}}
 .tf{display:flex;gap:6px;flex-wrap:wrap}
 .tf button{min-height:42px;min-width:48px;padding:0 12px;border:1px solid var(--line-2);border-radius:6px;font-family:var(--mono);font-size:14px;color:var(--soft)}
 .tf button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
@@ -483,13 +485,15 @@ function vCharts(){
           <div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
             <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(price)}</span>
             <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
-            <span class="num ${cls(rng)}" style="font-size:17px">${pct(rng)} ${tfLabel}</span>
           </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>
       </div>
       <div class="spread" style="flex-wrap:wrap;gap:12px">
-        <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
+          <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} over ${c.tf}</span>
+        </div>
         <div class="frow">${tog('ma','Moving averages')}${tog('cmp','Compare to S&amp;P 500')}${tog('marks','My trades')}</div>
       </div>
       <div class="ohlc" id="ohlc"></div>
@@ -1004,7 +1008,9 @@ function act(a, el){
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
     case 'reset': P = START(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
   }
+  const y = window.scrollY;
   render();
+  if (k==='tf' || k==='ctog') window.scrollTo(0, y);
 }
 
 /* ---------- render ---------- */
