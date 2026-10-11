@@ -199,6 +199,28 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .wl button[aria-pressed="true"]{background:var(--red-tint);box-shadow:inset 0 0 0 1px var(--red)}
 .trow{display:grid;grid-template-columns:76px minmax(0,1fr) 96px minmax(0,1.1fr);gap:14px;align-items:center;min-height:54px;border-top:1px solid var(--line);font-size:16px}
 .trow .vd{font-size:14px;color:var(--muted)}
+.helpbtn{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;min-height:36px;padding:0 12px 0 8px;border:1px solid var(--line-2);border-radius:999px;font-size:14px;font-weight:500;color:var(--soft)}
+.helpbtn:hover{color:var(--white);border-color:var(--line-3)}
+.q{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line-3);font-family:var(--body);font-size:12px;font-weight:600;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wres{display:flex;flex-direction:column;gap:4px}
+.wres:empty{display:none}
+.wres button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 12px;background:var(--bg);border:1px solid var(--line-2);border-radius:6px;text-align:left}
+.wres button:hover{border-color:var(--line-3)}
+.kn details{border-top:1px solid var(--line)}
+.kn summary{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;cursor:pointer;list-style:none;font-size:15px;color:var(--soft)}
+.kn summary::-webkit-details-marker{display:none}
+.kn details[open] .q{background:var(--red);border-color:var(--red);color:var(--white)}
+.kn details p{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--muted)}
+.rbar{position:relative;height:6px;background:var(--line-2);border-radius:3px}
+.rbar i{position:absolute;top:-5px;width:4px;height:16px;background:var(--white);border-radius:2px}
+.guide{width:min(640px,100%);gap:18px}
+.gls{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+.gl{display:flex;gap:12px;align-items:flex-start}
+.gl .gi{display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0}
+.gl b{color:var(--white);font-size:16px}
+.gl p{margin:2px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
+@media (max-width:600px){.gls{grid-template-columns:1fr}}
 @media (max-width:1000px){.chartgrid{grid-template-columns:1fr}.wl{max-height:300px}}
 @media (max-width:700px){.chartbox{height:350px}.trow{grid-template-columns:64px minmax(0,1fr) auto;padding-block:8px}.trow .vd{grid-column:2/4}}
 
@@ -406,21 +428,70 @@ const fmtVol = v => v>=1e9 ? (v/1e9).toFixed(2)+'B' : v>=1e6 ? (v/1e6).toFixed(1
 const sgnp = v => (v>=0?'+':'')+v.toFixed(2)+'%';
 const CACHE = {};
 function volOf(sym){ return ({NVDA:.03,TSLA:.034,META:.024,GBTC:.04,ETHE:.045,TLT:.009,SHY:.0015})[sym] || ({stock:.017,bond:.004,crypto:.04,index:.010})[MARKET[sym][1]]; }
+function hashOf(sym){ let h = 2166136261; for (const ch of sym){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); } return h>>>0; }
+/* stocks you can find with search (the live version searches every U.S. ticker through Massive's reference data); prices are samples */
+const REF = [
+  ['NFLX','Netflix','Communication','Streams movies and TV shows.',690],['DIS','Walt Disney','Communication','Theme parks, movies, and Disney+.',98],
+  ['NKE','Nike','Consumer','Makes athletic shoes and clothing.',82],['SBUX','Starbucks','Consumer','Runs coffee shops around the world.',92],
+  ['MCD',"McDonald's",'Consumer','The world’s largest fast-food chain.',295],['KO','Coca-Cola','Consumer staples','Makes soft drinks and other beverages.',68],
+  ['PEP','PepsiCo','Consumer staples','Makes drinks and snacks like Pepsi and Lay’s.',165],['WMT','Walmart','Consumer staples','The largest U.S. retailer.',80],
+  ['TGT','Target','Consumer','Runs general merchandise stores.',150],['HD','Home Depot','Consumer','Sells home improvement supplies.',390],
+  ['AMD','Advanced Micro Devices','Semiconductors','Designs computer and graphics chips.',160],['INTC','Intel','Semiconductors','Designs and manufactures computer chips.',22],
+  ['AVGO','Broadcom','Semiconductors','Makes chips for networking and phones.',170],['CRM','Salesforce','Technology','Sells customer management software.',280],
+  ['ADBE','Adobe','Technology','Makes Photoshop, Acrobat, and creative software.',510],['ORCL','Oracle','Technology','Sells databases and cloud services.',170],
+  ['IBM','IBM','Technology','Sells business software and consulting.',220],['UBER','Uber','Technology','Runs ride-hailing and food delivery apps.',75],
+  ['ABNB','Airbnb','Consumer','Lists homes and rooms for travelers.',130],['SPOT','Spotify','Communication','Streams music and podcasts.',380],
+  ['RBLX','Roblox','Communication','Runs an online game platform.',45],['EA','Electronic Arts','Communication','Makes video games like EA Sports FC.',150],
+  ['PLTR','Palantir','Technology','Makes data analysis software.',38],['SHOP','Shopify','Technology','Helps businesses run online stores.',80],
+  ['BA','Boeing','Industrials','Builds airplanes and defense systems.',155],['CAT','Caterpillar','Industrials','Makes construction and mining equipment.',370],
+  ['F','Ford','Autos','Makes cars and trucks.',10.5],['GM','General Motors','Autos','Makes cars and trucks.',48],
+  ['LLY','Eli Lilly','Health care','Develops and sells medicines.',900],['JNJ','Johnson & Johnson','Health care','Makes medicines and medical devices.',160],
+  ['PFE','Pfizer','Health care','Develops and sells medicines and vaccines.',28],['UNH','UnitedHealth','Health care','The largest U.S. health insurer.',560],
+  ['CVX','Chevron','Energy','Produces and refines oil and natural gas.',150],['BAC','Bank of America','Financials','One of the largest U.S. banks.',40],
+  ['GS','Goldman Sachs','Financials','An investment bank.',480],['MA','Mastercard','Financials','Runs the Mastercard payment network.',500],
+  ['LULU','Lululemon','Consumer','Makes athletic clothing.',270],['CMG','Chipotle','Consumer','Runs fast-casual Mexican restaurants.',56]
+];
+/* sample fundamentals: [P/E, market cap in $ billions, dividend yield %, revenue growth %] */
+const FUND = {
+  NVDA:[54,2150,0.02,94], AAPL:[31,3450,0.44,5], COST:[52,396,0.52,7], JPM:[12,565,2.3,12], XOM:[14,455,3.4,-3], AMZN:[42,1900,0,11],
+  TSLA:[68,800,0,2], MSFT:[35,3100,0.72,15], GOOGL:[23,2000,0.48,14], META:[26,1270,0.40,22], V:[30,540,0.76,10],
+  SPY:[24,null,1.2,null], BND:[null,null,3.7,null], AGG:[null,null,3.6,null], TLT:[null,null,4.3,null], SHY:[null,null,4.0,null], GBTC:[null,null,0,null], ETHE:[null,null,0,null]
+};
+function fundOf(sym){
+  if (FUND[sym]) return FUND[sym];
+  const h = hashOf(sym); return [12+h%34, 20+h%480, h%3===0 ? 0 : +(0.5+(h%25)/10).toFixed(2), -4+(h%24)];
+}
+/* real stock splits inside the 5-year window */
+const SPLITS = {NVDA:['2024-06-10','10-for-1'], TSLA:['2022-08-25','3-for-1'], GOOGL:['2022-07-18','20-for-1'], AMZN:['2022-06-06','20-for-1']};
+function ensureSym(sym){
+  if (MARKET[sym]) return true;
+  const r = REF.find(x=>x[0]===sym); if (!r) return false;
+  const chg = ((hashOf(sym)%9)-4)/250;
+  MARKET[sym] = [r[1],'stock',r[4],+(r[4]/(1+chg)).toFixed(2)];
+  prices[sym] = r[4]; prev[sym] = MARKET[sym][3]; ABOUT[sym] = [r[2], r[3]];
+  return true;
+}
+function addBiz(dateStr, n){ let t = Date.parse(dateStr+'T00:00:00Z'); while (n>0){ t += 86400000; const w = new Date(t).getUTCDay(); if (w!==0 && w!==6) n--; } return new Date(t).toISOString().slice(0,10); }
+if (!P.watch) P.watch = ['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'];
+P.watch.forEach(ensureSym); P.pos.forEach(p=>ensureSym(p.sym)); (P.log||[]).forEach(l=>ensureSym(l.sym));
+function watchList(){ const out = []; P.pos.forEach(p=>{ if (!out.includes(p.sym)) out.push(p.sym); }); P.watch.forEach(s=>{ if (MARKET[s] && !out.includes(s)) out.push(s); }); return out; }
+
 function seriesFor(sym){
   if (CACHE[sym]) return CACHE[sym];
-  const N = TDATES.length, vol = volOf(sym), now = MARKET[sym][2];
-  let h = 2166136261; for (const ch of sym){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); }
-  let s = h>>>0;
+  const N = TDATES.length, vol = volOf(sym), now = MARKET[sym][2], h = hashOf(sym);
+  let s = h;
   const rnd = () => { s = (s + 0x6D2B79F5)|0; let t = Math.imul(s ^ (s>>>15), 1|s); t = (t + Math.imul(t ^ (t>>>7), 61|t)) ^ t; return ((t ^ (t>>>14))>>>0)/4294967296; };
   const gauss = () => { let u=0, v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
-  // random walk pinned to the starting level, each sample trade price, and today's price
+  const isStock = MARKET[sym][1]==='stock', off = h % 63;
+  const eIdx = new Set(); if (isStock) for (let k=off; k<N; k+=63) if (k>0) eIdx.add(k);
+  // random walk pinned to the starting level, each sample trade price, and today's price; earnings days move more
   const anchors = [{i:0,p:now*(START_MULT[sym]||0.6)}];
   START().log.filter(l=>l.sym===sym).forEach(l=>anchors.push({i:N-1-l.ago, p:l.price}));
   anchors.push({i:N-1,p:now}); anchors.sort((a,b)=>a.i-b.i);
   const lp = new Array(N); lp[0] = Math.log(anchors[0].p);
   for (let k=1;k<anchors.length;k++){
     const a=anchors[k-1], b=anchors[k]; if (b.i<=a.i) continue;
-    const inc=[]; let S=0; for (let j=a.i+1;j<=b.i;j++){ S += gauss()*vol; inc.push(S); }
+    const inc=[]; let S=0; for (let j=a.i+1;j<=b.i;j++){ S += gauss()*vol*(eIdx.has(j)?3.2:1); inc.push(S); }
     const corr = (Math.log(b.p)-Math.log(a.p)-S)/(b.i-a.i);
     for (let j=a.i+1;j<=b.i;j++) lp[j] = Math.log(a.p) + inc[j-a.i-1] + corr*(j-a.i);
   }
@@ -432,7 +503,16 @@ function seriesFor(sym){
     const mv = k ? Math.abs(lp[k]-lp[k-1])/vol : 1;
     daily.push({time:TDATES[k], open:o, high:hi, low:lo, close:c, vol:Math.round(baseVol*(0.6+0.4*rnd()+0.35*mv))});
   }
-  return CACHE[sym] = {daily};
+  // events: earnings (E), dividends (D), splits (S)
+  const events = [];
+  eIdx.forEach(k=>events.push({i:k, type:'E', note:'Earnings report · '+pct((daily[k].close/daily[k-1].close-1)*100)+' that day'}));
+  const f = fundOf(sym);
+  if (f[2]>0 && (isStock || sym==='SPY')) for (let k=(off+25)%63; k<N; k+=63) events.push({i:k, type:'D', note:'Dividend paid · $'+(daily[k].close*f[2]/100/4).toFixed(2)+' per share'});
+  if (SPLITS[sym]){ const i = TDATES.findIndex(t=>t>=SPLITS[sym][0]); if (i>0) events.push({i, type:'S', note:SPLITS[sym][1]+' stock split · earlier prices adjusted to match'}); }
+  events.sort((a,b)=>a.i-b.i);
+  const lastE = eIdx.size ? Math.max(...eIdx) : null;
+  const nextIn = lastE===null ? null : lastE+63-(N-1);
+  return CACHE[sym] = {daily, events, nextE: nextIn===null ? null : {date:addBiz(TDATES[N-1], nextIn), days:nextIn}};
 }
 const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
 function weekly(d){
@@ -442,11 +522,19 @@ function weekly(d){
   return out;
 }
 function sma(bars,n){ const out=[]; let sum=0; bars.forEach((b,i)=>{ sum+=b.close; if(i>=n) sum-=bars[i-n].close; if(i>=n-1) out.push({time:b.time, value:sum/n}); }); return out; }
-function markersFor(sym, times){
-  const toT = date => { let lo=0, hi=times.length-1, ans=times[0]; while(lo<=hi){ const mid=(lo+hi)>>1; if (times[mid]<=date){ ans=times[mid]; lo=mid+1; } else hi=mid-1; } return ans; };
-  const sty = {buy:['belowBar','arrowUp','#45c08a','Buy'], sell:['aboveBar','arrowDown','#f0606f','Sell'], short:['aboveBar','arrowDown','#e0b45a','Short'], cover:['belowBar','arrowUp','#6b8fbf','Close short']};
-  return (P.log||[]).filter(l=>l.sym===sym).map(l=>{ const s=sty[l.act]; return {time:toT(logDate(l)), position:s[0], shape:s[1], color:s[2], text:s[3]+' '+l.n}; })
-    .sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
+const EV_COLOR = {E:'#a594d9', D:'#c9a34e', S:'#5fb3c9'};
+function makeToT(times){ return date => { let lo=0, hi=times.length-1, ans=times[0]; while(lo<=hi){ const mid=(lo+hi)>>1; if (times[mid]<=date){ ans=times[mid]; lo=mid+1; } else hi=mid-1; } return ans; }; }
+function markersFor(sym, times, opt){
+  const toT = makeToT(times), out = [];
+  if (opt.trades){
+    const sty = {buy:['belowBar','arrowUp','#45c08a','Buy'], sell:['aboveBar','arrowDown','#f0606f','Sell'], short:['aboveBar','arrowDown','#e0b45a','Short'], cover:['belowBar','arrowUp','#6b8fbf','Close short']};
+    (P.log||[]).filter(l=>l.sym===sym).forEach(l=>{ const s=sty[l.act]; out.push({time:toT(logDate(l)), position:s[0], shape:s[1], color:s[2], text:s[3]+' '+l.n}); });
+  }
+  if (opt.events){
+    seriesFor(sym).events.forEach(e=>{ if (opt.wk && e.type==='D') return;
+      out.push({time:toT(TDATES[e.i]), position:'aboveBar', shape:'circle', color:EV_COLOR[e.type], text:e.type}); });
+  }
+  return out.sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
 }
 function verdict(l, price){
   const ch = (price/l.price-1)*100, up = ch>=0;
@@ -457,30 +545,48 @@ function verdict(l, price){
 
 function vCharts(){
   const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
-  const d = seriesFor(sym).daily, N = d.length;
+  const S = seriesFor(sym), d = S.daily, N = d.length;
   const span = {'1M':21,'3M':63,'6M':126,'1Y':252,'5Y':N-1}[c.tf];
   const rng = (price/d[N-1-span].close-1)*100;
   const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years'}[c.tf];
   const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
-  const avgVol = d.slice(-63).reduce((a,b)=>a+b.vol,0)/63;
   const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
-  const owned = []; P.pos.forEach(p=>{ if (!owned.includes(p.sym)) owned.push(p.sym); });
-  const wl = owned.concat(Object.keys(MARKET).filter(s=>!owned.includes(s)));
+  const wl = watchList(), owned = P.pos.map(p=>p.sym);
   const mine = P.pos.filter(p=>p.sym===sym);
   const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
   const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${k==='ma'&&c.cmp?'disabled':''}>${l}</button>`;
   const wk = c.tf==='5Y';
-  const keys = c.cmp
-    ? `<span><i style="width:20px;height:3px;background:#ef5b70;display:block"></i>${sym}</span><span><i style="width:20px;border-top:2px dashed #8a97a8;display:block"></i>S&amp;P 500</span>`
-    : (c.ma?`<span><i style="width:20px;height:3px;background:#c9a34e;display:block"></i>${wk?'10-week':'50-day'} average</span><span><i style="width:20px;height:3px;background:#6b8fbf;display:block"></i>${wk?'40-week':'200-day'} average</span>`:'');
-  const markKeys = c.marks ? `<span style="color:var(--up)">▲ your buys</span><span style="color:var(--down)">▼ your sells</span><span style="color:var(--warn)">▼ shorts</span>` : '';
-  const news = [['What to watch when '+m[0]+' reports earnings','2 hours ago'],[info[0]+' stocks lead the market this week','Yesterday'],['Analysts debate where '+m[0]+' goes next','3 days ago']];
+  const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
+  const keys = [
+    c.cmp ? `<span>${sw('#ef5b70')}${sym}</span><span>${sw('#8a97a8',1)}S&amp;P 500</span>` : '',
+    !c.cmp && c.ma ? `<span>${sw('#c9a34e')}${wk?'10-wk':'50-day'}</span><span>${sw('#6b8fbf')}${wk?'40-wk':'200-day'}</span>` : '',
+    c.marks ? `<span><b class="up">▲</b>buy</span><span><b class="down">▼</b>sell</span>` : '',
+    c.ev ? `<span><b style="color:${EV_COLOR.E}">E</b>earnings</span><span><b style="color:${EV_COLOR.D}">D</b>dividend</span><span><b style="color:${EV_COLOR.S}">S</b>split</span>` : ''
+  ].join('');
+  // key numbers
+  const f = fundOf(sym), ty = m[1];
+  const fmtCap = b => b>=1000 ? '$'+(b/1000).toFixed(2)+'T' : '$'+Math.round(b)+'B';
+  const pos52 = Math.max(0, Math.min(100, (price-lo52)/(hi52-lo52)*100));
+  const row = (label, val, why) => `<details><summary><span>${label}</span><span style="display:flex;align-items:center;gap:10px"><span class="num" style="color:var(--white)">${val}</span><span class="q" aria-hidden="true">?</span></span></summary><p>${why}</p></details>`;
+  let kn = '';
+  if (ty==='stock'){
+    kn = row('P/E ratio', f[0], 'How many dollars investors pay for $1 of the company’s yearly profit. A high P/E usually means investors expect fast growth.')
+      + row('Market cap', fmtCap(f[1]*price/m[2]), 'The total value of all the company’s shares: the share price times the number of shares.')
+      + row('Dividend yield', f[2]>0 ? f[2].toFixed(2)+'%' : 'None', 'Cash the company pays shareholders each year, as a percent of the share price. Many fast-growing companies pay none and reinvest instead.')
+      + row('Revenue growth', (f[3]>=0?'+':'')+f[3]+'%', 'How much more the company sold this year than last year.')
+      + (S.nextE ? row('Next earnings', dLabel(S.nextE.date), 'The day the company reports its results. Prices often jump or drop that day, so know it before you buy. That’s in '+S.nextE.days+' trading days.') : '');
+  } else if (ty==='crypto'){
+    kn = row('Dividend yield', 'None', 'Crypto funds don’t earn profits or pay dividends. The price only moves with the coin it tracks.');
+  } else {
+    kn = row(ty==='bond'?'Yield':'Dividend yield', f[2].toFixed(1)+'%', ty==='bond' ? 'The interest the fund pays each year, as a percent of its price. Bond funds pay it out monthly.' : 'Cash the fund pays each year from the companies it holds, as a percent of its price.')
+      + (f[0] ? row('P/E ratio', f[0], 'The average P/E of the companies in the fund: how many dollars investors pay for $1 of yearly profit.') : '');
+  }
   return `
   <div class="wrap"><div class="chartgrid">
     <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
       <div class="chead">
         <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-          <div class="who"><span class="num" style="font-size:40px;font-weight:500;color:var(--white)">${sym}</span><span style="font-size:18px;color:var(--dim)">${m[0]}</span>
+          <div class="who"><span class="num" style="font-size:40px;font-weight:500;color:var(--white)">${sym}</span><span style="font-size:18px;color:var(--dim)">${esc(m[0])}</span>
             ${mine.map(p=>`<span class="tag" style="color:${p.side==='short'?'var(--warn)':'var(--link)'}">${p.side==='short'?'YOU’RE SHORT':'YOU OWN'}</span>`).join('')}</div>
           <div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
             <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(price)}</span>
@@ -494,12 +600,15 @@ function vCharts(){
           <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
           <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} over ${c.tf}</span>
         </div>
-        <div class="frow">${tog('ma','Moving averages')}${tog('cmp','Compare to S&amp;P 500')}${tog('marks','My trades')}</div>
+        <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}</div>
       </div>
-      <div class="ohlc" id="ohlc"></div>
+      <div class="spread" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
+        <div class="ohlc" id="ohlc"></div>
+        <button type="button" class="helpbtn" data-act="guide"><span class="q" aria-hidden="true">?</span>How to read this</button>
+      </div>
       <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}"></div>
       <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)">
-        <span class="keys">${keys}${markKeys}</span>
+        <span class="keys">${keys}</span>
         <span>Sample prices · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
       </div>
       <div class="side-card" style="gap:2px;margin-top:8px">
@@ -511,29 +620,70 @@ function vCharts(){
     </div>
     <aside style="display:flex;flex-direction:column;gap:16px;min-width:0">
       <div class="side-card"><span class="label">Watchlist</span>
+        <label for="wsearch" class="sr">Add any stock to your watchlist</label>
+        <input id="wsearch" type="text" autocomplete="off" placeholder="Add a stock: name or ticker" value="${esc(UI.wq||'')}" style="height:46px;font-size:16px">
+        <div class="wres" id="wres">${wlResults()}</div>
         <div class="wl">${wl.map(s=>{ const ch=(prices[s]/prev[s]-1)*100; return `<button type="button" aria-pressed="${s===sym}" data-act="csym:${s}">
           <span class="num" style="color:var(--white);font-size:16px">${s}${owned.includes(s)?' <span style="color:var(--link);font-size:11px;letter-spacing:.1em">● OWN</span>':''}</span>
           <span class="num" data-px="${s}" style="text-align:right;color:var(--white)">${prices[s].toFixed(2)}</span>
-          <span style="font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${MARKET[s][0]}</span>
+          <span style="font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(MARKET[s][0])}</span>
           <span class="num ${cls(ch)}" data-pc="${s}" style="text-align:right;font-size:13px">${pct(ch)}</span></button>`; }).join('')}</div>
       </div>
-      <div class="side-card"><span class="label">About ${sym}</span>
-        <span style="font-size:17px;color:var(--white)">${info[1]}</span>
-        <span class="tag" style="color:var(--muted);align-self:flex-start">${info[0].toUpperCase()}</span>
-        <div class="kv" style="padding-top:6px">
-          <span><span class="k">52-week high</span><span class="v">${money(hi52)}</span></span><span><span class="k">52-week low</span><span class="v">${money(lo52)}</span></span>
-          <span><span class="k">Avg daily volume</span><span class="v">${fmtVol(avgVol)}</span></span><span><span class="k">From 52-wk high</span><span class="v ${cls(price/hi52-1)}">${((price/hi52-1)*100).toFixed(1)}%</span></span>
-        </div>
+      <div class="side-card">
+        <div class="spread"><span class="label">About ${sym}</span>
+          ${owned.includes(sym) ? '<span style="font-size:13px;color:var(--dim)">In your portfolio</span>'
+            : `<button type="button" class="chip" style="min-height:36px" aria-pressed="${P.watch.includes(sym)}" data-act="wtog:${sym}">${P.watch.includes(sym)?'★ Watching':'+ Watch'}</button>`}</div>
+        <span style="font-size:17px;color:var(--white)">${esc(info[1])}</span>
+        <span class="tag" style="color:var(--muted);align-self:flex-start">${esc(info[0]).toUpperCase()}</span>
         ${mine.map(p=>`<div style="padding-top:12px;border-top:1px solid var(--line);font-size:16px;color:var(--soft)">${p.side==='short'?'Short':'You own'} <b style="color:var(--white)">${p.n}</b> shares at ${money(p.b)} avg · <span class="num ${cls(posGain(p))}">${signed2(posGain(p))}</span></div>`).join('')}
       </div>
-      <div class="side-card"><span class="label">News</span>
-        ${news.map(([hd,t])=>`<div style="display:flex;flex-direction:column;gap:3px;padding-top:10px;border-top:1px solid var(--line)"><span style="font-size:16px;color:var(--white)">${esc(hd)}</span><span style="font-size:13px;color:var(--dim)">${t}</span></div>`).join('')}
-        <span style="font-size:13px;color:var(--dim)">Sample headlines. The live version shows real news from the Massive feed.</span>
+      <div class="side-card kn"><span class="label">Key numbers</span>
+        <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px">
+          <div class="spread"><span style="font-size:14px;color:var(--muted)">52-week range</span><span class="num" style="font-size:13px;color:var(--dim)">${money(lo52)} to ${money(hi52)}</span></div>
+          <div class="rbar" role="img" aria-label="Today’s price is ${Math.round(pos52)} percent of the way from the 52-week low to the high"><i style="left:calc(${pos52.toFixed(1)}% - 2px)"></i></div>
+        </div>
+        ${kn}
+        <span style="font-size:13px;color:var(--dim)">Sample figures. Tap a row to see what it means.</span>
       </div>
     </aside>
   </div></div>`;
 }
-
+function wlResults(){
+  const q = (UI.wq||'').trim().toLowerCase(); if (!q) return '';
+  const pool = Object.keys(MARKET).map(s=>[s,MARKET[s][0]]).concat(REF.filter(r=>!MARKET[r[0]]).map(r=>[r[0],r[1]]));
+  const hits = pool.filter(([s,n])=>s.toLowerCase().startsWith(q) || n.toLowerCase().includes(q)).slice(0,6);
+  if (!hits.length) return `<p class="empty" style="font-size:14px;margin:0">No match in the demo list. The live version searches every U.S. stock.</p>`;
+  const on = watchList();
+  return hits.map(([s,n])=>`<button type="button" data-act="wadd:${s}"><span class="num" style="color:var(--white)">${s}</span>
+    <span style="text-align:right;font-size:13px;font-weight:600;color:${on.includes(s)?'var(--dim)':'var(--link)'}">${on.includes(s)?'On your list':'+ Add'}</span>
+    <span style="grid-column:1/3;font-size:13px;color:var(--dim)">${esc(n)}</span></button>`).join('');
+}
+function vGuide(){
+  if (!UI.guide) return '';
+  const t = (x,y,s,a) => `<text x="${x}" y="${y}" fill="#c3cbd6" font-size="13" font-family="IBM Plex Sans, system-ui, sans-serif" text-anchor="${a||'start'}">${s}</text>`;
+  const ln = (x1,y1,x2,y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#4a5d74" stroke-width="1"/>`;
+  const item = (icon, title, body) => `<div class="gl"><span class="gi">${icon}</span><div><b>${title}</b><p>${body}</p></div></div>`;
+  return `<div class="scrim center" data-act="close"><div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="gtitle" data-stop>
+    <div class="spread" style="align-items:flex-start"><h2 id="gtitle" class="h2" style="font-size:clamp(28px,4vw,36px)">How to read this chart</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></div>
+    <svg viewBox="0 0 460 222" width="100%" role="img" aria-label="Two candles. On the green up day the open is at the bottom of the body and the close at the top. On the red down day the open is at the top and the close at the bottom. Wicks show the high and low.">
+      <line x1="140" y1="22" x2="140" y2="188" stroke="#45c08a" stroke-width="3"/><rect x="118" y="62" width="44" height="88" rx="2" fill="#45c08a"/>
+      ${ln(70,22,134,22)}${t(64,26,'High','end')}${ln(70,62,114,62)}${t(64,66,'Close','end')}${ln(70,150,114,150)}${t(64,154,'Open','end')}${ln(70,188,134,188)}${t(64,192,'Low','end')}
+      ${t(140,214,'Up day','middle')}
+      <line x1="320" y1="38" x2="320" y2="176" stroke="#f0606f" stroke-width="3"/><rect x="298" y="70" width="44" height="72" rx="2" fill="#f0606f"/>
+      ${ln(326,38,390,38)}${t(396,42,'High')}${ln(346,70,390,70)}${t(396,74,'Open')}${ln(346,142,390,142)}${t(396,146,'Close')}${ln(326,176,390,176)}${t(396,180,'Low')}
+      ${t(320,214,'Down day','middle')}
+    </svg>
+    <div class="gls">
+      ${item('<i style="width:10px;height:22px;background:#45c08a;border-radius:2px;display:block"></i>','Candles','Each candle is one day. The thick body runs from the opening price to the closing price. The thin wicks show the highest and lowest price that day.')}
+      ${item('<i style="width:22px;height:12px;background:rgba(69,192,138,.5);display:block;align-self:flex-end"></i>','Volume','The bars along the bottom show how many shares traded. A tall bar means lots of buying and selling, usually because of news.')}
+      ${item('<i style="width:22px;height:3px;background:#c9a34e;display:block"></i>','Averages','Gold is the average price over the last 50 days, blue over 200 days. Price above the lines means the trend has been up.')}
+      ${item('<b class="up" style="font-size:18px">▲</b>','Your trades','Green arrows are your buys, red are your sells, yellow are your shorts.')}
+      ${item(`<b style="color:${EV_COLOR.E};font-family:var(--mono)">E</b>`,'Events','E is an earnings report, D a dividend payment, S a stock split. Big jumps often happen on E days.')}
+    </div>
+    <p style="margin:0;font-size:15px;color:var(--dim)">Hover over any candle (or tap on a phone) to see its exact numbers above the chart.</p>
+    <button type="button" class="cta" data-act="close">Got it</button>
+  </div></div>`;
+}
 let CH = null;
 function mountChart(){
   const el = document.getElementById('chart'); if (!el) return;
@@ -547,7 +697,7 @@ function mountChart(){
     grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
     rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3}, crosshair:{mode:0}});
   const out = {chart, sym, bars, cmp:!!c.cmp};
-  const marks = c.marks ? markersFor(sym, bars.map(b=>b.time)) : [];
+  const marks = markersFor(sym, bars.map(b=>b.time), {trades:c.marks, events:c.ev, wk});
   let spyBars = null;
   if (c.cmp){
     const sd = seriesFor('SPY').daily.slice(); sd[L] = liveBar(sd[L], prices.SPY);
@@ -577,11 +727,14 @@ function mountChart(){
   }
   if (wk) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
   const leg = document.getElementById('ohlc');
+  const evAt = {};
+  if (c.ev){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
   out.showAt = (i) => {
     if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
+    const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');
     if (out.cmp){ const sb = spyBars[i];
-      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>`; }
-    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>`;
+      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
+    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
   };
   out.hover = false;
   chart.subscribeCrosshairMove(p => { const has = p && p.logical!==undefined && p.logical!==null && p.point; out.hover = !!has; out.showAt(has ? Math.round(p.logical) : bars.length-1); });
@@ -604,7 +757,7 @@ function tickChart(){
 
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
-  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true},
+  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, term:6, cd:5000} };
 const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
 
@@ -874,6 +1027,7 @@ function vTrade(){
 function chipsHtml(){
   const tr = UI.trade, q = tr.q.trim().toLowerCase();
   const list = Object.keys(MARKET).filter(s=>MARKET[s][1]===tr.type && (!q || s.toLowerCase().includes(q) || MARKET[s][0].toLowerCase().includes(q)));
+  if (tr.type==='stock' && q) REF.filter(r=>!MARKET[r[0]] && (r[0].toLowerCase().includes(q) || r[1].toLowerCase().includes(q))).slice(0,8).forEach(r=>list.push(r[0]));
   if (!list.length) return `<span class="empty">No match in the demo list. The real app will search every U.S. ticker.</span>`;
   return list.map(s=>`<button type="button" class="chip num" aria-pressed="${tr.pick[tr.type]===s}" data-act="pick:${s}">${s}</button>`).join('');
 }
@@ -963,7 +1117,7 @@ function act(a, el){
     case 'school': UI.school=v||null; UI.sec=null; break;
     case 'sec': UI.sec = v===''?null:+v; break;
     case 'open': UI.drawer=v; break;
-    case 'close': UI.drawer=null; UI.sheet=null; break;
+    case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; break;
     case 'sheet': { const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0}; break; }
     case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(1,Math.min(p.n, UI.sheet.n+(v==='+'?1:-1))); break; }
     case 'sell': {
@@ -978,7 +1132,7 @@ function act(a, el){
     }
     case 'cdcash': { const c = P.cds.find(x=>'cd:'+x.id===UI.sheet.key); const pen=c.amt*c.rate/100*3/12; P.cash += cdValue(c)-pen; P.cds = P.cds.filter(x=>x!==c); P.tradesWeek++; save(); UI.sheet.done={title:'CD cashed out',p:c.accrued-pen}; break; }
     case 'type': tr.type=v; tr.done=null; tr.side='buy'; tr.n=10; tr.q=''; break;
-    case 'pick': tr.pick[tr.type]=v; break;
+    case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; break;
     case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
     case 'term': tr.term=+v; break;
@@ -1000,7 +1154,10 @@ function act(a, el){
       P.cash -= tr.cd; P.cds.push({id:Date.now(),amt:tr.cd,rate:rates[tr.term],term:tr.term,accrued:0,matures:dates[tr.term]}); P.tradesWeek++; save();
       tr.done = {title:'Opened '+whole(tr.cd)+' CD', sub:tr.term+' months at '+rates[tr.term].toFixed(2)+'%'}; break;
     }
-    case 'csym': UI.chart.sym = v; break;
+    case 'csym': ensureSym(v); UI.chart.sym = v; break;
+    case 'wadd': ensureSym(v); if (!watchList().includes(v)) P.watch.push(v); save(); UI.chart.sym = v; UI.wq = ''; break;
+    case 'wtog': if (P.watch.includes(v)) P.watch = P.watch.filter(x=>x!==v); else P.watch.push(v); save(); break;
+    case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
     case 'ctog': UI.chart[v] = !UI.chart[v]; break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
@@ -1025,7 +1182,7 @@ function render(){
   if (CH){ CH.chart.remove(); CH = null; }
   app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
   if (r==='charts') mountChart();
-  document.getElementById('overlay').innerHTML = vDrawer() + vSheet();
+  document.getElementById('overlay').innerHTML = vDrawer() + vSheet() + vGuide();
   renderTape(false);
 }
 document.addEventListener('click', e=>{
@@ -1035,15 +1192,15 @@ document.addEventListener('click', e=>{
   if (el.tagName==='A' && el.getAttribute('href')){ UI.drawer=null; UI.sheet=null; return; }
   e.preventDefault(); act(el.dataset.act, el);
 });
-document.addEventListener('input', e=>{ if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
-document.addEventListener('keydown', e=>{ if (e.key==='Escape' && (UI.drawer||UI.sheet)){ UI.drawer=null; UI.sheet=null; render(); } });
-window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; render(); window.scrollTo(0,0); });
+document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
+document.addEventListener('keydown', e=>{ if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide)){ UI.drawer=null; UI.sheet=null; UI.guide=false; render(); } });
+window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.wq=''; render(); window.scrollTo(0,0); });
 
 /* sample price movement: stands in for the 15-minute refresh from the market data feed */
 setInterval(()=>{
   Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); });
   if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
-  if (UI.sheet || UI.drawer || document.activeElement && document.activeElement.id==='search') { renderTape(true); return; }
+  if (UI.sheet || UI.drawer || document.activeElement && (document.activeElement.id==='search' || document.activeElement.id==='wsearch')) { renderTape(true); return; }
   const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
 }, 8000);
 
