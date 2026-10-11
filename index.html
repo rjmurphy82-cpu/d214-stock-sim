@@ -179,6 +179,21 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .mini div{display:grid;grid-template-columns:14px minmax(0,1fr) 60px 90px 84px;gap:10px;align-items:center;min-height:34px;border-top:1px solid var(--line);font-family:var(--mono);font-size:14px}
 .empty{color:var(--dim);font-size:15px}
 
+.tip{position:relative;border-bottom:1px dotted currentColor;cursor:help;outline:none}
+.tip .tipbox{position:absolute;left:0;bottom:calc(100% + 10px);z-index:60;width:max-content;max-width:min(300px,78vw);padding:12px 14px;background:var(--pop);border:1px solid #3d5068;border-radius:8px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-family:var(--body);font-size:14px;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--fg);white-space:normal;opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s,visibility .15s;pointer-events:none}
+.tip:hover .tipbox,.tip:focus .tipbox,.tip:focus-within .tipbox{opacity:1;visibility:visible;transform:none}
+.tip:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){.tip .tipbox{transition:none}}
+.flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;position:relative}
+.flow::before{content:"";position:absolute;left:8px;right:8px;top:7px;height:2px;background:linear-gradient(90deg,var(--line-3),var(--cd))}
+.flow li{position:relative;display:flex;flex-direction:column;gap:4px;padding-top:26px;min-width:0}
+.flow li::before{content:"";position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--bg);border:3px solid var(--cd);box-sizing:border-box}
+.flow li:first-child::before{border-color:var(--line-3)}
+.flow li:last-child::before{background:var(--cd)}
+.fwhen{font-size:13px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:var(--muted)}
+.famt{font-size:24px;color:var(--white)}
+.fwhat{font-size:14px;line-height:1.45;color:var(--dim)}
+@media (max-width:600px){.flow{grid-template-columns:1fr;gap:18px}.flow::before{left:7px;right:auto;top:8px;bottom:8px;width:2px;height:auto;background:linear-gradient(180deg,var(--line-3),var(--cd))}.flow li{padding:0 0 0 30px}}
 .irow{display:grid;grid-template-columns:90px 70px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:50px;border-bottom:1px solid var(--line)}
 .irow:last-child{border-bottom:0}
 @media (max-width:600px){.irow{grid-template-columns:70px minmax(0,1fr) auto}.irow > span:nth-child(3){grid-column:1/-1;grid-row:2;padding-bottom:8px}}
@@ -295,7 +310,7 @@ const START = () => ({
     {sym:'JPM',side:'long',n:50,b:191.20},{sym:'XOM',side:'long',n:70,b:121.80},{sym:'BND',side:'long',n:100,b:72.60},
     {sym:'GBTC',side:'long',n:120,b:50.10},{sym:'AMZN',side:'short',n:30,b:188.40}
   ],
-  cds: [{id:1,amt:5000,rate:4.20,term:6,ago:75}],
+  mm: {bal:5000, rate:3.90, ago:75},
   closed: [
     {sym:'AMD',n:40,b:157.00,s:172.40,d:'11 days'},{sym:'TSLA',n:25,b:242.13,s:262.10,d:'16 days'},{sym:'GOOGL',n:18,b:150.65,s:162.45,d:'9 days'},
     {sym:'PLTR',n:50,b:38.40,s:32.04,d:'6 days'},{sym:'SHOP',n:30,b:79.85,s:72.82,d:'14 days'}
@@ -337,47 +352,38 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 /* ---------- portfolio math ---------- */
 const posValue = p => p.side==='long' ? p.n*prices[p.sym] : p.n*(2*p.b - prices[p.sym]);
 const posGain  = p => p.side==='long' ? (prices[p.sym]-p.b)*p.n : (p.b-prices[p.sym])*p.n;
-/* CDs earn interest every day, compounded daily, from the day they are opened */
+/* money market: earns interest every day (compounded daily), money moves in or out anytime */
 const DAY = 86400000, MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const todayStr = () => { const n = new Date(Date.now() + ((P && P.demoOffset)||0)*DAY); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())).toISOString().slice(0,10); };
 const addDays = (s,n) => new Date(Date.parse(s+'T00:00:00Z')+n*DAY).toISOString().slice(0,10);
 const addMonths = (s,m) => { const d = new Date(s+'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth()+m); return d.toISOString().slice(0,10); };
 const daysBetween = (a,b) => Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/DAY);
 const fmtDay = s => { const [y,m,d] = s.split('-'); return MONTHS_S[+m-1]+' '+(+d)+(y!==todayStr().slice(0,4)?', '+y:''); };
-function cdInfo(c){
-  const mat = addMonths(c.opened, c.term), termDays = daysBetween(c.opened, mat), r = c.rate/100/365;
-  const d = Math.max(0, Math.min(daysBetween(c.opened, todayStr()), termDays));
-  return {mat, termDays, days:d, left:termDays-d, earned:c.amt*(Math.pow(1+r,d)-1), perDay:c.amt*Math.pow(1+r,d)*r,
-    full:c.amt*(Math.pow(1+r,termDays)-1), prog:d/termDays*100, matured:daysBetween(todayStr(), mat)<=0};
+const mmPerDay = () => P.mm.bal*P.mm.rate/100/365;
+function mmSettle(){
+  const m = P.mm, today = todayStr(), d = daysBetween(m.last, today);
+  if (d>0){ const add = m.bal*(Math.pow(1+m.rate/100/365, d)-1); m.bal += add; m.earned += add; m.last = today; save(); }
 }
-const cdValue = c => c.amt + cdInfo(c).earned;
-function normalizeCDs(){
-  P.cds.forEach(c=>{
-    if (c.ago!==undefined){ c.opened = addDays(todayStr(), -c.ago); delete c.ago; }
-    else if (!c.opened){ c.opened = addDays(todayStr(), -Math.round((c.accrued||0)/(c.amt*c.rate/100/365))); delete c.accrued; delete c.matures; }
-  });
+function normalizeMM(){
   if (!P.notes) P.notes = [];
+  if (!P.mm) P.mm = {bal:0, rate:3.90};
+  if (P.mm.ago!==undefined){ const start = P.mm.bal; P.mm.bal = start*Math.pow(1+P.mm.rate/100/365, P.mm.ago); P.mm.earned = P.mm.bal-start; delete P.mm.ago; }
+  if (P.mm.earned===undefined) P.mm.earned = 0;
+  if (!P.mm.last) P.mm.last = todayStr();
+  if (P.cds){ P.cds.forEach(c=>{ P.mm.bal += c.amt + (c.accrued||0); }); delete P.cds; save(); }   // older saves had CDs
 }
-function matureCDs(){
-  let changed = false;
-  P.cds = P.cds.filter(c=>{ const i = cdInfo(c); if (!i.matured) return true;
-    P.cash += c.amt + i.full; P.notes.push('Your '+c.term+'-month CD matured. '+money(c.amt+i.full)+' moved to your cash, including '+money(i.full)+' in interest.');
-    changed = true; return false; });
-  if (changed) save();
-}
-normalizeCDs(); matureCDs();
+normalizeMM(); mmSettle();
 function totals(){
-  const inv = P.pos.reduce((a,p)=>a+posValue(p),0) + P.cds.reduce((a,c)=>a+cdValue(c),0);
+  const inv = P.pos.reduce((a,p)=>a+posValue(p),0) + P.mm.bal;
   const total = P.cash + inv;
   const ret = (total/100000 - 1)*100;
   const spy = (prices.SPY/SPY_START - 1)*100;
   return {total, ret, spy, vs: ret - spy};
 }
 function mixOf(){
-  const t = totals().total, m = {Stocks:0,Bonds:0,CD:0,Crypto:0,Shorts:0,Cash:P.cash};
+  const t = totals().total, m = {Stocks:0,Bonds:0,'Money market':P.mm.bal,Crypto:0,Shorts:0,Cash:P.cash};
   P.pos.forEach(p => { const v=posValue(p), ty=MARKET[p.sym][1]; if(p.side==='short') m.Shorts+=v; else if(ty==='bond') m.Bonds+=v; else if(ty==='crypto') m.Crypto+=v; else m.Stocks+=v; });
-  P.cds.forEach(c => m.CD += cdValue(c));
-  const colors = {Stocks:'#ef5b70',Bonds:'#6b8fbf',CD:'#c9a34e',Crypto:'#e08a4f',Shorts:'#e0b45a',Cash:'#4a5768'};
+  const colors = {Stocks:'#ef5b70',Bonds:'#6b8fbf','Money market':'#c9a34e',Crypto:'#e08a4f',Shorts:'#e0b45a',Cash:'#4a5768'};
   return Object.keys(m).filter(k=>m[k]>0.5).map(k=>({name:k,v:m[k],pct:m[k]/t*100,color:colors[k]}));
 }
 function conic(parts, bg){ let a=0; return 'conic-gradient(' + parts.map(p=>{ const s=a; a+=p.pct; return `${p.color} ${s.toFixed(2)}% ${(a-0.5).toFixed(2)}%, ${bg} ${(a-0.5).toFixed(2)}% ${a.toFixed(2)}%`; }).join(', ') + ')'; }
@@ -398,7 +404,7 @@ const STARS = {'Ms. Tran P5':[['Priya S.',14.82]],'Mr. Kowalczyk P2':[['Sofia M.
   'Mr. Lindgren P4':[['Emma H.',8.13]],'Mr. Hollis P7':[['Owen P.',7.64],['Liam O.',-3.40]],'Ms. Pryor P3':[['Chloe N.',7.18]],
   'Mr. Callahan P6':[['JACK',0]]};
 const FIRST = 'Aiden Bella Caleb Dani Eli Fiona Gabe Hana Ian Jade Kai Lena Mateo Nora Omar Piper Quinn Rosa Sam Tess Uma Vince Wren Xavier Yara Zoe Adam Brooke Carlos Dylan Erin Felix Gia Henry Isla Jonah Kira Leo Mia Nate Olive Paul Ruby Seth Tara Victor Will Zara Abby Ben Cora Drew Ella Finn Grant Holly Ivy Jake Kate Luke Maddie Nico Paige Reid Sara Tyler Violet Wes Yusuf Alex Blake Chris Diego Eva Frank Greta Hugo Iris Josh Kyle Lily Marco Nia Oscar'.split(' ');
-const POOL = [['NVDA','Stock'],['AAPL','Stock'],['MSFT','Stock'],['AMZN','Stock'],['COST','Stock'],['JPM','Stock'],['XOM','Stock'],['META','Stock'],['TSLA','Stock'],['GOOGL','Stock'],['V','Stock'],['BND','Bond'],['TLT','Bond'],['GBTC','Crypto'],['CD 6-mo','CD']];
+const POOL = [['NVDA','Stock'],['AAPL','Stock'],['MSFT','Stock'],['AMZN','Stock'],['COST','Stock'],['JPM','Stock'],['XOM','Stock'],['META','Stock'],['TSLA','Stock'],['GOOGL','Stock'],['V','Stock'],['BND','Bond'],['TLT','Bond'],['GBTC','Crypto'],['Money mkt','MM']];
 const D = (function build(){
   let seed = 214; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
   const sections=[], students=[]; let fi=0;
@@ -412,7 +418,7 @@ const D = (function build(){
       const n = 4+Math.floor(rnd()*3), picked=[];
       while (picked.length<n){ const c=POOL[Math.floor(rnd()*POOL.length)]; if(picked.indexOf(c)<0) picked.push(c); }
       const cashPct = 0.05+rnd()*0.15, ws = picked.map(()=>0.4+rnd()), sum = ws.reduce((a,b)=>a+b,0);
-      const g0 = picked.map(c => c[1]==='CD'?0.35 : c[1]==='Bond'? Math.round((rnd()*3-1)*100)/100 : Math.round((ret+rnd()*24-12)*100)/100);
+      const g0 = picked.map(c => c[1]==='MM'?0.35 : c[1]==='Bond'? Math.round((rnd()*3-1)*100)/100 : Math.round((ret+rnd()*24-12)*100)/100);
       students.push({id:students.length, name, sec:sec.id, school:sec.school, ret, isMe, picked, ws, sum, cashPct, g0});
     }
   }));
@@ -434,7 +440,7 @@ function holdsOf(s){
   if (s.isMe){
     const t = totals().total;
     return P.pos.map(p=>({s:p.sym, ty:p.side==='short'?'Short':({stock:'Stock',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]], v:posValue(p), g:posGain(p)/(p.n*p.b)*100}))
-      .concat(P.cds.map(c=>({s:'CD '+c.term+'-mo',ty:'CD',v:cdValue(c),g:cdInfo(c).earned/c.amt*100}))).sort((a,b)=>b.v-a.v).concat([{s:'Cash',ty:'Cash',v:P.cash,g:null}]).map(h=>({...h,w:h.v/t*100}));
+      .concat(P.mm.bal>0.005 ? [{s:'Money mkt',ty:'MM',v:P.mm.bal,g:P.mm.earned/Math.max(1,P.mm.bal-P.mm.earned)*100}] : []).sort((a,b)=>b.v-a.v).concat([{s:'Cash',ty:'Cash',v:P.cash,g:null}]).map(h=>({...h,w:h.v/t*100}));
   }
   const value = 100000*(1+s.ret/100);
   const h = s.picked.map((c,i)=>({s:c[0],ty:c[1],v:value*(1-s.cashPct)*s.ws[i]/s.sum,g:s.g0[i]})).sort((a,b)=>b.v-a.v);
@@ -524,6 +530,8 @@ const BONDMETA = {
   AGG:['Medium','High (mostly government)'], LQD:['Medium','High (strong companies)'], HYG:['Low','Lower ("junk" bonds)'],
   MUB:['Medium','High (cities and states)'], BNDX:['Medium','High (foreign governments)']
 };
+const RATE_DEF = 'How much a bond fund’s price moves when interest rates change. When rates go up, bond prices go down, and when rates go down, bond prices go up. Funds with long-term bonds (like TLT) move the most. Short-term funds (like BIL) barely move.';
+const rateTip = label => `<span class="tip" tabindex="0">${label}<span class="tipbox" role="tooltip">${RATE_DEF}</span></span>`;
 const fmtSh = n => Number.isInteger(n) ? String(n) : n.toFixed(3);
 const isBond = sym => !!MARKET[sym] && MARKET[sym][1]==='bond';
 function exDateFor(y, m){ // first trading day of the month (skips weekends, New Year's Day and Labor Day)
@@ -732,7 +740,7 @@ function vCharts(){
   } else if (ty==='bond'){
     const bm = BONDMETA[sym] || ['Medium','High'], ex = nextEx(todayStr());
     kn = row('Yield', f[2].toFixed(1)+'%', 'The interest the fund pays each year, as a percent of its price. It’s paid out a little every month.')
-      + row('Rate sensitivity', bm[0], 'How much the price moves when interest rates change. When rates rise, bond prices fall, and longer-term bonds fall the most.')
+      + row(rateTip('Rate sensitivity'), bm[0], 'How much the price moves when interest rates change. When rates rise, bond prices fall, and longer-term bonds fall the most.')
       + row('Credit quality', bm[1], 'How likely the borrowers are to pay you back. Lower quality pays more interest because there’s more risk.')
       + row('Next payment', fmtDay(payDateFor(ex)), 'Own the fund on the ex-dividend date ('+fmtDay(ex)+') to get this payment. Sell before then and the buyer gets it, but your sale price already includes the interest built up so far.');
   } else {
@@ -916,7 +924,7 @@ function tickChart(){
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
   chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true}, wq:'', guide:false,
-  trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, term:6, cd:5000} };
+  trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:2000} };
 const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
 
 /* ---------- views ---------- */
@@ -1008,10 +1016,10 @@ function vPortfolio(){
   const lo = Math.min(0,...you,...mkt)-0.5, hi = Math.max(...you,...mkt)+0.8;
   const X = i => 30 + i*134, Y = v => 200 - (v-lo)/(hi-lo)*170;
   const pts = a => a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' ');
-  const tagC = {Stock:'#8a97a8',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',CD:'#c9a34e'};
+  const tagC = {Stock:'#8a97a8',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e'};
   const cards = P.pos.map(p=>{ const ty = p.side==='short'?'Short':({stock:'Stock',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]]; const g=posGain(p), gp=g/(p.n*p.b)*100;
       return {key:'pos:'+p.sym+':'+p.side, sym:p.sym, ty, g, gp, w:posValue(p)/t.total*100, bond: (ty==='Bond') ? bondInfo(p) : null, rule: p.side==='short'?'var(--warn)':(g>=0?'var(--red)':'#5a6778')}; })
-    .concat(P.cds.map(c=>{ const i = cdInfo(c); return {key:'cd:'+c.id, sym:'CD '+c.term+'-mo', ty:'CD', g:i.earned, gp:i.earned/c.amt*100, w:cdValue(c)/t.total*100, rule:'var(--cd)', cd:i, rate:c.rate}; }));
+    .concat(P.mm.bal>0.005 ? [{key:'mm', sym:'MONEY MKT', ty:'MM', g:P.mm.earned, gp:0, w:P.mm.bal/t.total*100, rule:'var(--cd)', mm:true}] : []);
   const wins = P.closed.filter(c=>c.s>=c.b), losses = P.closed.filter(c=>c.s<c.b);
   const pl = c => (c.s-c.b)*c.n, sum = l => l.reduce((a,c)=>a+pl(c),0);
   const ctRow = c => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:21px;color:var(--white)">${c.sym}</span><span style="font-size:14px;color:var(--dim)">${fmtSh(c.n)} sh · ${money(c.b)} → ${money(c.s)} · ${c.d}</span></span>
@@ -1067,10 +1075,10 @@ function vPortfolio(){
     <div class="hold">${cards.length?cards.map(c=>`
       <button type="button" class="hc" style="border-top-color:${c.rule}" data-act="sheet:${c.key}">
         <span class="spread"><span class="sym">${c.sym}</span><span class="tag" style="color:${tagC[c.ty]}">${c.ty.toUpperCase()}</span></span>
-        ${c.bond ? bondCardHtml(c) : c.cd ? `<span class="num up" style="font-size:28px">+${money(c.g)}</span>
-        <span class="num" style="font-size:14px;color:var(--soft)">+${money(c.cd.perDay)} a day · ${c.rate.toFixed(2)}%</span>
-        <span class="cdbar" role="img" aria-label="${Math.round(c.cd.prog)} percent of the way to maturity"><i style="width:${c.cd.prog.toFixed(1)}%"></i></span>
-        <span class="spread"><span style="font-size:13px;color:var(--dim)">Matures ${fmtDay(c.cd.mat)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
+        ${c.bond ? bondCardHtml(c) : c.mm ? `<span class="num up" style="font-size:28px">+${money(c.g)}</span>
+        <span class="num" style="font-size:14px;color:var(--soft)">+${money(mmPerDay())} a day · ${P.mm.rate.toFixed(2)}%</span>
+        <span style="font-size:13px;color:var(--dim)">Balance ${money(P.mm.bal)} · move money anytime</span>
+        <span class="spread"><span style="font-size:13px;color:var(--dim)">Interest earned</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
         : `<span class="num ${cls(c.g)}" style="font-size:28px">${pct(c.gp)}</span>
         <span class="spread"><span class="num ${cls(c.g)}" style="font-size:17px">${signed(c.g)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`}
       </button>`).join(''):'<p class="empty">No holdings yet. Head to Trade to make your first investment.</p>'}
@@ -1107,10 +1115,10 @@ function checkup(){
   return { overall, grades:[
     {l:'Vs. market',g:vsG,stat:(t.vs>=0?'+':'−')+Math.abs(t.vs).toFixed(2)+' pts',what:t.vs>=0?'You’re beating the S&P 500.':'The S&P 500 is ahead of you.',fix:t.vs>=0?'Keep it up. Check again next week.':'Compare your picks to the market. What’s dragging?'},
     {l:'Spread out',g:spG,stat:Math.round(big.w)+'% in '+big.sym,what:big.w>20?'One stock holds a big share of your money.':'No single stock dominates your portfolio.',fix:big.w>20?'Get your biggest stock under 20%.':'Nice balance. Keep each position under 20%.'},
-    {l:'Cash',g:caG,stat:Math.round(cashPct)+'% idle',what:'Uninvested cash doesn’t grow.',fix:cashPct>=10?'Put some to work, keep under 10%.':'Good. A little cash lets you buy dips.'},
+    {l:'Cash',g:caG,stat:Math.round(cashPct)+'% idle',what:'Uninvested cash doesn’t grow.',fix:cashPct>=10?'Invest it or move it to the money market. Keep cash under 10%.':'Good. A little cash lets you buy dips.'},
     {l:'Losers',g:loG,stat:losers.length+' of '+P.pos.length+' down',what:losers.length?(losers.map(p=>p.sym).join(', ')+' '+(losers.length>1?'are':'is')+' losing money.'):'Every position is in the green.',fix:losers.length?'Decide: hold, or cut the loss?':'Set a plan for when to take profits.'}
   ], checks:[
-    ['Own 5 or more investments', P.pos.length+P.cds.length, P.pos.length+P.cds.length>=5],
+    ['Own 5 or more investments', P.pos.length+(P.mm.bal>0?1:0), P.pos.length+(P.mm.bal>0?1:0)>=5],
     ['3 or more kinds of investments', sectorish>=3?sectorish:sectorish, sectorish>=3],
     ['Beating the S&P 500', (t.vs>=0?'+':'−')+Math.abs(t.vs).toFixed(2), t.vs>=0],
     ['No stock over 20%', Math.round(big.w)+'%', big.w<=20],
@@ -1145,26 +1153,39 @@ function vCheckup(){
 
 function vTrade(){
   const tr = UI.trade;
-  const types = [['stock','Stocks'],['bond','Bonds'],['cd','CDs'],['crypto','Crypto']];
+  const types = [['stock','Stocks'],['bond','Bonds'],['mm','Money market'],['crypto','Crypto']];
   let body = '';
   if (tr.done){
     body = `<div class="done"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#45c08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
       <span class="disp" style="font-size:40px;color:var(--white)">${tr.done.title}</span><span class="num" style="font-size:20px;color:var(--muted)">${tr.done.sub}</span>
       <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><a class="cta" href="#portfolio">See portfolio</a><button type="button" class="ghost" data-act="newtrade">New trade</button></div></div>`;
-  } else if (tr.type==='cd'){
-    const rates = {3:4.00,6:4.20,12:4.40}, mat = addMonths(todayStr(), tr.term), termDays = daysBetween(todayStr(), mat);
-    const earn = tr.cd*(Math.pow(1+rates[tr.term]/100/365, termDays)-1), perDay = tr.cd*rates[tr.term]/100/365, tooMuch = tr.cd>P.cash;
-    body = `<div style="display:flex;flex-direction:column;gap:12px"><span class="label">Pick a term</span>
-      <div class="terms">${[3,6,12].map(m=>`<button type="button" aria-pressed="${tr.term===m}" data-act="term:${m}"><span class="disp" style="font-size:30px;color:var(--white)">${m} mo</span><span class="num" style="font-size:20px;color:var(--cd)">${rates[m].toFixed(2)}%</span></button>`).join('')}</div>
-      <span style="font-size:14px;color:var(--dim)">Sample rates, set by the master teacher</span></div>
-      <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="cd:-" aria-label="Less money">−</button><span class="v" style="min-width:150px">${whole(tr.cd)}</span><button type="button" data-act="cd:+" aria-label="More money">+</button></div></div>
-      <div style="display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid var(--line)">
-        <div class="line"><span style="font-size:19px;color:var(--muted)">Earns by ${fmtDay(mat)}</span><span class="num up" style="font-size:36px">+${money(earn)}</span></div>
-        <div class="line"><span style="color:var(--dim)">Grows every day by about</span><span class="num" style="color:var(--soft)">+${money(perDay)}</span></div>
-        <div class="note" style="margin:0;font-size:16px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e0b45a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Locked until it matures. Cash out early and lose 3 months of interest.</span></div>
+  } else if (tr.type==='mm'){
+    const m = P.mm, rate = m.rate, isIn = tr.mmDir==='in', avail = isIn ? P.cash : m.bal;
+    const amt = Math.min(tr.mmAmt, avail), tooMuch = tr.mmAmt > avail + 0.005 || amt <= 0;
+    const newBal = isIn ? m.bal + amt : m.bal - amt, perDayNew = newBal*rate/100/365;
+    body = `<div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="disp" style="font-size:30px;color:var(--white)">Money market</span><span style="color:var(--dim);font-size:16px">Earns interest every day · move money anytime</span></span>
+        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:40px;color:var(--white)">${money(m.bal)}</span><span class="num" style="font-size:17px;color:var(--cd)">${rate.toFixed(2)}% · +${money(mmPerDay())} a day</span></span></div>
+      <div class="side">
+        <button type="button" class="buy" aria-pressed="${isIn}" data-act="mmdir:in"><span class="w" style="font-size:26px">Move in</span><span class="d">From cash to money market</span></button>
+        <button type="button" class="buy" aria-pressed="${!isIn}" data-act="mmdir:out"><span class="w" style="font-size:26px">Move out</span><span class="d">From money market to cash</span></button>
       </div>
-      ${tooMuch?'<span class="down" style="font-size:17px">Not enough cash for this CD.</span>':''}
-      <button type="button" class="go" data-act="cdopen" ${tooMuch?'disabled':''}>Open ${whole(tr.cd)} CD</button>`;
+      <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="mmamt:-" aria-label="Less money">−</button><span class="v" style="min-width:150px">${whole(tr.mmAmt)}</span><button type="button" data-act="mmamt:+" aria-label="More money">+</button><button type="button" data-act="mmamt:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
+        <span class="label">How your money moves</span>
+        <ol class="flow">${isIn ? `
+          <li><span class="fwhen">Now</span><span class="num famt">−${whole(tr.mmAmt)}</span><span class="fwhat">Leaves your cash and goes into the money market.</span></li>
+          <li><span class="fwhen">Every day</span><span class="num famt up">+${money(perDayNew)}</span><span class="fwhat">Interest is added to your balance, and tomorrow you earn interest on that too.</span></li>
+          <li><span class="fwhen">Anytime</span><span class="num famt">No penalty</span><span class="fwhat">Move it back to cash whenever you want to buy something.</span></li>` : `
+          <li><span class="fwhen">Now</span><span class="num famt up">+${whole(tr.mmAmt)}</span><span class="fwhat">Comes back to your cash, ready to invest right away.</span></li>
+          <li><span class="fwhen">From then on</span><span class="num famt">$0.00</span><span class="fwhat">Money in cash stops earning interest.</span></li>
+          <li><span class="fwhen">What's left</span><span class="num famt up">+${money(perDayNew)}</span><span class="fwhat">The rest of your balance keeps earning every day.</span></li>`}
+        </ol>
+        <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(isIn ? P.cash-amt : P.cash+amt)}</span></div>
+        <div class="line"><span style="color:var(--dim)">Money market after</span><span class="num" style="color:var(--soft)">${money(newBal)}</span></div>
+        <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--cd)">RATE</span><span>Set by the master teacher. Real money market rates rise and fall with the Federal Reserve’s interest rate.</span></div>
+      </div>
+      ${tooMuch ? `<span class="down" style="font-size:17px">${avail<=0 ? (isIn?'You don’t have any cash to move.':'Your money market balance is empty.') : 'That’s more than you have. Tap All to move everything.'}</span>` : ''}
+      <button type="button" class="go" data-act="mmmove" ${tooMuch?'disabled':''}>Move ${whole(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
   } else {
     const sym = tr.pick[tr.type], m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
     const canShort = tr.type!=='bond', isBuy = !canShort || tr.side==='buy';
@@ -1177,7 +1198,7 @@ function vTrade(){
       <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white)">${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
       ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
-        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month, about <b style="color:var(--white)">${fundOf(sym)[2].toFixed(1)}%</b> a year. Rate sensitivity: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
+        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month, about <b style="color:var(--white)">${fundOf(sym)[2].toFixed(1)}%</b> a year. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button><span class="v">${tr.n}</span><button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
       <div class="line" style="padding-top:20px;border-top:1px solid var(--line)"><span style="font-size:19px;color:var(--muted)">${isBuy?'Total':'Set aside to short'}</span><span class="num" style="font-size:40px;color:var(--white)">${money(cost)}</span></div>
       <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-cost)}</span></div>
@@ -1248,19 +1269,6 @@ function vSheet(){
     html = `<div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#45c08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
       <span class="disp" style="font-size:38px;color:var(--white)">${sh.done.title}</span><span class="num ${cls(sh.done.p)}" style="font-size:21px">${signed2(sh.done.p)} locked in</span>
       <button type="button" class="cta" data-act="close">Done</button></div>`;
-  } else if (sh.key.startsWith('cd:')){
-    const c = P.cds.find(x=>'cd:'+x.id===sh.key); if(!c){ UI.sheet=null; return ''; }
-    const i = cdInfo(c), penalty = c.amt*c.rate/100*3/12, get = cdValue(c)-penalty;
-    html = `<div><h2 class="h2" style="font-size:40px">Cash out CD early</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${c.term}-month CD at ${c.rate.toFixed(2)}% · matures ${fmtDay(i.mat)}</p></div>
-      <div style="display:flex;flex-direction:column;gap:8px"><span class="cdbar"><i style="width:${i.prog.toFixed(1)}%"></i></span>
-        <span style="font-size:14px;color:var(--dim)">Day ${i.days} of ${i.termDays} · earning +${money(i.perDay)} a day</span></div>
-      <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
-        <div class="line"><span style="color:var(--muted);font-size:18px">Deposited</span><span class="num" style="font-size:24px;color:var(--white)">${money(c.amt)}</span></div>
-        <div class="line"><span style="color:var(--muted);font-size:18px">Interest so far</span><span class="num up" style="font-size:24px">+${money(i.earned)}</span></div>
-        <div class="line"><span style="color:var(--muted);font-size:18px">Early penalty</span><span class="num down" style="font-size:28px">−${money(penalty)}</span></div>
-        <div class="line"><span style="color:var(--muted);font-size:18px">You get</span><span class="num" style="font-size:28px;color:var(--white)">${money(get)}</span></div></div>
-      <p style="margin:0;padding:14px 16px;background:var(--bg);border-radius:6px;font-size:16px;color:var(--soft)">${get<c.amt?'Cashing out now gets you back less than you put in. ':''}Wait until ${fmtDay(i.mat)} and you get <b class="up">${money(c.amt+i.full)}</b> with no penalty.</p>
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Keep it</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="cdcash">Cash out</button></div>`;
   } else {
     const [,sym,side] = sh.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); if(!p){ UI.sheet=null; return ''; }
     const isShort = side==='short', n = Math.min(sh.n, p.n), price = prices[sym];
@@ -1288,7 +1296,7 @@ function act(a, el){
     case 'sec': UI.sec = v===''?null:+v; break;
     case 'open': UI.drawer=v; break;
     case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; break;
-    case 'sheet': { const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0}; break; }
+    case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0}; break; }
     case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(Math.min(1,p.n),Math.min(p.n, Math.floor(UI.sheet.n)+(v==='+'?1:-1))); break; }
     case 'sell': {
       const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); const n = Math.min(UI.sheet.n,p.n), price = prices[sym];
@@ -1300,14 +1308,14 @@ function act(a, el){
       P.tradesWeek++; save();
       UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:g}; break;
     }
-    case 'cdcash': { const c = P.cds.find(x=>'cd:'+x.id===UI.sheet.key); const ci = cdInfo(c), pen = c.amt*c.rate/100*3/12; P.cash += c.amt+ci.earned-pen; P.cds = P.cds.filter(x=>x!==c); P.tradesWeek++; save(); UI.sheet.done={title:'CD cashed out',p:ci.earned-pen}; break; }
     case 'dismiss': P.notes = []; save(); break;
     case 'type': tr.type=v; tr.done=null; tr.side='buy'; tr.n=10; tr.q=''; break;
     case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; break;
     case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
-    case 'term': tr.term=+v; break;
-    case 'cd': tr.cd = Math.max(1000,Math.min(25000, tr.cd+(v==='+'?1000:-1000))); break;
+    case 'mmdir': tr.mmDir = v; tr.mmAmt = Math.min(tr.mmAmt, Math.max(500, v==='in' ? P.cash : P.mm.bal)); break;
+    case 'mmamt': { const avail = tr.mmDir==='in' ? P.cash : P.mm.bal;
+      tr.mmAmt = v==='all' ? avail : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
     case 'newtrade': tr.done=null; tr.n=10; break;
     case 'submit': {
       const sym = tr.pick[tr.type], price = prices[sym], n = tr.n, cost = price*n; if (cost>P.cash) return;
@@ -1319,11 +1327,12 @@ function act(a, el){
       P.tradesWeek++; save();
       tr.done = {title:(side==='long'?'Bought ':'Shorted ')+n+' '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
     }
-    case 'cdopen': {
-      if (tr.cd>P.cash) return;
-      const rates={3:4.00,6:4.20,12:4.40};
-      P.cash -= tr.cd; P.cds.push({id:Date.now(),amt:tr.cd,rate:rates[tr.term],term:tr.term,opened:todayStr()}); P.tradesWeek++; save();
-      tr.done = {title:'Opened '+whole(tr.cd)+' CD', sub:tr.term+' months at '+rates[tr.term].toFixed(2)+'% · matures '+fmtDay(addMonths(todayStr(), tr.term))}; break;
+    case 'mmmove': {
+      mmSettle(); const isIn = tr.mmDir==='in', avail = isIn ? P.cash : P.mm.bal, amt = tr.mmAmt;
+      if (amt<=0 || amt>avail+0.005) return;
+      if (isIn){ P.cash -= amt; P.mm.bal += amt; } else { P.mm.bal -= amt; P.cash += amt; if (P.mm.bal<0.005) P.mm.bal = 0; }
+      save();
+      tr.done = {title:'Moved '+money(amt)+' to '+(isIn?'money market':'cash'), sub:isIn ? 'Earning '+P.mm.rate.toFixed(2)+'% · about +'+money(mmPerDay())+' a day' : 'Money market balance: '+money(P.mm.bal)}; break;
     }
     case 'csym': ensureSym(v); UI.chart.sym = v; break;
     case 'wadd': ensureSym(v); if (!watchList().includes(v)) P.watch.push(v); save(); UI.chart.sym = v; UI.wq = ''; break;
@@ -1335,8 +1344,8 @@ function act(a, el){
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1]==='index' ? 'stock' : MARKET[sym][1];
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
     case 'drip': { const dp = P.pos.find(x=>x.sym===v && x.side==='long'); if (dp){ dp.drip = !dp.drip; save(); } break; }
-    case 'skip': P.demoOffset = (P.demoOffset||0)+30; matureCDs(); processIncome(); save(); break;
-    case 'reset': P = START(); normalizeCDs(); normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
+    case 'skip': P.demoOffset = (P.demoOffset||0)+30; mmSettle(); processIncome(); save(); break;
+    case 'reset': P = START(); normalizeMM(); normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
   }
   const y = window.scrollY;
   render();
@@ -1372,7 +1381,7 @@ window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.gu
 
 /* sample price movement: stands in for the 15-minute refresh from the market data feed */
 setInterval(()=>{
-  matureCDs(); processIncome();
+  mmSettle(); processIncome();
   Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); });
   if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
   if (UI.sheet || UI.drawer || document.activeElement && (document.activeElement.id==='search' || document.activeElement.id==='wsearch')) { renderTape(true); return; }
