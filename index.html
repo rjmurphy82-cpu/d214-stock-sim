@@ -194,6 +194,26 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .famt{font-size:24px;color:var(--white)}
 .fwhat{font-size:14px;line-height:1.45;color:var(--dim)}
 @media (max-width:600px){.flow{grid-template-columns:1fr;gap:18px}.flow::before{left:7px;right:auto;top:8px;bottom:8px;width:2px;height:auto;background:linear-gradient(180deg,var(--line-3),var(--cd))}.flow li{padding:0 0 0 30px}}
+.seg{display:inline-flex;align-self:flex-start;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:999px}
+.seg button{min-height:40px;padding:0 18px;border-radius:999px;font-size:15px;font-weight:600;color:var(--soft)}
+.seg button[aria-selected="true"]{background:var(--red);color:var(--white)}
+.fnote{margin:0;font-size:15px;line-height:1.5;color:var(--muted)}
+.fnote b{color:var(--white);font-weight:600}
+.fchart{max-width:100%;overflow-x:auto}
+.fchart svg{display:block}
+.fnarrow{display:none}
+@media (max-width:600px){.fwide{display:none}.fnarrow{display:block}}
+.fchart .hit:hover{fill-opacity:.04}
+.ftable summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:14px;font-weight:600;color:var(--link)}
+.tscroll{overflow-x:auto}
+.ftable table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+.ftable th,.ftable td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.ftable thead th{color:var(--dim);font-weight:500;font-size:12px;letter-spacing:.06em}
+.ftable tbody th{text-align:left;font-family:var(--body);font-weight:400;color:var(--soft)}
+.ftable td{color:var(--soft)}
+.ftable tr.strong th,.ftable tr.strong td{color:var(--white);font-weight:600}
+.ftip{position:fixed;z-index:300;pointer-events:none;max-width:260px;padding:10px 12px;background:var(--pop);border:1px solid #3d5068;border-radius:8px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-family:var(--mono);font-size:13px;line-height:1.55;color:var(--soft)}
+.ftip b{font-family:var(--body);color:var(--white)}
 .irow{display:grid;grid-template-columns:90px 70px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:50px;border-bottom:1px solid var(--line)}
 .irow:last-child{border-bottom:0}
 @media (max-width:600px){.irow{grid-template-columns:70px minmax(0,1fr) auto}.irow > span:nth-child(3){grid-column:1/-1;grid-row:2;padding-bottom:8px}}
@@ -278,6 +298,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 <div class="wrap demo"><span id="demoMsg">Demo mode · sample prices move every 8 seconds · you are signed in as Jack M.</span><span style="display:flex;gap:18px;flex-wrap:wrap"><button type="button" data-act="skip">Skip ahead 1 month</button><button type="button" data-act="reset">Reset demo</button></span></div>
 <main id="app"></main>
 <div id="overlay"></div>
+<div id="ftip" class="ftip" role="tooltip" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
@@ -761,6 +782,8 @@ function vCharts(){
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>
       </div>
+      <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button></div>
+      ${c.view==='fin' ? vFin(sym) : `
       <div class="spread" style="flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
@@ -782,7 +805,7 @@ function vCharts(){
         ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
           return `<div class="trow"><span class="num" style="color:var(--dim);font-size:14px">${dLabel(logDate(l))}</span><span style="color:var(--white)"><b>${w} ${fmtSh(l.n)}</b> <span style="color:var(--muted)">at ${money(l.price)}</span></span><span class="num ${v.good?'up':'down'}" style="text-align:right">${pct(v.ch)}</span><span class="vd">${v.text}</span></div>`; }).join('')
           : `<p class="empty">You haven’t traded ${sym} yet. Your buys and sells will show up here and as arrows on the chart.</p>`}
-      </div>
+      </div>`}
     </div>
     <aside style="display:flex;flex-direction:column;gap:16px;min-width:0">
       <div class="side-card"><span class="label">Watchlist</span>
@@ -814,6 +837,132 @@ function vCharts(){
     </aside>
   </div></div>`;
 }
+/* ---------- financial statements (sample; the live app reads each company's annual 10-K filings from Massive's financials data) ---------- */
+const FIN_C1 = '#5b86c9', FIN_C2 = '#c4793a';   // validated pair on the dark card (blue, orange)
+const FINCACHE = {};
+function finFor(sym){
+  if (FINCACHE[sym]) return FINCACHE[sym];
+  const f = fundOf(sym), price = MARKET[sym][2], sector = (ABOUT[sym]||[''])[0];
+  const bank = sector==='Financials' && !['V','MA'].includes(sym);
+  let s = hashOf(sym+'fin'); const rnd = () => { s = (s*16807) % 2147483647; return s/2147483647; };
+  const cap = f[1], ni5 = cap/f[0];
+  const nm5 = bank ? 0.30 : Math.min(0.55, Math.max(0.04, 0.06 + rnd()*0.22 + (f[3]>40?0.2:0)));
+  const rev5 = ni5/nm5, Y0 = +TDATES[TDATES.length-1].slice(0,4)-5;
+  const years = [0,1,2,3,4].map(i=>Y0+i);
+  const g = [0,1,2,3].map(i=> i===3 ? f[3]/100 : Math.max(-0.08, f[3]/100*0.6 + rnd()*0.17 - 0.05));
+  const rev = new Array(5); rev[4] = rev5; for (let i=3;i>=0;i--) rev[i] = rev[i+1]/(1+g[i]);
+  const nm = rev.map((_,i)=> i===4 ? nm5 : nm5*(0.72+rnd()*0.4));
+  const ni = rev.map((r,i)=>r*nm[i]);
+  const gm0 = bank ? null : Math.min(0.78, Math.max(0.2, 0.22 + rnd()*0.4 + nm5*0.4));
+  const gp = bank ? null : rev.map(r=>r*gm0*(0.95+rnd()*0.08));
+  const op = ni.map(x=>x*1.22);
+  const shares = cap/price;
+  const eps = ni.map((x,i)=>x/(shares*(1+(4-i)*0.012)));
+  const aMult = bank ? 11 : 0.9 + rnd()*1.3, eqr = bank ? 0.09 : 0.3 + rnd()*0.3;
+  const assets = rev.map(r=>rev5*aMult*Math.pow(r/rev5, 0.6));
+  const equity = assets.map((a,i)=>Math.max(a*eqr*(0.92+rnd()*0.13), bank ? 0 : ni[i]*2.6));
+  equity.forEach((e,i)=>{ if (!bank) assets[i] = Math.max(assets[i], e/0.6); });
+  const liab = assets.map((a,i)=>a-equity[i]);
+  const caR = 0.25+rnd()*0.25, clR = 0.26+rnd()*0.15;
+  const ca = bank ? null : assets.map(a=>a*caR*(0.95+rnd()*0.1)), cl = bank ? null : liab.map(l=>l*clR*(0.95+rnd()*0.1));
+  const cash = bank ? assets.map(a=>a*0.08) : ca.map(x=>x*0.3);
+  const debt = liab.map(l=>l*(bank?0.2:0.45));
+  return FINCACHE[sym] = {years, rev, gp, op, ni, eps, assets, liab, equity, ca, cl, cash, debt, bank};
+}
+const fmtB = v => { if (Math.abs(v)<1e-9) return '$0'; const a = Math.abs(v), sg = v<0 ? '−' : ''; return sg + (a>=1000 ? '$'+(a/1000).toFixed(2)+'T' : a>=1 ? '$'+a.toFixed(1)+'B' : '$'+Math.round(a*1000)+'M'); };
+const pctS = v => (v*100).toFixed(1)+'%';
+function niceStep(x){ const p = Math.pow(10, Math.floor(Math.log10(x))), n = x/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
+function finBars(years, series, stacked, tip, title, W){
+  const nar = W<500, H = nar ? 230 : 250, L = nar ? 50 : 62, R = nar ? 6 : 12, T = 26, B = 30, fs = nar ? 11 : 12;
+  const tops = years.map((_,i)=> stacked ? series.reduce((a,s)=>a+Math.max(0,s.vals[i]),0) : Math.max(0,...series.map(s=>s.vals[i])));
+  const mins = years.map((_,i)=> stacked ? 0 : Math.min(0,...series.map(s=>s.vals[i])));
+  const max = Math.max(...tops), min = Math.min(...mins), step = niceStep(Math.max(max-min, 1e-6)/4);
+  const yMax = Math.ceil(max/step)*step, yMin = Math.floor(min/step)*step;
+  const y = v => T + (yMax-v)/(yMax-yMin)*(H-T-B), gw = (W-L-R)/years.length;
+  let out = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${title}">`;
+  for (let v=yMin; v<=yMax+step/2; v+=step){ out += `<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${Math.abs(v)<step/1e3?'#4a5d74':'#1f2b38'}" stroke-width="1"/><text x="${L-8}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8a97a8" font-size="${fs}" font-family="IBM Plex Mono, monospace">${nar ? fmtB(v).replace('.0B','B') : fmtB(v)}</text>`; }
+  years.forEach((yr,i)=>{
+    const x0 = L+i*gw, last = i===years.length-1;
+    if (stacked){
+      const bw = Math.min(56, gw*0.46), x = x0+(gw-bw)/2; let acc = 0;
+      series.forEach((s,k)=>{ const v = Math.max(0,s.vals[i]), y1 = y(acc+v), y2 = y(acc) - (k>0?2:0); out += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" rx="3" fill="${s.color}"/>`; acc += v; });
+      if (last) out += `<text x="${(x+bw/2).toFixed(1)}" y="${(y(acc)-8).toFixed(1)}" text-anchor="middle" fill="#e6ebf1" font-size="${fs}" font-family="IBM Plex Mono, monospace">${fmtB(acc)}</text>`;
+    } else {
+      const bw = Math.min(30, gw*0.3), gap = 2, start = x0+(gw-(bw*series.length+gap*(series.length-1)))/2;
+      series.forEach((s,k)=>{ const v = s.vals[i], x = start+k*(bw+gap), y1 = y(Math.max(v,0)), y2 = y(Math.min(v,0));
+        out += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" rx="3" fill="${s.color}"/>`;
+      });
+    }
+    out += `<text x="${(x0+gw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" fill="#aab4c3" font-size="${nar?11.5:12.5}" font-family="IBM Plex Sans, sans-serif">${nar ? 'FY '+String(yr).slice(2) : 'FY '+yr}</text>`;
+    out += `<rect class="hit" x="${x0.toFixed(1)}" y="${T-14}" width="${gw.toFixed(1)}" height="${H-T-B+14}" fill="#ffffff" fill-opacity="0" data-tip="${esc(tip(i))}"/>`;
+  });
+  return out + '</svg>';
+}
+function finTable(years, rows){
+  return `<details class="ftable"><summary>See the numbers</summary><div class="tscroll"><table>
+    <thead><tr><th scope="col">$ billions</th>${years.map(y=>`<th scope="col">FY ${y}</th>`).join('')}</tr></thead>
+    <tbody>${rows.filter(r=>r[1]).map(([n,vals,fmt,strong])=>`<tr${strong?' class="strong"':''}><th scope="row">${n}</th>${vals.map(v=>`<td>${(fmt||fmtB)(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+}
+function spark(vals){
+  const v = vals.filter(x=>x!==null && isFinite(x)); if (v.length<2) return '';
+  const lo = Math.min(...v), hi = Math.max(...v), W=84, H=26, p=4;
+  const pts = v.map((x,i)=>[p+i*(W-2*p)/(v.length-1), hi===lo ? H/2 : H-p-(x-lo)/(hi-lo)*(H-2*p)]);
+  const last = pts[pts.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><polyline points="${pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="#8a97a8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="#e6ebf1"/></svg>`;
+}
+function vFin(sym){
+  const m = MARKET[sym];
+  if (m[1]!=='stock') return `<div class="side-card"><span class="disp" style="font-size:26px;color:var(--white)">No financial statements for funds</span>
+    <p style="margin:0;font-size:16px;line-height:1.5;color:var(--muted)">${sym} is a fund. It holds many ${m[1]==='bond'?'bonds':m[1]==='crypto'?'units of a cryptocurrency':'companies'} instead of running a business, so it doesn’t publish an income statement or balance sheet. Pick a company from the watchlist to see its financials.</p></div>`;
+  const F = finFor(sym), Y = F.years, n = Y.length-1;
+  const revG = (F.rev[n]/F.rev[0]-1)*100, niG = (F.ni[n]/F.ni[0]-1)*100;
+  const legend = items => `<span class="keys" style="font-size:14px;color:var(--soft)">${items.map(([c,l])=>`<span><i style="width:12px;height:12px;border-radius:3px;background:${c};display:block"></i>${l}</span>`).join('')}</span>`;
+  const both = (...a) => `<div class="fwide">${finBars(...a, 640)}</div><div class="fnarrow">${finBars(...a, 360)}</div>`;
+  const inc = both(Y, [{name:'Revenue',color:FIN_C1,vals:F.rev},{name:'Net income',color:FIN_C2,vals:F.ni}], false,
+    i=>`<b>FY ${Y[i]}</b><br>Revenue ${fmtB(F.rev[i])}<br>Net income ${fmtB(F.ni[i])}<br>Net margin ${pctS(F.ni[i]/F.rev[i])}`, 'Revenue and net income for the last five fiscal years');
+  const bal = both(Y, [{name:'Liabilities',color:FIN_C2,vals:F.liab},{name:'Equity',color:FIN_C1,vals:F.equity}], true,
+    i=>`<b>FY ${Y[i]}</b><br>Total assets ${fmtB(F.assets[i])}<br>Liabilities ${fmtB(F.liab[i])}<br>Equity ${fmtB(F.equity[i])}`, 'Total assets split into liabilities and equity for the last five fiscal years');
+  const div = (a,b) => a.map((x,i)=> b[i] ? x/b[i] : null);
+  const R = [
+    ['From the income statement', [
+      ['Revenue growth', [null].concat(F.rev.slice(1).map((r,i)=>r/F.rev[i]-1)), pctS, 'This year’s revenue ÷ last year’s revenue − 1', 'How fast sales are growing.'],
+      ['Gross margin', F.gp && div(F.gp, F.rev), pctS, 'Gross profit ÷ Revenue', 'How much of each sales dollar is left after paying to make the product. Banks don’t report it.'],
+      ['Net profit margin', div(F.ni, F.rev), pctS, 'Net income ÷ Revenue', 'How many cents of every sales dollar end up as profit.'],
+      ['Earnings per share', F.eps, v=>'$'+v.toFixed(2), 'Net income ÷ Shares outstanding', 'The profit that belongs to each share. It’s the “E” in the P/E ratio.']
+    ]],
+    ['From the balance sheet', [
+      ['Current ratio', F.ca && div(F.ca, F.cl), v=>v.toFixed(2), 'Current assets ÷ Current liabilities', 'Can the company pay the bills due this year? Above 1 means it has more short-term assets than short-term debts.'],
+      ['Debt-to-equity', div(F.debt, F.equity), v=>v.toFixed(2), 'Total debt ÷ Shareholders’ equity', 'How much the company relies on borrowed money. Higher means more risk if business slows.']
+    ]],
+    ['Using both statements', [
+      ['Return on equity (ROE)', div(F.ni, F.equity), pctS, 'Net income ÷ Shareholders’ equity', 'How much profit the company makes with the owners’ money.'],
+      ['Return on assets (ROA)', div(F.ni, F.assets), pctS, 'Net income ÷ Total assets', 'How much profit the company squeezes out of everything it owns.']
+    ]]
+  ];
+  return `
+    <div class="side-card">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Income statement</span>${legend([[FIN_C1,'Revenue'],[FIN_C2,'Net income']])}</div>
+      <p class="fnote">Over five years, revenue ${revG>=0?'grew':'fell'} <b>${Math.abs(revG).toFixed(0)}%</b> and net income ${niG>=0?'grew':'fell'} <b>${Math.abs(niG).toFixed(0)}%</b>.</p>
+      <div class="fchart">${inc}</div>
+      ${finTable(Y, [['Revenue',F.rev,null,true],['Cost of revenue',F.gp && F.rev.map((r,i)=>r-F.gp[i])],['Gross profit',F.gp],['Operating income',F.op],['Net income',F.ni,null,true],['Earnings per share',F.eps,v=>'$'+v.toFixed(2)]])}
+    </div>
+    <div class="side-card">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Balance sheet</span>${legend([[FIN_C2,'Liabilities'],[FIN_C1,'Equity']])}</div>
+      <p class="fnote">Each bar is total assets, split into what the company owes and what the owners own: <b>Assets = Liabilities + Equity</b>. In FY ${Y[n]}: ${fmtB(F.assets[n])} = ${fmtB(F.liab[n])} + ${fmtB(F.equity[n])}.</p>
+      <div class="fchart">${bal}</div>
+      ${finTable(Y, [['Cash',F.cash],['Current assets',F.ca],['Total assets',F.assets,null,true],['Current liabilities',F.cl],['Total liabilities',F.liab,null,true],['Shareholders’ equity',F.equity,null,true]])}
+    </div>
+    <div class="side-card kn">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Key ratios</span><span style="font-size:14px;color:var(--dim)">5-year trend · tap a ratio for its formula</span></div>
+      ${R.map(([grp, rows])=>`<span class="label" style="padding-top:8px">${grp}</span>`+rows.filter(r=>r[1]).map(([name, vals, fmt, formula, why])=>{
+        const lastV = vals[vals.length-1];
+        return `<details><summary><span>${name}</span><span style="display:flex;align-items:center;gap:14px">${spark(vals)}<span class="num" style="min-width:64px;text-align:right;color:var(--white)">${fmt(lastV)}</span><span class="q" aria-hidden="true">?</span></span></summary>
+          <p><b style="color:var(--white)">Formula:</b> ${formula}. ${why}</p>
+          <p class="num" style="font-size:13px">${Y.map((yr,i)=> vals[i]===null ? '' : `FY ${String(yr).slice(2)}: ${fmt(vals[i])}`).filter(Boolean).join(' · ')}</p></details>`; }).join('')).join('')}
+    </div>
+    <p style="margin:0;font-size:13px;color:var(--dim)">Sample figures for the demo. The live version pulls each company’s annual reports (10-K filings) through Massive’s financials data and calculates the ratios from them.</p>`;
+}
+
 function wlResults(){
   const q = (UI.wq||'').trim().toLowerCase(); if (!q) return '';
   const pool = Object.keys(MARKET).map(s=>[s,MARKET[s][0]]).concat(REF.filter(r=>!MARKET[r[0]]).map(r=>[r[0],r[1]]));
@@ -923,7 +1072,7 @@ function tickChart(){
 
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
-  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true}, wq:'', guide:false,
+  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000} };
 const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
 
@@ -1340,6 +1489,7 @@ function act(a, el){
     case 'wtog': if (P.watch.includes(v)) P.watch = P.watch.filter(x=>x!==v); else P.watch.push(v); save(); break;
     case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
+    case 'cview': UI.chart.view = v; break;
     case 'ctog': UI.chart[v] = !UI.chart[v]; break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1]==='index' ? 'stock' : MARKET[sym][1];
@@ -1350,7 +1500,7 @@ function act(a, el){
   }
   const y = window.scrollY;
   render();
-  if (k==='tf' || k==='ctog') window.scrollTo(0, y);
+  if (k==='tf' || k==='ctog' || k==='cview') window.scrollTo(0, y);
 }
 
 /* ---------- render ---------- */
@@ -1377,6 +1527,9 @@ document.addEventListener('click', e=>{
   e.preventDefault(); act(el.dataset.act, el);
 });
 document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
+document.addEventListener('mouseover', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false; });
+document.addEventListener('mousemove', e=>{ const tip = document.getElementById('ftip'); if (!tip || tip.hidden) return; tip.style.left = Math.max(8, Math.min(e.clientX+16, window.innerWidth-tip.offsetWidth-8))+'px'; tip.style.top = Math.max(8, Math.min(e.clientY+16, window.innerHeight-tip.offsetHeight-8))+'px'; });
+document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
 document.addEventListener('keydown', e=>{ if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide)){ UI.drawer=null; UI.sheet=null; UI.guide=false; render(); } });
 window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.wq=''; render(); window.scrollTo(0,0); });
 
