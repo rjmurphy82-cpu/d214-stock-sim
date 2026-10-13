@@ -1,0 +1,1571 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>D214 Investing Competition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one app shell (header, ticker tape, routed page) on a dark navy ground; district red marks rank and action, green/red only for gains and losses. */
+:root{
+  --bg:#0f1720; --tape:#0b1219; --card:#141e29; --card-hi:#1a2531; --pop:#16212d;
+  --line:#223041; --line-2:#2a3847; --line-3:#34455a; --rule:#3a1a24;
+  --fg:#e6ebf1; --white:#ffffff; --muted:#aab4c3; --dim:#8a97a8; --soft:#c3cbd6;
+  --red:#c8102e; --red-tint:#2a1720; --link:#ef5b70;
+  --up:#45c08a; --down:#f0606f; --warn:#e0b45a; --warn-bg:#221d14; --warn-line:#4a3c1f; --cream:#e8d7b0;
+  --bond:#6b8fbf; --cd:#c9a34e; --crypto:#e08a4f; --cashc:#4a5768;
+  --display:'Playfair Display',Georgia,'Times New Roman',serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:var(--link);text-decoration:none}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.disp{font-family:var(--display);font-weight:900}
+.up{color:var(--up)}.down{color:var(--down)}
+.label{font-size:13px;letter-spacing:.18em;font-weight:600;color:var(--muted);text-transform:uppercase}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:clamp(16px,4vw,56px)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--bg);border-bottom:1px solid var(--rule)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:900;font-size:30px;color:var(--white);white-space:nowrap}
+.brand b{color:var(--red)}
+.brand small{font-family:var(--body);font-size:13px;letter-spacing:.3em;font-weight:700;color:var(--muted)}
+nav{display:flex;gap:4px;overflow-x:auto;max-width:100%}
+nav a{padding:14px 16px;color:var(--muted);font-weight:500;font-size:17px;white-space:nowrap;border-bottom:3px solid transparent}
+nav a[aria-current="page"]{color:var(--white);border-bottom-color:var(--red)}
+nav a:hover{color:var(--white)}
+.tape{background:var(--tape);border-bottom:1px solid var(--rule);overflow:hidden}
+.tape .wrap{display:flex;gap:36px;height:46px;align-items:center;white-space:nowrap;overflow:hidden;font-family:var(--mono);font-size:14px}
+.tape span.s{color:var(--muted)}
+.tape .flash{animation:flash 1s ease-out}
+@keyframes flash{from{background:rgba(255,255,255,.12)}to{background:transparent}}
+.demo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:10px;font-size:14px;color:var(--dim)}
+.demo button{color:var(--link);font-weight:600}
+
+/* page heads */
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;padding-block:36px 24px}
+.h1{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(48px,7vw,84px);line-height:1;color:var(--white)}
+.h2{margin:0;font-family:var(--display);font-weight:900;font-size:clamp(34px,4.5vw,52px);color:var(--white);text-wrap:balance}
+section{padding-block:12px}
+.pills{display:flex;gap:10px;flex-wrap:wrap}
+.pill{height:52px;padding:0 24px;border:1px solid var(--line-3);border-radius:999px;font-size:18px;font-weight:600;color:var(--soft)}
+.pill[aria-selected="true"],.pill[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;background:var(--card);border:1px solid var(--line-2);border-radius:999px;font-size:15px;font-weight:600;color:var(--soft)}
+.chip[aria-pressed="true"]{background:var(--red-tint);border-color:var(--red);color:var(--white)}
+.chip img{width:30px;height:30px;object-fit:contain}
+.filters{display:flex;flex-direction:column;gap:12px;padding-block:4px 24px}
+.frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.frow .label{width:76px;color:var(--dim)}
+.logo{object-fit:contain;flex-shrink:0}
+.badge{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:var(--card-hi);border:1px solid var(--line-3);font-family:var(--display);font-weight:900;color:var(--white)}
+
+/* standings */
+.viewbar{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:16px}
+.viewbar .t{font-family:var(--display);font-weight:700;font-size:28px;color:var(--white)}
+.viewbar .c{color:var(--dim);font-size:15px}
+.podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.pod{display:flex;flex-direction:column;gap:12px;padding:24px 26px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:6px;text-align:left;color:var(--fg)}
+.pod:hover,.row:hover,.award:hover{background:var(--card-hi);border-color:#4a5d74}
+.pod .rk{font-family:var(--display);font-weight:900;font-size:72px;line-height:.9;color:var(--red)}
+.pod .nm{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1;color:var(--white)}
+.pod .sb{color:var(--dim);font-size:16px}
+.spread{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.rows{display:flex;flex-direction:column;padding-top:12px}
+.row{display:grid;grid-template-columns:44px 48px minmax(0,1.6fr) minmax(80px,1fr) 120px 120px;gap:20px;align-items:center;min-height:72px;padding:0 20px;border:1px solid transparent;border-bottom-color:#1c2733;text-align:left;color:var(--fg)}
+.row .rk{font-family:var(--display);font-weight:700;font-size:22px;color:var(--dim)}
+.row .nm{font-family:var(--display);font-weight:700;font-size:22px;color:var(--white);white-space:nowrap}
+.row .sb{font-size:14px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.me{background:var(--red-tint)}
+.bar{height:10px;background:#1c2733;border-radius:5px;overflow:hidden}
+.bar i{display:block;height:10px;border-radius:5px}
+.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding-top:20px}
+.award{display:flex;flex-direction:column;gap:10px;padding:22px 24px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:6px;text-align:left;color:var(--fg)}
+.award.lesson{border-top-color:var(--warn)}
+.award .v{font-family:var(--mono);font-size:40px;font-weight:500}
+.award .who{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:700;font-size:21px;line-height:1.2;color:var(--white)}
+.award .ls{padding-top:10px;border-top:1px solid var(--line-2);font-size:15px;color:var(--cream)}
+
+/* portfolio */
+.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;padding-block:36px 24px}
+.who{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.who .n{font-family:var(--display);font-weight:700;font-size:28px;color:var(--white)}
+.big{font-family:var(--mono);font-size:clamp(52px,8vw,88px);line-height:1;color:var(--white);font-variant-numeric:tabular-nums}
+.gainline{display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;font-family:var(--mono);font-size:clamp(22px,3vw,30px)}
+.gainline .vs{font-family:var(--body);font-size:18px;color:var(--muted)}
+.cashbox{display:flex;flex-direction:column;align-items:center;padding:12px 22px;border:1px solid var(--line-2);border-radius:6px}
+.cta{display:inline-flex;align-items:center;justify-content:center;min-height:60px;padding:0 30px;background:var(--red);border-radius:6px;font-size:19px;font-weight:600;color:var(--white)}
+.cta:hover{background:#a90d27;color:var(--white)}
+.ghost{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 24px;border:1px solid var(--line-3);border-radius:6px;font-size:17px;font-weight:600}
+.ranks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.rankc{display:flex;align-items:center;gap:18px;padding:20px 24px;background:var(--card);border:1px solid var(--line);border-top:4px solid #6b7c91;border-radius:6px}
+.rankc.top{border-top-color:var(--red)}
+.rankc .r{font-family:var(--display);font-weight:900;font-size:50px;line-height:1;color:var(--white)}
+.panels{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;padding-top:18px}
+.panel{display:flex;flex-direction:column;gap:16px;padding:26px 30px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
+.legend{display:flex;gap:18px;font-size:15px;color:var(--soft);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:8px}
+.donutwrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.donut{position:relative;width:180px;height:180px;border-radius:50%;flex-shrink:0}
+.donut .hole{position:absolute;inset:34px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mix{display:flex;flex-direction:column;gap:9px;flex:1;min-width:180px}
+.mix div{display:flex;align-items:center;gap:10px;font-size:16px}
+.sw{width:13px;height:13px;border-radius:3px;flex-shrink:0}
+.note{display:flex;align-items:center;gap:14px;margin-top:18px;padding:16px 22px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:6px;font-size:18px;color:var(--cream)}
+.hold{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding-top:18px}
+.hc{display:flex;flex-direction:column;gap:8px;padding:20px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:6px;text-align:left;color:var(--fg)}
+.hc:hover:not(:disabled){background:var(--card-hi);border-color:#4a5d74}
+.hc:disabled{cursor:default}
+.hc .sym{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--white)}
+.tag{padding:2px 8px;border:1px solid currentColor;border-radius:3px;font-size:11px;letter-spacing:.12em;font-weight:600}
+.closed{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;padding-top:18px}
+.ct{padding:22px 26px 8px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--up);border-radius:6px}
+.ct.loss{border-top-color:var(--down)}
+.ctr{display:flex;justify-content:space-between;align-items:center;gap:14px;padding-block:14px;border-top:1px solid var(--line)}
+
+/* checkup */
+.grade{display:flex;flex-direction:column;align-items:center;justify-content:center;width:180px;height:180px;border:4px solid var(--red);border-radius:50%}
+.grades{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.gc{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 22px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:6px;text-align:center}
+.gc.warn{border-top-color:var(--warn)}
+.gc .g{font-family:var(--display);font-weight:900;font-size:88px;line-height:1}
+.gc .what{font-size:16px;color:#d5dce5}
+.gc .fix{font-size:16px;color:var(--cream)}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding-top:20px}
+.ck{display:flex;align-items:center;gap:18px;padding:20px 24px;background:var(--card);border:1px solid var(--line);border-radius:6px}
+.ck .t{flex:1;font-size:20px;color:var(--white)}
+
+/* trade */
+.tradebox{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:26px;padding-block:36px 64px}
+.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.types .pill{padding:0 8px;height:58px}
+input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;font-family:var(--body);font-size:19px;color:var(--white)}
+.quote{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:26px 30px;background:var(--card);border:1px solid var(--line);border-radius:6px}
+.side{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.side button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px;background:var(--card);border:2px solid var(--line-2);border-radius:6px}
+.side button[aria-pressed="true"].buy{background:#1b3a2d;border-color:var(--up)}
+.side button[aria-pressed="true"].short{background:#3a1a24;border-color:var(--link)}
+.side .w{font-family:var(--display);font-weight:900;font-size:32px;color:var(--white)}
+.side .d{font-size:15px;color:var(--soft)}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:56px;height:56px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;font-size:28px}
+.stepper .v{min-width:100px;text-align:center;font-family:var(--mono);font-size:36px;color:var(--white)}
+.line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.go{height:76px;width:100%;background:var(--red);border-radius:6px;font-family:var(--display);font-weight:900;font-size:28px;color:var(--white)}
+.go:disabled{background:#3a4452;cursor:not-allowed}
+.done{display:flex;flex-direction:column;align-items:center;gap:16px;padding:48px 32px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--up);border-radius:6px;text-align:center}
+.terms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.terms button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 10px;background:var(--card);border:2px solid var(--line-2);border-radius:6px}
+.terms button[aria-pressed="true"]{background:#2a2414;border-color:var(--cd)}
+.bondnote{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:6px;color:var(--soft)}
+
+/* drawer + sheet */
+.scrim{position:fixed;inset:0;z-index:100;background:rgba(5,9,14,.78);display:flex;justify-content:flex-end}
+.scrim.center{justify-content:center;align-items:center;padding:16px}
+.drawer{width:min(560px,100%);height:100%;overflow-y:auto;background:var(--pop);border-left:1px solid #3d5068;padding:28px clamp(18px,4vw,34px) 40px;display:flex;flex-direction:column;gap:20px;padding-top:calc(28px + env(safe-area-inset-top,0px))}
+.sheet{width:min(560px,100%);max-height:100%;overflow-y:auto;background:var(--card);border:1px solid var(--line-3);border-top:4px solid var(--red);border-radius:8px;padding:32px clamp(18px,4vw,40px);display:flex;flex-direction:column;gap:22px}
+.x{align-self:flex-end;width:44px;height:44px;border:1px solid var(--line-3);border-radius:6px;font-size:22px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+.kv span{display:block}
+.kv .k{font-size:12px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.kv .v{font-family:var(--mono);font-size:20px;color:var(--white)}
+.mini{display:flex;flex-direction:column}
+.mini div{display:grid;grid-template-columns:14px minmax(0,1fr) 60px 90px 84px;gap:10px;align-items:center;min-height:34px;border-top:1px solid var(--line);font-family:var(--mono);font-size:14px}
+.empty{color:var(--dim);font-size:15px}
+
+.tip{position:relative;border-bottom:1px dotted currentColor;cursor:help;outline:none}
+.tip .tipbox{position:absolute;left:0;bottom:calc(100% + 10px);z-index:60;width:max-content;max-width:min(300px,78vw);padding:12px 14px;background:var(--pop);border:1px solid #3d5068;border-radius:8px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-family:var(--body);font-size:14px;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--fg);white-space:normal;opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s,visibility .15s;pointer-events:none}
+.tip:hover .tipbox,.tip:focus .tipbox,.tip:focus-within .tipbox{opacity:1;visibility:visible;transform:none}
+.tip:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){.tip .tipbox{transition:none}}
+.flow{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;position:relative}
+.flow::before{content:"";position:absolute;left:8px;right:8px;top:7px;height:2px;background:linear-gradient(90deg,var(--line-3),var(--cd))}
+.flow li{position:relative;display:flex;flex-direction:column;gap:4px;padding-top:26px;min-width:0}
+.flow li::before{content:"";position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--bg);border:3px solid var(--cd);box-sizing:border-box}
+.flow li:first-child::before{border-color:var(--line-3)}
+.flow li:last-child::before{background:var(--cd)}
+.fwhen{font-size:13px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:var(--muted)}
+.famt{font-size:24px;color:var(--white)}
+.fwhat{font-size:14px;line-height:1.45;color:var(--dim)}
+@media (max-width:600px){.flow{grid-template-columns:1fr;gap:18px}.flow::before{left:7px;right:auto;top:8px;bottom:8px;width:2px;height:auto;background:linear-gradient(180deg,var(--line-3),var(--cd))}.flow li{padding:0 0 0 30px}}
+.seg{display:inline-flex;align-self:flex-start;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:999px}
+.seg button{min-height:40px;padding:0 18px;border-radius:999px;font-size:15px;font-weight:600;color:var(--soft)}
+.seg button[aria-selected="true"]{background:var(--red);color:var(--white)}
+.fnote{margin:0;font-size:15px;line-height:1.5;color:var(--muted)}
+.fnote b{color:var(--white);font-weight:600}
+.fchart{max-width:100%;overflow-x:auto}
+.fchart svg{display:block}
+.fnarrow{display:none}
+@media (max-width:600px){.fwide{display:none}.fnarrow{display:block}}
+.fchart .hit:hover{fill-opacity:.04}
+.ftable summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:14px;font-weight:600;color:var(--link)}
+.tscroll{overflow-x:auto}
+.ftable table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+.ftable th,.ftable td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.ftable thead th{color:var(--dim);font-weight:500;font-size:12px;letter-spacing:.06em}
+.ftable tbody th{text-align:left;font-family:var(--body);font-weight:400;color:var(--soft)}
+.ftable td{color:var(--soft)}
+.ftable tr.strong th,.ftable tr.strong td{color:var(--white);font-weight:600}
+.ftip{position:fixed;z-index:300;pointer-events:none;max-width:260px;padding:10px 12px;background:var(--pop);border:1px solid #3d5068;border-radius:8px;box-shadow:0 16px 40px rgba(0,0,0,.55);font-family:var(--mono);font-size:13px;line-height:1.55;color:var(--soft)}
+.ftip b{font-family:var(--body);color:var(--white)}
+.irow{display:grid;grid-template-columns:90px 70px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:50px;border-bottom:1px solid var(--line)}
+.irow:last-child{border-bottom:0}
+@media (max-width:600px){.irow{grid-template-columns:70px minmax(0,1fr) auto}.irow > span:nth-child(3){grid-column:1/-1;grid-row:2;padding-bottom:8px}}
+.cdbar{display:block;height:6px;background:var(--line-2);border-radius:3px;overflow:hidden}
+.cdbar i{display:block;height:100%;background:var(--cd)}
+.note.good{flex-wrap:wrap;background:#14261e;border-color:#2c5a45;color:var(--fg)}
+/* charts */
+.chartgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;padding-block:28px 64px}
+.chead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px}
+.rng{min-width:17ch;font-size:16px}
+@media (max-width:600px){.chead{grid-template-columns:1fr}}
+.tf{display:flex;gap:6px;flex-wrap:wrap}
+.tf button{min-height:42px;min-width:48px;padding:0 12px;border:1px solid var(--line-2);border-radius:6px;font-family:var(--mono);font-size:14px;color:var(--soft)}
+.tf button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.ohlc{display:flex;gap:16px;flex-wrap:wrap;min-height:22px;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chartbox{position:relative;height:470px;max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.keys{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.keys span{display:flex;align-items:center;gap:7px}
+.side-card{display:flex;flex-direction:column;gap:12px;padding:20px 22px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
+.wl{display:flex;flex-direction:column;gap:2px;max-height:430px;overflow-y:auto;margin-inline:-8px}
+.wl button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;width:100%;padding:9px 10px;border-radius:6px;text-align:left}
+.wl button:hover{background:var(--card-hi)}
+.wl button[aria-pressed="true"]{background:var(--red-tint);box-shadow:inset 0 0 0 1px var(--red)}
+.trow{display:grid;grid-template-columns:76px minmax(0,1fr) 96px minmax(0,1.1fr);gap:14px;align-items:center;min-height:54px;border-top:1px solid var(--line);font-size:16px}
+.trow .vd{font-size:14px;color:var(--muted)}
+.helpbtn{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;min-height:36px;padding:0 12px 0 8px;border:1px solid var(--line-2);border-radius:999px;font-size:14px;font-weight:500;color:var(--soft)}
+.helpbtn:hover{color:var(--white);border-color:var(--line-3)}
+.q{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line-3);font-family:var(--body);font-size:12px;font-weight:600;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wres{display:flex;flex-direction:column;gap:4px}
+.wres:empty{display:none}
+.wres button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 12px;background:var(--bg);border:1px solid var(--line-2);border-radius:6px;text-align:left}
+.wres button:hover{border-color:var(--line-3)}
+.kn details{border-top:1px solid var(--line)}
+.kn summary{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;cursor:pointer;list-style:none;font-size:15px;color:var(--soft)}
+.kn summary::-webkit-details-marker{display:none}
+.kn details[open] .q{background:var(--red);border-color:var(--red);color:var(--white)}
+.kn details p{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--muted)}
+.rbar{position:relative;height:6px;background:var(--line-2);border-radius:3px}
+.rbar i{position:absolute;top:-5px;width:4px;height:16px;background:var(--white);border-radius:2px}
+.guide{width:min(640px,100%);gap:18px}
+.gls{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+.gl{display:flex;gap:12px;align-items:flex-start}
+.gl .gi{display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0}
+.gl b{color:var(--white);font-size:16px}
+.gl p{margin:2px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
+@media (max-width:600px){.gls{grid-template-columns:1fr}}
+@media (max-width:1000px){.chartgrid{grid-template-columns:1fr}.wl{max-height:300px}}
+@media (max-width:700px){.chartbox{height:350px}.trow{grid-template-columns:64px minmax(0,1fr) auto;padding-block:8px}.trow .vd{grid-column:2/4}}
+
+@media (max-width:900px){
+  .panels{grid-template-columns:1fr}
+  .row{grid-template-columns:34px 40px minmax(0,1fr) 96px;gap:12px;padding:0 10px}
+  .row .bar,.row .dol{display:none}
+}
+@media (max-width:520px){
+  .types{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .terms{grid-template-columns:1fr}
+  .row .sb{display:none}
+  .brand{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){.tape .flash{animation:none}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand">D214 <b>·</b> <small>INVESTING</small></span>
+    <nav aria-label="Main">
+      <a href="#standings" data-route="standings">Standings</a>
+      <a href="#portfolio" data-route="portfolio">My Portfolio</a>
+      <a href="#checkup" data-route="checkup">Checkup</a>
+      <a href="#charts" data-route="charts">Charts</a>
+      <a href="#trade" data-route="trade">Trade</a>
+    </nav>
+  </div>
+</header>
+<div class="tape" aria-label="Ticker"><div class="wrap" id="tape"></div></div>
+<div class="wrap demo"><span id="demoMsg">Demo mode · sample prices move every 8 seconds · you are signed in as Jack M.</span><span style="display:flex;gap:18px;flex-wrap:wrap"><button type="button" data-act="skip">Skip ahead 1 month</button><button type="button" data-act="reset">Reset demo</button></span></div>
+<main id="app"></main>
+<div id="overlay"></div>
+<div id="ftip" class="ftip" role="tooltip" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(function(){
+'use strict';
+/* ---------- sample market ---------- */
+const MARKET = {
+  SPY:['S&P 500 ETF','index',528.40,516.52],
+  NVDA:['NVIDIA','stock',875.22,857.22], AAPL:['Apple','stock',228.35,226.45], COST:['Costco','stock',893.10,889.99],
+  JPM:['JPMorgan Chase','stock',198.73,196.90], XOM:['Exxon Mobil','stock',114.33,116.60], AMZN:['Amazon','stock',182.60,184.10],
+  TSLA:['Tesla','stock',251.30,255.44], MSFT:['Microsoft','stock',418.20,415.10], GOOGL:['Alphabet','stock',162.45,160.90],
+  META:['Meta Platforms','stock',502.18,497.30], V:['Visa','stock',272.55,271.10],
+  BND:['Total Bond Market ETF','bond',73.20,73.11], AGG:['Core U.S. Aggregate Bond ETF','bond',98.40,98.30],
+  TLT:['20+ Year Treasury Bond ETF','bond',94.10,94.43], SHY:['1-3 Year Treasury Bond ETF','bond',82.15,82.13],
+  BIL:['1-3 Month Treasury Bill ETF','bond',91.55,91.54], IEF:['7-10 Year Treasury Bond ETF','bond',95.10,95.32], TIP:['TIPS Bond ETF','bond',110.20,110.05],
+  LQD:['Investment Grade Corporate Bond ETF','bond',109.80,109.95], HYG:['High Yield Corporate Bond ETF','bond',79.40,79.31],
+  MUB:['National Muni Bond ETF','bond',107.30,107.26], BNDX:['Total International Bond ETF','bond',49.60,49.58],
+  GBTC:['Grayscale Bitcoin Trust','crypto',54.80,53.15], ETHE:['Grayscale Ethereum Trust','crypto',24.60,24.90]
+};
+const SPY_START = 516.52; // S&P level on the competition's first day
+const prices = {}; Object.keys(MARKET).forEach(s => prices[s] = MARKET[s][2]);
+const prev = {}; Object.keys(MARKET).forEach(s => prev[s] = MARKET[s][3]);
+const TAPE = ['SPY','AAPL','NVDA','AMZN','GOOGL','JPM','BND','GBTC','V','META','XOM','TLT'];
+const WHY = {NVDA:'Data center demand keeps growing.',AAPL:'New iPhone comes out in September.',COST:'People buy groceries in any economy.',JPM:'Biggest bank, pays a dividend.',XOM:'Oil prices were rising.',BND:'Something safer to balance my stocks.',GBTC:'Wanted a little crypto exposure.',AMZN:'Online sales will slow after the holidays.'};
+
+const START = () => ({
+  cash: 11466.34,
+  pos: [
+    {sym:'NVDA',side:'long',n:30,b:812.40},{sym:'AAPL',side:'long',n:60,b:214.10},{sym:'COST',side:'long',n:12,b:842.00},
+    {sym:'JPM',side:'long',n:50,b:191.20},{sym:'XOM',side:'long',n:70,b:121.80},{sym:'BND',side:'long',n:100,b:72.60},
+    {sym:'GBTC',side:'long',n:120,b:50.10},{sym:'AMZN',side:'short',n:30,b:188.40}
+  ],
+  mm: {bal:5000, rate:3.90, ago:75},
+  closed: [
+    {sym:'AMD',n:40,b:157.00,s:172.40,d:'11 days'},{sym:'TSLA',n:25,b:242.13,s:262.10,d:'16 days'},{sym:'GOOGL',n:18,b:150.65,s:162.45,d:'9 days'},
+    {sym:'PLTR',n:50,b:38.40,s:32.04,d:'6 days'},{sym:'SHOP',n:30,b:79.85,s:72.82,d:'14 days'}
+  ],
+  tradesWeek: 2,
+  // when each trade happened, in trading days ago (drives the arrows on the chart)
+  log: [
+    {sym:'NVDA',act:'buy',n:30,price:812.40,ago:34},{sym:'AAPL',act:'buy',n:60,price:214.10,ago:52},{sym:'COST',act:'buy',n:12,price:842.00,ago:40},
+    {sym:'JPM',act:'buy',n:50,price:191.20,ago:45},{sym:'XOM',act:'buy',n:70,price:121.80,ago:28},{sym:'BND',act:'buy',n:100,price:72.60,ago:50},
+    {sym:'GBTC',act:'buy',n:120,price:50.10,ago:22},{sym:'AMZN',act:'short',n:30,price:188.40,ago:12},
+    {sym:'TSLA',act:'buy',n:25,price:242.13,ago:30},{sym:'TSLA',act:'sell',n:25,price:262.10,ago:14},
+    {sym:'GOOGL',act:'buy',n:18,price:150.65,ago:20},{sym:'GOOGL',act:'sell',n:18,price:162.45,ago:11}
+  ]
+});
+let P = load() || START();
+if (!P.log) P.log = START().log;
+function load(){ try{ const t = localStorage.getItem('d214sim'); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem('d214sim', JSON.stringify(P)); }catch(e){} }
+
+/* ---------- logos (filled in after publish) ---------- */
+const LOGOS = {'Hersey':'/_blob/91257b9a78e3997c1da0977ac27a53ab','Prospect':'/_blob/3b02333b17d64fdfdecff96b5259585f','Buffalo Grove':'/_blob/bea1f759f8ecc658ab75c4b84a9d193d','Rolling Meadows':'/_blob/0e1e95b298576312f0b8c81ba491b2ca','Elk Grove':'/_blob/7661053c6d86d0b52918cf18dd46cfd9','Wheeling':'/_blob/bbc876d3cb45105b6d5b870abbef2945'};
+function logo(school, size){
+  const src = LOGOS[school];
+  if (src) return `<img class="logo" src="${src}" alt="${school} logo" width="${size}" height="${size}" style="width:${size}px;height:${size}px">`;
+  const ini = school.split(' ').map(w=>w[0]).join('');
+  return `<span class="badge" aria-label="${school}" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.36)}px">${ini}</span>`;
+}
+
+/* ---------- format ---------- */
+const money = x => '$' + Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const whole = x => (x<0?'−':'') + '$' + Math.round(Math.abs(x)).toLocaleString('en-US');
+const signed = x => (x>=0?'+':'−') + '$' + Math.round(Math.abs(x)).toLocaleString('en-US');
+const signed2 = x => (x>=0?'+':'−') + money(x);
+const pct = x => (x>=0?'▲ ':'▼ ') + Math.abs(x).toFixed(2) + '%';
+const cls = x => x>=0 ? 'up' : 'down';
+const ord = n => { const m=n%100; return n + ((m>10&&m<14)?'th':(['th','st','nd','rd'][n%10]||'th')); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- portfolio math ---------- */
+const posValue = p => p.side==='long' ? p.n*prices[p.sym] : p.n*(2*p.b - prices[p.sym]);
+const posGain  = p => p.side==='long' ? (prices[p.sym]-p.b)*p.n : (p.b-prices[p.sym])*p.n;
+/* money market: earns interest every day (compounded daily), money moves in or out anytime */
+const DAY = 86400000, MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const todayStr = () => { const n = new Date(Date.now() + ((P && P.demoOffset)||0)*DAY); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())).toISOString().slice(0,10); };
+const addDays = (s,n) => new Date(Date.parse(s+'T00:00:00Z')+n*DAY).toISOString().slice(0,10);
+const addMonths = (s,m) => { const d = new Date(s+'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth()+m); return d.toISOString().slice(0,10); };
+const daysBetween = (a,b) => Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/DAY);
+const fmtDay = s => { const [y,m,d] = s.split('-'); return MONTHS_S[+m-1]+' '+(+d)+(y!==todayStr().slice(0,4)?', '+y:''); };
+const mmPerDay = () => P.mm.bal*P.mm.rate/100/365;
+function mmSettle(){
+  const m = P.mm, today = todayStr(), d = daysBetween(m.last, today);
+  if (d>0){ const add = m.bal*(Math.pow(1+m.rate/100/365, d)-1); m.bal += add; m.earned += add; m.last = today; save(); }
+}
+function normalizeMM(){
+  if (!P.notes) P.notes = [];
+  if (!P.mm) P.mm = {bal:0, rate:3.90};
+  if (P.mm.ago!==undefined){ const start = P.mm.bal; P.mm.bal = start*Math.pow(1+P.mm.rate/100/365, P.mm.ago); P.mm.earned = P.mm.bal-start; delete P.mm.ago; }
+  if (P.mm.earned===undefined) P.mm.earned = 0;
+  if (!P.mm.last) P.mm.last = todayStr();
+  if (P.cds){ P.cds.forEach(c=>{ P.mm.bal += c.amt + (c.accrued||0); }); delete P.cds; save(); }   // older saves had CDs
+}
+normalizeMM(); mmSettle();
+function totals(){
+  const inv = P.pos.reduce((a,p)=>a+posValue(p),0) + P.mm.bal;
+  const total = P.cash + inv;
+  const ret = (total/100000 - 1)*100;
+  const spy = (prices.SPY/SPY_START - 1)*100;
+  return {total, ret, spy, vs: ret - spy};
+}
+function mixOf(){
+  const t = totals().total, m = {Stocks:0,Bonds:0,'Money market':P.mm.bal,Crypto:0,Shorts:0,Cash:P.cash};
+  P.pos.forEach(p => { const v=posValue(p), ty=MARKET[p.sym][1]; if(p.side==='short') m.Shorts+=v; else if(ty==='bond') m.Bonds+=v; else if(ty==='crypto') m.Crypto+=v; else m.Stocks+=v; });
+  const colors = {Stocks:'#ef5b70',Bonds:'#6b8fbf','Money market':'#c9a34e',Crypto:'#e08a4f',Shorts:'#e0b45a',Cash:'#4a5768'};
+  return Object.keys(m).filter(k=>m[k]>0.5).map(k=>({name:k,v:m[k],pct:m[k]/t*100,color:colors[k]}));
+}
+function conic(parts, bg){ let a=0; return 'conic-gradient(' + parts.map(p=>{ const s=a; a+=p.pct; return `${p.color} ${s.toFixed(2)}% ${(a-0.5).toFixed(2)}%, ${bg} ${(a-0.5).toFixed(2)}% ${a.toFixed(2)}%`; }).join(', ') + ')'; }
+
+/* ---------- district sample data ---------- */
+const T = [
+  ['Mr. Callahan','Hersey',6.42,[['P2',13,0.6],['P6',13,-0.6]]],['Ms. Novak','Prospect',5.87,[['P3',24,0]]],
+  ['Ms. Brooks','Hersey',5.10,[['P1',25,0]]],['Mr. Delgado','Buffalo Grove',4.66,[['P4',14,0.5],['P7',13,-0.5]]],
+  ['Ms. Tran','Rolling Meadows',4.21,[['P5',23,0]]],['Mr. Kowalczyk','Elk Grove',3.95,[['P2',25,0]]],
+  ['Ms. Sandoval','Wheeling',3.12,[['P3',13,0.8],['P8',13,-0.8]]],['Mr. Fitzgerald','Buffalo Grove',2.74,[['P6',22,0]]],
+  ['Ms. Adeyemi','Elk Grove',1.98,[['P1',24,0]]],['Mr. Lindgren','Rolling Meadows',1.05,[['P4',12,0.4],['P5',13,-0.4]]],
+  ['Mr. Hollis','Wheeling',-0.44,[['P7',23,0]]],['Ms. Pryor','Prospect',-1.37,[['P3',26,0]]]
+];
+const SCHOOLS = ['Hersey','Prospect','Buffalo Grove','Rolling Meadows','Elk Grove','Wheeling'];
+const STARS = {'Ms. Tran P5':[['Priya S.',14.82]],'Mr. Kowalczyk P2':[['Sofia M.',13.20]],'Mr. Callahan P2':[['Maya R.',12.64]],
+  'Ms. Novak P3':[['Jordan K.',11.93]],'Mr. Delgado P4':[['Ethan W.',11.10]],'Ms. Brooks P1':[['Ava T.',10.42]],
+  'Ms. Sandoval P3':[['Noah B.',9.81]],'Mr. Fitzgerald P6':[['Grace L.',9.25]],'Ms. Adeyemi P1':[['Lucas D.',8.70]],
+  'Mr. Lindgren P4':[['Emma H.',8.13]],'Mr. Hollis P7':[['Owen P.',7.64],['Liam O.',-3.40]],'Ms. Pryor P3':[['Chloe N.',7.18]],
+  'Mr. Callahan P6':[['JACK',0]]};
+const FIRST = 'Aiden Bella Caleb Dani Eli Fiona Gabe Hana Ian Jade Kai Lena Mateo Nora Omar Piper Quinn Rosa Sam Tess Uma Vince Wren Xavier Yara Zoe Adam Brooke Carlos Dylan Erin Felix Gia Henry Isla Jonah Kira Leo Mia Nate Olive Paul Ruby Seth Tara Victor Will Zara Abby Ben Cora Drew Ella Finn Grant Holly Ivy Jake Kate Luke Maddie Nico Paige Reid Sara Tyler Violet Wes Yusuf Alex Blake Chris Diego Eva Frank Greta Hugo Iris Josh Kyle Lily Marco Nia Oscar'.split(' ');
+const POOL = [['NVDA','Stock'],['AAPL','Stock'],['MSFT','Stock'],['AMZN','Stock'],['COST','Stock'],['JPM','Stock'],['XOM','Stock'],['META','Stock'],['TSLA','Stock'],['GOOGL','Stock'],['V','Stock'],['BND','Bond'],['TLT','Bond'],['GBTC','Crypto'],['Money mkt','MM']];
+const D = (function build(){
+  let seed = 214; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+  const sections=[], students=[]; let fi=0;
+  T.forEach((t,ti) => t[3].forEach(([p,size,off]) => {
+    const sec = {id:sections.length, teacher:t[0], school:t[1], period:p, size, ti, base:t[2]+off}; sections.push(sec);
+    const stars = STARS[t[0]+' '+p] || [];
+    for (let k=0;k<size;k++){
+      let name, ret, isMe=false;
+      if (k<stars.length){ name=stars[k][0]; ret=stars[k][1]; if(name==='JACK'){ name='Jack M.'; isMe=true; } }
+      else { name = FIRST[fi%FIRST.length]+' '+'ABCDEFGHJKLMNPRSTVW'[(fi*7)%19]+'.'; fi++; ret = Math.min(sec.base + (rnd()*11-7), 6.9 - rnd()*0.4); ret = Math.round(ret*100)/100; }
+      const n = 4+Math.floor(rnd()*3), picked=[];
+      while (picked.length<n){ const c=POOL[Math.floor(rnd()*POOL.length)]; if(picked.indexOf(c)<0) picked.push(c); }
+      const cashPct = 0.05+rnd()*0.15, ws = picked.map(()=>0.4+rnd()), sum = ws.reduce((a,b)=>a+b,0);
+      const g0 = picked.map(c => c[1]==='MM'?0.35 : c[1]==='Bond'? Math.round((rnd()*3-1)*100)/100 : Math.round((ret+rnd()*24-12)*100)/100);
+      students.push({id:students.length, name, sec:sec.id, school:sec.school, ret, isMe, picked, ws, sum, cashPct, g0});
+    }
+  }));
+  return {sections, students};
+})();
+const ME = D.students.find(s => s.isMe);
+function liveStudents(){ ME.ret = totals().ret; return D.students; }
+function secAvg(sec){ const l = D.students.filter(s=>s.sec===sec.id); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
+function teacherAvg(ti){ const l = D.students.filter(s=>D.sections[s.sec].ti===ti); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
+function schoolAvg(sch){ const ts = T.map((t,i)=>i).filter(i=>T[i][1]===sch); return ts.reduce((a,i)=>a+teacherAvg(i),0)/ts.length; }
+const schoolSize = sch => D.sections.filter(s=>s.school===sch).reduce((a,s)=>a+s.size,0);
+const secLabel = sec => sec.teacher + ' · ' + sec.period;
+function myRanks(){
+  const all = liveStudents().slice().sort((a,b)=>b.ret-a.ret);
+  const rankIn = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(ME)+1;
+  return { class: rankIn(D.students.filter(s=>s.sec===ME.sec)), school: rankIn(D.students.filter(s=>s.school===ME.school)), district: all.indexOf(ME)+1 };
+}
+function holdsOf(s){
+  if (s.isMe){
+    const t = totals().total;
+    return P.pos.map(p=>({s:p.sym, ty:p.side==='short'?'Short':({stock:'Stock',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]], v:posValue(p), g:posGain(p)/(p.n*p.b)*100}))
+      .concat(P.mm.bal>0.005 ? [{s:'Money mkt',ty:'MM',v:P.mm.bal,g:P.mm.earned/Math.max(1,P.mm.bal-P.mm.earned)*100}] : []).sort((a,b)=>b.v-a.v).concat([{s:'Cash',ty:'Cash',v:P.cash,g:null}]).map(h=>({...h,w:h.v/t*100}));
+  }
+  const value = 100000*(1+s.ret/100);
+  const h = s.picked.map((c,i)=>({s:c[0],ty:c[1],v:value*(1-s.cashPct)*s.ws[i]/s.sum,g:s.g0[i]})).sort((a,b)=>b.v-a.v);
+  h.push({s:'Cash',ty:'Cash',v:value*s.cashPct,g:null});
+  return h.map(x=>({...x,w:x.v/value*100}));
+}
+
+/* ---------- chart data (sample; the live app loads daily and minute bars from Massive) ---------- */
+const ABOUT = {
+  SPY:['Index fund','Tracks the S&P 500, the 500 largest U.S. companies.'], NVDA:['Semiconductors','Designs the chips that power AI and gaming.'],
+  AAPL:['Technology','Makes the iPhone, Mac, and iPad.'], COST:['Consumer staples','Runs membership warehouse stores.'],
+  JPM:['Financials','The largest bank in the United States.'], XOM:['Energy','Produces and refines oil and natural gas.'],
+  AMZN:['Retail and cloud','Online shopping plus Amazon Web Services.'], TSLA:['Autos','Makes electric cars and batteries.'],
+  MSFT:['Technology','Makes Windows, Office, and the Azure cloud.'], GOOGL:['Communication','Owns Google Search and YouTube.'],
+  META:['Communication','Owns Facebook, Instagram, and WhatsApp.'], V:['Financials','Runs the Visa card payment network.'],
+  BND:['Bond fund','Holds thousands of U.S. bonds at once.'], AGG:['Bond fund','Tracks the broad U.S. bond market.'],
+  TLT:['Bond fund','Holds long-term U.S. Treasury bonds.'], SHY:['Bond fund','Holds short-term U.S. Treasury bonds.'],
+  GBTC:['Crypto fund','Tracks the price of bitcoin.'], ETHE:['Crypto fund','Tracks the price of ether.'],
+  BIL:['Bond fund','Holds Treasury bills that mature in 1 to 3 months.'], IEF:['Bond fund','Holds 7 to 10 year U.S. Treasury bonds.'],
+  TIP:['Bond fund','Holds Treasury bonds that adjust for inflation.'], LQD:['Bond fund','Holds bonds from large, financially strong companies.'],
+  HYG:['Bond fund','Holds higher-risk “junk” bonds from less stable companies.'], MUB:['Bond fund','Holds bonds from U.S. cities and states. Interest is tax-free.'],
+  BNDX:['Bond fund','Holds government and company bonds from outside the U.S.']
+};
+const START_MULT = {SPY:.62,NVDA:.10,AAPL:.5,COST:.4,JPM:.55,XOM:.38,AMZN:.6,TSLA:.85,MSFT:.5,GOOGL:.55,META:.45,V:.6,BND:1.15,AGG:1.15,TLT:1.5,SHY:.99,BIL:1.0,IEF:1.2,TIP:1.15,LQD:1.25,HYG:1.0,MUB:1.08,BNDX:1.12,GBTC:.35,ETHE:.6};
+const TDATES = (function(){ const out=[], now=new Date(); let t = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  while (out.length<1300){ const dt=new Date(t), w=dt.getUTCDay(); if (w!==0 && w!==6) out.push(dt.toISOString().slice(0,10)); t -= 86400000; }
+  return out.reverse(); })();
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dLabel = t => { const [y,m,d] = t.split('-'); return MONTHS[+m-1]+' '+(+d)+(y!==TDATES[TDATES.length-1].slice(0,4)?', '+y:''); };
+const logDate = l => l.date || TDATES[TDATES.length-1-l.ago];
+const fmtVol = v => v>=1e9 ? (v/1e9).toFixed(2)+'B' : v>=1e6 ? (v/1e6).toFixed(1)+'M' : Math.round(v/1e3)+'K';
+const sgnp = v => (v>=0?'+':'')+v.toFixed(2)+'%';
+const CACHE = {};
+function volOf(sym){ return ({NVDA:.03,TSLA:.034,META:.024,GBTC:.04,ETHE:.045,TLT:.009,SHY:.0015,BIL:.0002,IEF:.005,TIP:.004,LQD:.006,HYG:.004,MUB:.003,BNDX:.0035})[sym] || ({stock:.017,bond:.004,crypto:.04,index:.010})[MARKET[sym][1]]; }
+function hashOf(sym){ let h = 2166136261; for (const ch of sym){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); } return h>>>0; }
+/* stocks you can find with search (the live version searches every U.S. ticker through Massive's reference data); prices are samples */
+const REF = [
+  ['NFLX','Netflix','Communication','Streams movies and TV shows.',690],['DIS','Walt Disney','Communication','Theme parks, movies, and Disney+.',98],
+  ['NKE','Nike','Consumer','Makes athletic shoes and clothing.',82],['SBUX','Starbucks','Consumer','Runs coffee shops around the world.',92],
+  ['MCD',"McDonald's",'Consumer','The world’s largest fast-food chain.',295],['KO','Coca-Cola','Consumer staples','Makes soft drinks and other beverages.',68],
+  ['PEP','PepsiCo','Consumer staples','Makes drinks and snacks like Pepsi and Lay’s.',165],['WMT','Walmart','Consumer staples','The largest U.S. retailer.',80],
+  ['TGT','Target','Consumer','Runs general merchandise stores.',150],['HD','Home Depot','Consumer','Sells home improvement supplies.',390],
+  ['AMD','Advanced Micro Devices','Semiconductors','Designs computer and graphics chips.',160],['INTC','Intel','Semiconductors','Designs and manufactures computer chips.',22],
+  ['AVGO','Broadcom','Semiconductors','Makes chips for networking and phones.',170],['CRM','Salesforce','Technology','Sells customer management software.',280],
+  ['ADBE','Adobe','Technology','Makes Photoshop, Acrobat, and creative software.',510],['ORCL','Oracle','Technology','Sells databases and cloud services.',170],
+  ['IBM','IBM','Technology','Sells business software and consulting.',220],['UBER','Uber','Technology','Runs ride-hailing and food delivery apps.',75],
+  ['ABNB','Airbnb','Consumer','Lists homes and rooms for travelers.',130],['SPOT','Spotify','Communication','Streams music and podcasts.',380],
+  ['RBLX','Roblox','Communication','Runs an online game platform.',45],['EA','Electronic Arts','Communication','Makes video games like EA Sports FC.',150],
+  ['PLTR','Palantir','Technology','Makes data analysis software.',38],['SHOP','Shopify','Technology','Helps businesses run online stores.',80],
+  ['BA','Boeing','Industrials','Builds airplanes and defense systems.',155],['CAT','Caterpillar','Industrials','Makes construction and mining equipment.',370],
+  ['F','Ford','Autos','Makes cars and trucks.',10.5],['GM','General Motors','Autos','Makes cars and trucks.',48],
+  ['LLY','Eli Lilly','Health care','Develops and sells medicines.',900],['JNJ','Johnson & Johnson','Health care','Makes medicines and medical devices.',160],
+  ['PFE','Pfizer','Health care','Develops and sells medicines and vaccines.',28],['UNH','UnitedHealth','Health care','The largest U.S. health insurer.',560],
+  ['CVX','Chevron','Energy','Produces and refines oil and natural gas.',150],['BAC','Bank of America','Financials','One of the largest U.S. banks.',40],
+  ['GS','Goldman Sachs','Financials','An investment bank.',480],['MA','Mastercard','Financials','Runs the Mastercard payment network.',500],
+  ['LULU','Lululemon','Consumer','Makes athletic clothing.',270],['CMG','Chipotle','Consumer','Runs fast-casual Mexican restaurants.',56]
+];
+/* sample fundamentals: [P/E, market cap in $ billions, dividend yield %, revenue growth %] */
+const FUND = {
+  NVDA:[54,2150,0.02,94], AAPL:[31,3450,0.44,5], COST:[52,396,0.52,7], JPM:[12,565,2.3,12], XOM:[14,455,3.4,-3], AMZN:[42,1900,0,11],
+  TSLA:[68,800,0,2], MSFT:[35,3100,0.72,15], GOOGL:[23,2000,0.48,14], META:[26,1270,0.40,22], V:[30,540,0.76,10],
+  SPY:[24,null,1.2,null], BND:[null,null,3.7,null], AGG:[null,null,3.6,null], TLT:[null,null,4.4,null], SHY:[null,null,4.0,null], BIL:[null,null,4.1,null], IEF:[null,null,3.9,null],
+  TIP:[null,null,3.0,null], LQD:[null,null,4.6,null], HYG:[null,null,6.3,null], MUB:[null,null,3.1,null], BNDX:[null,null,3.3,null], GBTC:[null,null,0,null], ETHE:[null,null,0,null]
+};
+function fundOf(sym){
+  if (FUND[sym]) return FUND[sym];
+  const h = hashOf(sym); return [12+h%34, 20+h%480, h%3===0 ? 0 : +(0.5+(h%25)/10).toFixed(2), -4+(h%24)];
+}
+/* real stock splits inside the 5-year window */
+const SPLITS = {NVDA:['2024-06-10','10-for-1'], TSLA:['2022-08-25','3-for-1'], GOOGL:['2022-07-18','20-for-1'], AMZN:['2022-06-06','20-for-1']};
+function ensureSym(sym){
+  if (MARKET[sym]) return true;
+  const r = REF.find(x=>x[0]===sym); if (!r) return false;
+  const chg = ((hashOf(sym)%9)-4)/250;
+  MARKET[sym] = [r[1],'stock',r[4],+(r[4]/(1+chg)).toFixed(2)];
+  prices[sym] = r[4]; prev[sym] = MARKET[sym][3]; ABOUT[sym] = [r[2], r[3]];
+  return true;
+}
+function addBiz(dateStr, n){ let t = Date.parse(dateStr+'T00:00:00Z'); while (n>0){ t += 86400000; const w = new Date(t).getUTCDay(); if (w!==0 && w!==6) n--; } return new Date(t).toISOString().slice(0,10); }
+if (!P.watch) P.watch = ['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'];
+P.watch.forEach(ensureSym); P.pos.forEach(p=>ensureSym(p.sym)); (P.log||[]).forEach(l=>ensureSym(l.sym));
+/* ---------- bond funds: monthly interest ---------- */
+// [rate sensitivity, credit quality]
+const BONDMETA = {
+  BIL:['Very low','Highest (U.S. government)'], SHY:['Low','Highest (U.S. government)'], IEF:['Medium','Highest (U.S. government)'],
+  TLT:['High','Highest (U.S. government)'], TIP:['Medium','Highest (U.S. government)'], BND:['Medium','High (mostly government)'],
+  AGG:['Medium','High (mostly government)'], LQD:['Medium','High (strong companies)'], HYG:['Low','Lower ("junk" bonds)'],
+  MUB:['Medium','High (cities and states)'], BNDX:['Medium','High (foreign governments)']
+};
+const RATE_DEF = 'How much a bond fund’s price moves when interest rates change. When rates go up, bond prices go down, and when rates go down, bond prices go up. Funds with long-term bonds (like TLT) move the most. Short-term funds (like BIL) barely move.';
+const rateTip = label => `<span class="tip" tabindex="0">${label}<span class="tipbox" role="tooltip">${RATE_DEF}</span></span>`;
+const fmtSh = n => Number.isInteger(n) ? String(n) : n.toFixed(3);
+const isBond = sym => !!MARKET[sym] && MARKET[sym][1]==='bond';
+function exDateFor(y, m){ // first trading day of the month (skips weekends, New Year's Day and Labor Day)
+  let t = Date.UTC(y, m, 1);
+  const closed = d => { const w = d.getUTCDay(), day = d.getUTCDate(); return w===0 || w===6 || (m===0 && day===1) || (m===8 && w===1 && day<=7); };
+  while (closed(new Date(t))) t += DAY;
+  return new Date(t).toISOString().slice(0,10);
+}
+function payDateFor(ex){ let t = Date.parse(ex+'T00:00:00Z'), n = 4; while (n>0){ t += DAY; const w = new Date(t).getUTCDay(); if (w!==0 && w!==6) n--; } return new Date(t).toISOString().slice(0,10); }
+function exDatesBetween(a, b){ // ex-dividend dates after a, up to and including b
+  const out = [], d = new Date(a+'T00:00:00Z'); let y = d.getUTCFullYear(), m = d.getUTCMonth();
+  for (let k=0; k<240; k++){ const ex = exDateFor(y, m); if (ex>b) break; if (ex>a) out.push(ex); if (++m>11){ m=0; y++; } }
+  return out;
+}
+function nextEx(from){ const d = new Date(from+'T00:00:00Z'); let y = d.getUTCFullYear(), m = d.getUTCMonth(); let ex = exDateFor(y, m); if (ex<=from){ if (++m>11){ m=0; y++; } ex = exDateFor(y, m); } return ex; }
+function payFactor(sym, date){ const h = hashOf(sym+date); return sym==='TIP' ? 0.05 + (h%216)/100 : 0.92 + (h%17)/100; }
+function perShareFor(sym, ex){ return +(prices[sym]*fundOf(sym)[2]/1200*payFactor(sym, ex)).toFixed(4); }
+function normalizeIncome(){
+  if (P.income) return;
+  const today = todayStr(); P.income = [];
+  exDatesBetween(addDays(today, -70), today).slice(-2).forEach(ex=>{
+    const ps = perShareFor('BND', ex), pay = payDateFor(ex);
+    P.income.push({sym:'BND', ex, pay, perShare:ps, shares:100, amount:+(ps*100).toFixed(2), paid:pay<=today});
+  });
+  const bnd = P.pos.find(p=>p.sym==='BND' && p.side==='long');
+  if (bnd) bnd.income = P.income.filter(e=>e.paid).reduce((a,e)=>a+e.amount, 0);
+  P.incomeChecked = today;
+}
+function processIncome(){
+  const today = todayStr(); let changed = false;
+  // on each ex-dividend date, whoever owns the fund locks in that month's payment
+  exDatesBetween(P.incomeChecked, today).forEach(ex=>{
+    P.pos.filter(p=>p.side==='long' && isBond(p.sym)).forEach(p=>{
+      const ps = perShareFor(p.sym, ex);
+      P.income.push({sym:p.sym, ex, pay:payDateFor(ex), perShare:ps, shares:p.n, amount:+(ps*p.n).toFixed(2), paid:false}); changed = true;
+    });
+  });
+  if (P.incomeChecked<today){ P.incomeChecked = today; changed = true; }
+  // on the payment date the cash arrives, even if the fund was sold after the ex-dividend date
+  P.income.filter(e=>!e.paid && e.pay<=today).forEach(e=>{
+    e.paid = true; changed = true;
+    const p = P.pos.find(x=>x.sym===e.sym && x.side==='long');
+    if (p) p.income = (p.income||0) + e.amount;
+    if (p && p.drip){
+      const add = e.amount/prices[e.sym];
+      p.b = (p.b*p.n + e.amount)/(p.n+add); p.n = +(p.n+add).toFixed(4); e.reinvested = +add.toFixed(4);
+      P.notes.push(e.sym+' paid you '+money(e.amount)+' in interest and bought '+add.toFixed(3)+' more shares with it.');
+    } else {
+      P.cash += e.amount;
+      P.notes.push(e.sym+' paid you '+money(e.amount)+' in interest. It went to your cash.');
+    }
+  });
+  if (changed) save();
+}
+function bondInfo(p){
+  const today = todayStr(), g = posGain(p), income = p.income||0, total = g+income;
+  const pending = P.income.find(e=>e.sym===p.sym && !e.paid);
+  const ex = nextEx(today);
+  return {g, income, total, totalPct:total/(p.n*p.b)*100, pending, next:{ex, pay:payDateFor(ex), est:perShareFor(p.sym, ex)*p.n}};
+}
+function bondCardHtml(c){
+  const b = c.bond;
+  return `<span class="num ${cls(b.total)}" style="font-size:28px">${pct(b.totalPct)}</span>
+    <span class="num" style="font-size:13px;color:var(--soft)">Price <span class="${cls(b.g)}">${signed(b.g)}</span> · Interest <span class="up">+${money(b.income)}</span></span>
+    <span style="font-size:13px;color:var(--dim)">${b.pending ? 'Payment coming '+fmtDay(b.pending.pay)+': '+money(b.pending.amount) : 'Next payment about '+money(b.next.est)+' on '+fmtDay(b.next.pay)}</span>
+    <span class="spread"><span class="num ${cls(b.total)}" style="font-size:17px">${signed(b.total)} total</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`;
+}
+function incomeSection(){
+  const today = todayStr(), held = P.pos.filter(p=>p.side==='long' && isBond(p.sym));
+  if (!held.length && !P.income.length) return '';
+  const ex = nextEx(today), pay = payDateFor(ex);
+  const rows = held.filter(p=>!P.income.some(e=>e.sym===p.sym && !e.paid)).map(p=>({d:pay, sym:p.sym, amt:perShareFor(p.sym, ex)*p.n, st:'Expected', note:'own it on '+fmtDay(ex)}))
+    .concat(P.income.filter(e=>!e.paid).map(e=>({d:e.pay, sym:e.sym, amt:e.amount, st:'Coming', note:'locked in on '+fmtDay(e.ex)})))
+    .concat(P.income.filter(e=>e.paid).slice().reverse().slice(0,4).map(e=>({d:e.pay, sym:e.sym, amt:e.amount, st:'Paid', note:e.reinvested?'reinvested':'to cash'})));
+  const received = P.income.filter(e=>e.paid).reduce((a,e)=>a+e.amount, 0);
+  const stc = {Expected:'var(--dim)', Coming:'var(--cd)', Paid:'var(--up)'};
+  return `<section class="wrap" style="padding-top:48px">
+    <div class="spread" style="flex-wrap:wrap"><h2 class="h2">Interest payments</h2><span style="color:var(--muted);font-size:17px">Bond funds pay monthly · received <span class="num up">+${money(received)}</span></span></div>
+    <div class="side-card" style="margin-top:18px;gap:0;padding-block:6px">
+      ${rows.map(r=>`<div class="irow"><span class="num" style="color:var(--dim);font-size:14px">${fmtDay(r.d)}</span><span class="num" style="color:var(--white)">${r.sym}</span>
+        <span style="font-size:14px"><b style="color:${stc[r.st]};font-weight:600">${r.st}</b> <span style="color:var(--dim)">· ${r.note}</span></span>
+        <span class="num ${r.st==='Paid'?'up':''}" style="text-align:right;${r.st==='Paid'?'':'color:var(--soft)'}">${r.st==='Expected'?'about ':''}+${money(r.amt)}</span></div>`).join('')}
+    </div></section>`;
+}
+function bondSheetHtml(p){
+  const b = bondInfo(p);
+  return `<div class="kv"><span><span class="k">Interest earned</span><span class="v up">+${money(b.income)}</span></span><span><span class="k">Total return</span><span class="v ${cls(b.total)}">${signed2(b.total)}</span></span></div>
+    <div class="line"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;color:var(--white)">Reinvest interest</span><span style="font-size:14px;color:var(--dim)">Use each payment to buy more shares</span></span>
+      <button type="button" class="chip" aria-pressed="${!!p.drip}" data-act="drip:${p.sym}">${p.drip?'On':'Off'}</button></div>
+    <p style="margin:0;padding:14px 16px;background:var(--bg);border-radius:6px;font-size:15px;line-height:1.5;color:var(--soft)">
+      ${b.pending ? `Your <b class="up">${money(b.pending.amount)}</b> payment arrives ${fmtDay(b.pending.pay)}, even if you sell first. ` : ''}
+      Next ex-dividend date: <b style="color:var(--white)">${fmtDay(b.next.ex)}</b>. Sell before then and that month’s payment goes to the buyer, but the price you get already includes the interest built up so far.</p>`;
+}
+normalizeIncome(); processIncome();
+
+function watchList(){ const out = []; P.pos.forEach(p=>{ if (!out.includes(p.sym)) out.push(p.sym); }); P.watch.forEach(s=>{ if (MARKET[s] && !out.includes(s)) out.push(s); }); return out; }
+
+function seriesFor(sym){
+  if (CACHE[sym]) return CACHE[sym];
+  const N = TDATES.length, vol = volOf(sym), now = MARKET[sym][2], h = hashOf(sym);
+  let s = h;
+  const rnd = () => { s = (s + 0x6D2B79F5)|0; let t = Math.imul(s ^ (s>>>15), 1|s); t = (t + Math.imul(t ^ (t>>>7), 61|t)) ^ t; return ((t ^ (t>>>14))>>>0)/4294967296; };
+  const gauss = () => { let u=0, v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  const isStock = MARKET[sym][1]==='stock', off = h % 63;
+  const eIdx = new Set(); if (isStock) for (let k=off; k<N; k+=63) if (k>0) eIdx.add(k);
+  const isBnd = MARKET[sym][1]==='bond', acc = new Array(N).fill(1), exIdx = [];
+  if (isBnd){
+    for (let k=1;k<N;k++) if (TDATES[k].slice(5,7)!==TDATES[k-1].slice(5,7)) exIdx.push(k);
+    const y = fundOf(sym)[2]/1200;
+    for (let k=0;k<N;k++){ let last = -21, nxt = null; for (const e of exIdx){ if (e<=k) last = e; else { nxt = e; break; } } if (nxt===null) nxt = last+21; acc[k] = 1 + y*(k-last)/(nxt-last); }
+  }
+  // random walk pinned to the starting level, each sample trade price, and today's price; earnings days move more
+  const anchors = [{i:0,p:now*(START_MULT[sym]||0.6)}];
+  START().log.filter(l=>l.sym===sym).forEach(l=>anchors.push({i:N-1-l.ago, p:l.price}));
+  anchors.push({i:N-1,p:now}); anchors.sort((a,b)=>a.i-b.i); anchors.forEach(a=>{ a.p /= acc[a.i]; });
+  const lp = new Array(N); lp[0] = Math.log(anchors[0].p);
+  for (let k=1;k<anchors.length;k++){
+    const a=anchors[k-1], b=anchors[k]; if (b.i<=a.i) continue;
+    const inc=[]; let S=0; for (let j=a.i+1;j<=b.i;j++){ S += gauss()*vol*(eIdx.has(j)?3.2:1); inc.push(S); }
+    const corr = (Math.log(b.p)-Math.log(a.p)-S)/(b.i-a.i);
+    for (let j=a.i+1;j<=b.i;j++) lp[j] = Math.log(a.p) + inc[j-a.i-1] + corr*(j-a.i);
+  }
+  const baseVol = ({stock:2.2e7,bond:6e6,crypto:5e6,index:6e7})[MARKET[sym][1]] * (sym==='NVDA'?10 : sym==='TSLA'?4 : 1);
+  const daily = [];
+  for (let k=0;k<N;k++){
+    const c = Math.exp(lp[k])*acc[k], o = k ? Math.exp(lp[k-1])*acc[k]*(1+gauss()*vol*0.25) : c;
+    const hi = Math.max(o,c)*(1+Math.abs(gauss())*vol*0.5), lo = Math.min(o,c)*(1-Math.abs(gauss())*vol*0.5);
+    const mv = k ? Math.abs(lp[k]-lp[k-1])/vol : 1;
+    daily.push({time:TDATES[k], open:o, high:hi, low:lo, close:c, vol:Math.round(baseVol*(0.6+0.4*rnd()+0.35*mv))});
+  }
+  // events: earnings (E), dividends (D), splits (S)
+  const events = [];
+  eIdx.forEach(k=>events.push({i:k, type:'E', note:'Earnings report · '+pct((daily[k].close/daily[k-1].close-1)*100)+' that day'}));
+  const f = fundOf(sym);
+  if (isBnd) exIdx.forEach(k=>events.push({i:k, type:'D', note:'Monthly interest · $'+(daily[k].close*f[2]/1200*payFactor(sym, TDATES[k])).toFixed(2)+' per share · the price drops by about that much today'}));
+  if (f[2]>0 && (isStock || sym==='SPY')) for (let k=(off+25)%63; k<N; k+=63) events.push({i:k, type:'D', note:'Dividend paid · $'+(daily[k].close*f[2]/100/4).toFixed(2)+' per share'});
+  if (SPLITS[sym]){ const i = TDATES.findIndex(t=>t>=SPLITS[sym][0]); if (i>0) events.push({i, type:'S', note:SPLITS[sym][1]+' stock split · earlier prices adjusted to match'}); }
+  events.sort((a,b)=>a.i-b.i);
+  const lastE = eIdx.size ? Math.max(...eIdx) : null;
+  const nextIn = lastE===null ? null : lastE+63-(N-1);
+  return CACHE[sym] = {daily, events, nextE: nextIn===null ? null : {date:addBiz(TDATES[N-1], nextIn), days:nextIn}};
+}
+const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
+function weekly(d){
+  const out=[]; let cur=null, key=null;
+  d.forEach(b=>{ const dt = new Date(b.time+'T00:00:00Z'); const mon = new Date(dt - ((dt.getUTCDay()+6)%7)*86400000).toISOString().slice(0,10);
+    if (mon!==key){ key=mon; cur={...b}; out.push(cur); } else { cur.high=Math.max(cur.high,b.high); cur.low=Math.min(cur.low,b.low); cur.close=b.close; cur.vol+=b.vol; } });
+  return out;
+}
+function sma(bars,n){ const out=[]; let sum=0; bars.forEach((b,i)=>{ sum+=b.close; if(i>=n) sum-=bars[i-n].close; if(i>=n-1) out.push({time:b.time, value:sum/n}); }); return out; }
+const EV_COLOR = {E:'#a594d9', D:'#c9a34e', S:'#5fb3c9'};
+function makeToT(times){ return date => { let lo=0, hi=times.length-1, ans=times[0]; while(lo<=hi){ const mid=(lo+hi)>>1; if (times[mid]<=date){ ans=times[mid]; lo=mid+1; } else hi=mid-1; } return ans; }; }
+function markersFor(sym, times, opt){
+  const toT = makeToT(times), out = [];
+  if (opt.trades){
+    const sty = {buy:['belowBar','arrowUp','#45c08a','Buy'], sell:['aboveBar','arrowDown','#f0606f','Sell'], short:['aboveBar','arrowDown','#e0b45a','Short'], cover:['belowBar','arrowUp','#6b8fbf','Close short']};
+    (P.log||[]).filter(l=>l.sym===sym).forEach(l=>{ const s=sty[l.act]; out.push({time:toT(logDate(l)), position:s[0], shape:s[1], color:s[2], text:s[3]+' '+fmtSh(l.n)}); });
+  }
+  if (opt.events){
+    seriesFor(sym).events.forEach(e=>{ if (opt.wk && e.type==='D') return;
+      out.push({time:toT(TDATES[e.i]), position:'aboveBar', shape:'circle', color:EV_COLOR[e.type], text:e.type}); });
+  }
+  return out.sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
+}
+function verdict(l, price){
+  const ch = (price/l.price-1)*100, up = ch>=0;
+  const t = {buy:[up,up?'Up since you bought':'Down since you bought'], sell:[!up,up?'Rose after you sold':'Dropped after you sold'],
+    short:[!up,up?'Up since you shorted':'Down since you shorted'], cover:[up,up?'Rose after you closed':'Dropped after you closed']}[l.act];
+  return {ch, good:t[0], text:t[1]};
+}
+
+function vCharts(){
+  const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
+  const S = seriesFor(sym), d = S.daily, N = d.length;
+  const span = {'1M':21,'3M':63,'6M':126,'1Y':252,'5Y':N-1}[c.tf];
+  const rng = (price/d[N-1-span].close-1)*100;
+  const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years'}[c.tf];
+  const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
+  const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
+  const wl = watchList(), owned = P.pos.map(p=>p.sym);
+  const mine = P.pos.filter(p=>p.sym===sym);
+  const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
+  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${k==='ma'&&c.cmp?'disabled':''}>${l}</button>`;
+  const wk = c.tf==='5Y';
+  const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
+  const keys = [
+    c.cmp ? `<span>${sw('#ef5b70')}${sym}</span><span>${sw('#8a97a8',1)}S&amp;P 500</span>` : '',
+    !c.cmp && c.ma ? `<span>${sw('#c9a34e')}${wk?'10-wk':'50-day'}</span><span>${sw('#6b8fbf')}${wk?'40-wk':'200-day'}</span>` : '',
+    c.marks ? `<span><b class="up">▲</b>buy</span><span><b class="down">▼</b>sell</span>` : '',
+    c.ev ? `<span><b style="color:${EV_COLOR.E}">E</b>earnings</span><span><b style="color:${EV_COLOR.D}">D</b>${m[1]==='bond'?'interest':'dividend'}</span><span><b style="color:${EV_COLOR.S}">S</b>split</span>` : ''
+  ].join('');
+  // key numbers
+  const f = fundOf(sym), ty = m[1];
+  const fmtCap = b => b>=1000 ? '$'+(b/1000).toFixed(2)+'T' : '$'+Math.round(b)+'B';
+  const pos52 = Math.max(0, Math.min(100, (price-lo52)/(hi52-lo52)*100));
+  const row = (label, val, why) => `<details><summary><span>${label}</span><span style="display:flex;align-items:center;gap:10px"><span class="num" style="color:var(--white)">${val}</span><span class="q" aria-hidden="true">?</span></span></summary><p>${why}</p></details>`;
+  let kn = '';
+  if (ty==='stock'){
+    kn = row('P/E ratio', f[0], 'How many dollars investors pay for $1 of the company’s yearly profit. A high P/E usually means investors expect fast growth.')
+      + row('Market cap', fmtCap(f[1]*price/m[2]), 'The total value of all the company’s shares: the share price times the number of shares.')
+      + row('Dividend yield', f[2]>0 ? f[2].toFixed(2)+'%' : 'None', 'Cash the company pays shareholders each year, as a percent of the share price. Many fast-growing companies pay none and reinvest instead.')
+      + row('Revenue growth', (f[3]>=0?'+':'')+f[3]+'%', 'How much more the company sold this year than last year.')
+      + (S.nextE ? row('Next earnings', dLabel(S.nextE.date), 'The day the company reports its results. Prices often jump or drop that day, so know it before you buy. That’s in '+S.nextE.days+' trading days.') : '');
+  } else if (ty==='crypto'){
+    kn = row('Dividend yield', 'None', 'Crypto funds don’t earn profits or pay dividends. The price only moves with the coin it tracks.');
+  } else if (ty==='bond'){
+    const bm = BONDMETA[sym] || ['Medium','High'], ex = nextEx(todayStr());
+    kn = row('Yield', f[2].toFixed(1)+'%', 'The interest the fund pays each year, as a percent of its price. It’s paid out a little every month.')
+      + row(rateTip('Rate sensitivity'), bm[0], 'How much the price moves when interest rates change. When rates rise, bond prices fall, and longer-term bonds fall the most.')
+      + row('Credit quality', bm[1], 'How likely the borrowers are to pay you back. Lower quality pays more interest because there’s more risk.')
+      + row('Next payment', fmtDay(payDateFor(ex)), 'Own the fund on the ex-dividend date ('+fmtDay(ex)+') to get this payment. Sell before then and the buyer gets it, but your sale price already includes the interest built up so far.');
+  } else {
+    kn = row(ty==='bond'?'Yield':'Dividend yield', f[2].toFixed(1)+'%', ty==='bond' ? 'The interest the fund pays each year, as a percent of its price. Bond funds pay it out monthly.' : 'Cash the fund pays each year from the companies it holds, as a percent of its price.')
+      + (f[0] ? row('P/E ratio', f[0], 'The average P/E of the companies in the fund: how many dollars investors pay for $1 of yearly profit.') : '');
+  }
+  return `
+  <div class="wrap"><div class="chartgrid">
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="chead">
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+          <div class="who"><span class="num" style="font-size:40px;font-weight:500;color:var(--white)">${sym}</span><span style="font-size:18px;color:var(--dim)">${esc(m[0])}</span>
+            ${mine.map(p=>`<span class="tag" style="color:${p.side==='short'?'var(--warn)':'var(--link)'}">${p.side==='short'?'YOU’RE SHORT':'YOU OWN'}</span>`).join('')}</div>
+          <div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
+            <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(price)}</span>
+            <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>
+      </div>
+      <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button></div>
+      ${c.view==='fin' ? vFin(sym) : `
+      <div class="spread" style="flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
+          <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} over ${c.tf}</span>
+        </div>
+        <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}</div>
+      </div>
+      <div class="spread" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
+        <div class="ohlc" id="ohlc"></div>
+        <button type="button" class="helpbtn" data-act="guide"><span class="q" aria-hidden="true">?</span>How to read this</button>
+      </div>
+      <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}"></div>
+      <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)">
+        <span class="keys">${keys}</span>
+        <span>Sample prices · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
+      </div>
+      <div class="side-card" style="gap:2px;margin-top:8px">
+        <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
+        ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
+          return `<div class="trow"><span class="num" style="color:var(--dim);font-size:14px">${dLabel(logDate(l))}</span><span style="color:var(--white)"><b>${w} ${fmtSh(l.n)}</b> <span style="color:var(--muted)">at ${money(l.price)}</span></span><span class="num ${v.good?'up':'down'}" style="text-align:right">${pct(v.ch)}</span><span class="vd">${v.text}</span></div>`; }).join('')
+          : `<p class="empty">You haven’t traded ${sym} yet. Your buys and sells will show up here and as arrows on the chart.</p>`}
+      </div>`}
+    </div>
+    <aside style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <div class="side-card"><span class="label">Watchlist</span>
+        <label for="wsearch" class="sr">Add any stock to your watchlist</label>
+        <input id="wsearch" type="text" autocomplete="off" placeholder="Add a stock: name or ticker" value="${esc(UI.wq||'')}" style="height:46px;font-size:16px">
+        <div class="wres" id="wres">${wlResults()}</div>
+        <div class="wl">${wl.map(s=>{ const ch=(prices[s]/prev[s]-1)*100; return `<button type="button" aria-pressed="${s===sym}" data-act="csym:${s}">
+          <span class="num" style="color:var(--white);font-size:16px">${s}${owned.includes(s)?' <span style="color:var(--link);font-size:11px;letter-spacing:.1em">● OWN</span>':''}</span>
+          <span class="num" data-px="${s}" style="text-align:right;color:var(--white)">${prices[s].toFixed(2)}</span>
+          <span style="font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(MARKET[s][0])}</span>
+          <span class="num ${cls(ch)}" data-pc="${s}" style="text-align:right;font-size:13px">${pct(ch)}</span></button>`; }).join('')}</div>
+      </div>
+      <div class="side-card">
+        <div class="spread"><span class="label">About ${sym}</span>
+          ${owned.includes(sym) ? '<span style="font-size:13px;color:var(--dim)">In your portfolio</span>'
+            : `<button type="button" class="chip" style="min-height:36px" aria-pressed="${P.watch.includes(sym)}" data-act="wtog:${sym}">${P.watch.includes(sym)?'★ Watching':'+ Watch'}</button>`}</div>
+        <span style="font-size:17px;color:var(--white)">${esc(info[1])}</span>
+        <span class="tag" style="color:var(--muted);align-self:flex-start">${esc(info[0]).toUpperCase()}</span>
+        ${mine.map(p=>`<div style="padding-top:12px;border-top:1px solid var(--line);font-size:16px;color:var(--soft)">${p.side==='short'?'Short':'You own'} <b style="color:var(--white)">${fmtSh(p.n)}</b> shares at ${money(p.b)} avg · <span class="num ${cls(posGain(p))}">${signed2(posGain(p))}</span></div>`).join('')}
+      </div>
+      <div class="side-card kn"><span class="label">Key numbers</span>
+        <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:4px">
+          <div class="spread"><span style="font-size:14px;color:var(--muted)">52-week range</span><span class="num" style="font-size:13px;color:var(--dim)">${money(lo52)} to ${money(hi52)}</span></div>
+          <div class="rbar" role="img" aria-label="Today’s price is ${Math.round(pos52)} percent of the way from the 52-week low to the high"><i style="left:calc(${pos52.toFixed(1)}% - 2px)"></i></div>
+        </div>
+        ${kn}
+        <span style="font-size:13px;color:var(--dim)">Sample figures. Tap a row to see what it means.</span>
+      </div>
+    </aside>
+  </div></div>`;
+}
+/* ---------- financial statements (sample; the live app reads each company's annual 10-K filings from Massive's financials data) ---------- */
+const FIN_C1 = '#5b86c9', FIN_C2 = '#c4793a';   // validated pair on the dark card (blue, orange)
+const FINCACHE = {};
+function finFor(sym){
+  if (FINCACHE[sym]) return FINCACHE[sym];
+  const f = fundOf(sym), price = MARKET[sym][2], sector = (ABOUT[sym]||[''])[0];
+  const bank = sector==='Financials' && !['V','MA'].includes(sym);
+  let s = hashOf(sym+'fin'); const rnd = () => { s = (s*16807) % 2147483647; return s/2147483647; };
+  const cap = f[1], ni5 = cap/f[0];
+  const nm5 = bank ? 0.30 : Math.min(0.55, Math.max(0.04, 0.06 + rnd()*0.22 + (f[3]>40?0.2:0)));
+  const rev5 = ni5/nm5, Y0 = +TDATES[TDATES.length-1].slice(0,4)-5;
+  const years = [0,1,2,3,4].map(i=>Y0+i);
+  const g = [0,1,2,3].map(i=> i===3 ? f[3]/100 : Math.max(-0.08, f[3]/100*0.6 + rnd()*0.17 - 0.05));
+  const rev = new Array(5); rev[4] = rev5; for (let i=3;i>=0;i--) rev[i] = rev[i+1]/(1+g[i]);
+  const nm = rev.map((_,i)=> i===4 ? nm5 : nm5*(0.72+rnd()*0.4));
+  const ni = rev.map((r,i)=>r*nm[i]);
+  const gm0 = bank ? null : Math.min(0.78, Math.max(0.2, 0.22 + rnd()*0.4 + nm5*0.4));
+  const gp = bank ? null : rev.map(r=>r*gm0*(0.95+rnd()*0.08));
+  const op = ni.map(x=>x*1.22);
+  const shares = cap/price;
+  const eps = ni.map((x,i)=>x/(shares*(1+(4-i)*0.012)));
+  const aMult = bank ? 11 : 0.9 + rnd()*1.3, eqr = bank ? 0.09 : 0.3 + rnd()*0.3;
+  const assets = rev.map(r=>rev5*aMult*Math.pow(r/rev5, 0.6));
+  const equity = assets.map((a,i)=>Math.max(a*eqr*(0.92+rnd()*0.13), bank ? 0 : ni[i]*2.6));
+  equity.forEach((e,i)=>{ if (!bank) assets[i] = Math.max(assets[i], e/0.6); });
+  const liab = assets.map((a,i)=>a-equity[i]);
+  const caR = 0.25+rnd()*0.25, clR = 0.26+rnd()*0.15;
+  const ca = bank ? null : assets.map(a=>a*caR*(0.95+rnd()*0.1)), cl = bank ? null : liab.map(l=>l*clR*(0.95+rnd()*0.1));
+  const cash = bank ? assets.map(a=>a*0.08) : ca.map(x=>x*0.3);
+  const debt = liab.map(l=>l*(bank?0.2:0.45));
+  return FINCACHE[sym] = {years, rev, gp, op, ni, eps, assets, liab, equity, ca, cl, cash, debt, bank};
+}
+const fmtB = v => { if (Math.abs(v)<1e-9) return '$0'; const a = Math.abs(v), sg = v<0 ? '−' : ''; return sg + (a>=1000 ? '$'+(a/1000).toFixed(2)+'T' : a>=1 ? '$'+a.toFixed(1)+'B' : '$'+Math.round(a*1000)+'M'); };
+const pctS = v => (v*100).toFixed(1)+'%';
+function niceStep(x){ const p = Math.pow(10, Math.floor(Math.log10(x))), n = x/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
+function finBars(years, series, stacked, tip, title, W){
+  const nar = W<500, H = nar ? 230 : 250, L = nar ? 50 : 62, R = nar ? 6 : 12, T = 26, B = 30, fs = nar ? 11 : 12;
+  const tops = years.map((_,i)=> stacked ? series.reduce((a,s)=>a+Math.max(0,s.vals[i]),0) : Math.max(0,...series.map(s=>s.vals[i])));
+  const mins = years.map((_,i)=> stacked ? 0 : Math.min(0,...series.map(s=>s.vals[i])));
+  const max = Math.max(...tops), min = Math.min(...mins), step = niceStep(Math.max(max-min, 1e-6)/4);
+  const yMax = Math.ceil(max/step)*step, yMin = Math.floor(min/step)*step;
+  const y = v => T + (yMax-v)/(yMax-yMin)*(H-T-B), gw = (W-L-R)/years.length;
+  let out = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${title}">`;
+  for (let v=yMin; v<=yMax+step/2; v+=step){ out += `<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${Math.abs(v)<step/1e3?'#4a5d74':'#1f2b38'}" stroke-width="1"/><text x="${L-8}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8a97a8" font-size="${fs}" font-family="IBM Plex Mono, monospace">${nar ? fmtB(v).replace('.0B','B') : fmtB(v)}</text>`; }
+  years.forEach((yr,i)=>{
+    const x0 = L+i*gw, last = i===years.length-1;
+    if (stacked){
+      const bw = Math.min(56, gw*0.46), x = x0+(gw-bw)/2; let acc = 0;
+      series.forEach((s,k)=>{ const v = Math.max(0,s.vals[i]), y1 = y(acc+v), y2 = y(acc) - (k>0?2:0); out += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" rx="3" fill="${s.color}"/>`; acc += v; });
+      if (last) out += `<text x="${(x+bw/2).toFixed(1)}" y="${(y(acc)-8).toFixed(1)}" text-anchor="middle" fill="#e6ebf1" font-size="${fs}" font-family="IBM Plex Mono, monospace">${fmtB(acc)}</text>`;
+    } else {
+      const bw = Math.min(30, gw*0.3), gap = 2, start = x0+(gw-(bw*series.length+gap*(series.length-1)))/2;
+      series.forEach((s,k)=>{ const v = s.vals[i], x = start+k*(bw+gap), y1 = y(Math.max(v,0)), y2 = y(Math.min(v,0));
+        out += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" rx="3" fill="${s.color}"/>`;
+      });
+    }
+    out += `<text x="${(x0+gw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" fill="#aab4c3" font-size="${nar?11.5:12.5}" font-family="IBM Plex Sans, sans-serif">${nar ? 'FY '+String(yr).slice(2) : 'FY '+yr}</text>`;
+    out += `<rect class="hit" x="${x0.toFixed(1)}" y="${T-14}" width="${gw.toFixed(1)}" height="${H-T-B+14}" fill="#ffffff" fill-opacity="0" data-tip="${esc(tip(i))}"/>`;
+  });
+  return out + '</svg>';
+}
+function finTable(years, rows){
+  return `<details class="ftable"><summary>See the numbers</summary><div class="tscroll"><table>
+    <thead><tr><th scope="col">$ billions</th>${years.map(y=>`<th scope="col">FY ${y}</th>`).join('')}</tr></thead>
+    <tbody>${rows.filter(r=>r[1]).map(([n,vals,fmt,strong])=>`<tr${strong?' class="strong"':''}><th scope="row">${n}</th>${vals.map(v=>`<td>${(fmt||fmtB)(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+}
+function spark(vals){
+  const v = vals.filter(x=>x!==null && isFinite(x)); if (v.length<2) return '';
+  const lo = Math.min(...v), hi = Math.max(...v), W=84, H=26, p=4;
+  const pts = v.map((x,i)=>[p+i*(W-2*p)/(v.length-1), hi===lo ? H/2 : H-p-(x-lo)/(hi-lo)*(H-2*p)]);
+  const last = pts[pts.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><polyline points="${pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')}" fill="none" stroke="#8a97a8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="#e6ebf1"/></svg>`;
+}
+function vFin(sym){
+  const m = MARKET[sym];
+  if (m[1]!=='stock') return `<div class="side-card"><span class="disp" style="font-size:26px;color:var(--white)">No financial statements for funds</span>
+    <p style="margin:0;font-size:16px;line-height:1.5;color:var(--muted)">${sym} is a fund. It holds many ${m[1]==='bond'?'bonds':m[1]==='crypto'?'units of a cryptocurrency':'companies'} instead of running a business, so it doesn’t publish an income statement or balance sheet. Pick a company from the watchlist to see its financials.</p></div>`;
+  const F = finFor(sym), Y = F.years, n = Y.length-1;
+  const revG = (F.rev[n]/F.rev[0]-1)*100, niG = (F.ni[n]/F.ni[0]-1)*100;
+  const legend = items => `<span class="keys" style="font-size:14px;color:var(--soft)">${items.map(([c,l])=>`<span><i style="width:12px;height:12px;border-radius:3px;background:${c};display:block"></i>${l}</span>`).join('')}</span>`;
+  const both = (...a) => `<div class="fwide">${finBars(...a, 640)}</div><div class="fnarrow">${finBars(...a, 360)}</div>`;
+  const inc = both(Y, [{name:'Revenue',color:FIN_C1,vals:F.rev},{name:'Net income',color:FIN_C2,vals:F.ni}], false,
+    i=>`<b>FY ${Y[i]}</b><br>Revenue ${fmtB(F.rev[i])}<br>Net income ${fmtB(F.ni[i])}<br>Net margin ${pctS(F.ni[i]/F.rev[i])}`, 'Revenue and net income for the last five fiscal years');
+  const bal = both(Y, [{name:'Liabilities',color:FIN_C2,vals:F.liab},{name:'Equity',color:FIN_C1,vals:F.equity}], true,
+    i=>`<b>FY ${Y[i]}</b><br>Total assets ${fmtB(F.assets[i])}<br>Liabilities ${fmtB(F.liab[i])}<br>Equity ${fmtB(F.equity[i])}`, 'Total assets split into liabilities and equity for the last five fiscal years');
+  const div = (a,b) => a.map((x,i)=> b[i] ? x/b[i] : null);
+  const R = [
+    ['From the income statement', [
+      ['Revenue growth', [null].concat(F.rev.slice(1).map((r,i)=>r/F.rev[i]-1)), pctS, 'This year’s revenue ÷ last year’s revenue − 1', 'How fast sales are growing.'],
+      ['Gross margin', F.gp && div(F.gp, F.rev), pctS, 'Gross profit ÷ Revenue', 'How much of each sales dollar is left after paying to make the product. Banks don’t report it.'],
+      ['Net profit margin', div(F.ni, F.rev), pctS, 'Net income ÷ Revenue', 'How many cents of every sales dollar end up as profit.'],
+      ['Earnings per share', F.eps, v=>'$'+v.toFixed(2), 'Net income ÷ Shares outstanding', 'The profit that belongs to each share. It’s the “E” in the P/E ratio.']
+    ]],
+    ['From the balance sheet', [
+      ['Current ratio', F.ca && div(F.ca, F.cl), v=>v.toFixed(2), 'Current assets ÷ Current liabilities', 'Can the company pay the bills due this year? Above 1 means it has more short-term assets than short-term debts.'],
+      ['Debt-to-equity', div(F.debt, F.equity), v=>v.toFixed(2), 'Total debt ÷ Shareholders’ equity', 'How much the company relies on borrowed money. Higher means more risk if business slows.']
+    ]],
+    ['Using both statements', [
+      ['Return on equity (ROE)', div(F.ni, F.equity), pctS, 'Net income ÷ Shareholders’ equity', 'How much profit the company makes with the owners’ money.'],
+      ['Return on assets (ROA)', div(F.ni, F.assets), pctS, 'Net income ÷ Total assets', 'How much profit the company squeezes out of everything it owns.']
+    ]]
+  ];
+  return `
+    <div class="side-card">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Income statement</span>${legend([[FIN_C1,'Revenue'],[FIN_C2,'Net income']])}</div>
+      <p class="fnote">Over five years, revenue ${revG>=0?'grew':'fell'} <b>${Math.abs(revG).toFixed(0)}%</b> and net income ${niG>=0?'grew':'fell'} <b>${Math.abs(niG).toFixed(0)}%</b>.</p>
+      <div class="fchart">${inc}</div>
+      ${finTable(Y, [['Revenue',F.rev,null,true],['Cost of revenue',F.gp && F.rev.map((r,i)=>r-F.gp[i])],['Gross profit',F.gp],['Operating income',F.op],['Net income',F.ni,null,true],['Earnings per share',F.eps,v=>'$'+v.toFixed(2)]])}
+    </div>
+    <div class="side-card">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Balance sheet</span>${legend([[FIN_C2,'Liabilities'],[FIN_C1,'Equity']])}</div>
+      <p class="fnote">Each bar is total assets, split into what the company owes and what the owners own: <b>Assets = Liabilities + Equity</b>. In FY ${Y[n]}: ${fmtB(F.assets[n])} = ${fmtB(F.liab[n])} + ${fmtB(F.equity[n])}.</p>
+      <div class="fchart">${bal}</div>
+      ${finTable(Y, [['Cash',F.cash],['Current assets',F.ca],['Total assets',F.assets,null,true],['Current liabilities',F.cl],['Total liabilities',F.liab,null,true],['Shareholders’ equity',F.equity,null,true]])}
+    </div>
+    <div class="side-card kn">
+      <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Key ratios</span><span style="font-size:14px;color:var(--dim)">5-year trend · tap a ratio for its formula</span></div>
+      ${R.map(([grp, rows])=>`<span class="label" style="padding-top:8px">${grp}</span>`+rows.filter(r=>r[1]).map(([name, vals, fmt, formula, why])=>{
+        const lastV = vals[vals.length-1];
+        return `<details><summary><span>${name}</span><span style="display:flex;align-items:center;gap:14px">${spark(vals)}<span class="num" style="min-width:64px;text-align:right;color:var(--white)">${fmt(lastV)}</span><span class="q" aria-hidden="true">?</span></span></summary>
+          <p><b style="color:var(--white)">Formula:</b> ${formula}. ${why}</p>
+          <p class="num" style="font-size:13px">${Y.map((yr,i)=> vals[i]===null ? '' : `FY ${String(yr).slice(2)}: ${fmt(vals[i])}`).filter(Boolean).join(' · ')}</p></details>`; }).join('')).join('')}
+    </div>
+    <p style="margin:0;font-size:13px;color:var(--dim)">Sample figures for the demo. The live version pulls each company’s annual reports (10-K filings) through Massive’s financials data and calculates the ratios from them.</p>`;
+}
+
+function wlResults(){
+  const q = (UI.wq||'').trim().toLowerCase(); if (!q) return '';
+  const pool = Object.keys(MARKET).map(s=>[s,MARKET[s][0]]).concat(REF.filter(r=>!MARKET[r[0]]).map(r=>[r[0],r[1]]));
+  const hits = pool.filter(([s,n])=>s.toLowerCase().startsWith(q) || n.toLowerCase().includes(q)).slice(0,6);
+  if (!hits.length) return `<p class="empty" style="font-size:14px;margin:0">No match in the demo list. The live version searches every U.S. stock.</p>`;
+  const on = watchList();
+  return hits.map(([s,n])=>`<button type="button" data-act="wadd:${s}"><span class="num" style="color:var(--white)">${s}</span>
+    <span style="text-align:right;font-size:13px;font-weight:600;color:${on.includes(s)?'var(--dim)':'var(--link)'}">${on.includes(s)?'On your list':'+ Add'}</span>
+    <span style="grid-column:1/3;font-size:13px;color:var(--dim)">${esc(n)}</span></button>`).join('');
+}
+function vGuide(){
+  if (!UI.guide) return '';
+  const t = (x,y,s,a) => `<text x="${x}" y="${y}" fill="#c3cbd6" font-size="13" font-family="IBM Plex Sans, system-ui, sans-serif" text-anchor="${a||'start'}">${s}</text>`;
+  const ln = (x1,y1,x2,y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#4a5d74" stroke-width="1"/>`;
+  const item = (icon, title, body) => `<div class="gl"><span class="gi">${icon}</span><div><b>${title}</b><p>${body}</p></div></div>`;
+  return `<div class="scrim center" data-act="close"><div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="gtitle" data-stop>
+    <div class="spread" style="align-items:flex-start"><h2 id="gtitle" class="h2" style="font-size:clamp(28px,4vw,36px)">How to read this chart</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></div>
+    <svg viewBox="0 0 460 222" width="100%" role="img" aria-label="Two candles. On the green up day the open is at the bottom of the body and the close at the top. On the red down day the open is at the top and the close at the bottom. Wicks show the high and low.">
+      <line x1="140" y1="22" x2="140" y2="188" stroke="#45c08a" stroke-width="3"/><rect x="118" y="62" width="44" height="88" rx="2" fill="#45c08a"/>
+      ${ln(70,22,134,22)}${t(64,26,'High','end')}${ln(70,62,114,62)}${t(64,66,'Close','end')}${ln(70,150,114,150)}${t(64,154,'Open','end')}${ln(70,188,134,188)}${t(64,192,'Low','end')}
+      ${t(140,214,'Up day','middle')}
+      <line x1="320" y1="38" x2="320" y2="176" stroke="#f0606f" stroke-width="3"/><rect x="298" y="70" width="44" height="72" rx="2" fill="#f0606f"/>
+      ${ln(326,38,390,38)}${t(396,42,'High')}${ln(346,70,390,70)}${t(396,74,'Open')}${ln(346,142,390,142)}${t(396,146,'Close')}${ln(326,176,390,176)}${t(396,180,'Low')}
+      ${t(320,214,'Down day','middle')}
+    </svg>
+    <div class="gls">
+      ${item('<i style="width:10px;height:22px;background:#45c08a;border-radius:2px;display:block"></i>','Candles','Each candle is one day. The thick body runs from the opening price to the closing price. The thin wicks show the highest and lowest price that day.')}
+      ${item('<i style="width:22px;height:12px;background:rgba(69,192,138,.5);display:block;align-self:flex-end"></i>','Volume','The bars along the bottom show how many shares traded. A tall bar means lots of buying and selling, usually because of news.')}
+      ${item('<i style="width:22px;height:3px;background:#c9a34e;display:block"></i>','Averages','Gold is the average price over the last 50 days, blue over 200 days. Price above the lines means the trend has been up.')}
+      ${item('<b class="up" style="font-size:18px">▲</b>','Your trades','Green arrows are your buys, red are your sells, yellow are your shorts.')}
+      ${item(`<b style="color:${EV_COLOR.E};font-family:var(--mono)">E</b>`,'Events','E is an earnings report, D a dividend payment, S a stock split. Big jumps often happen on E days.')}
+    </div>
+    <p style="margin:0;font-size:15px;color:var(--dim)">Hover over any candle (or tap on a phone) to see its exact numbers above the chart.</p>
+    <button type="button" class="cta" data-act="close">Got it</button>
+  </div></div>`;
+}
+let CH = null;
+function mountChart(){
+  const el = document.getElementById('chart'); if (!el) return;
+  if (!window.LightweightCharts){ el.innerHTML = '<p class="empty" style="padding:24px">The chart didn’t load. Check your connection and refresh the page.</p>'; return; }
+  const c = UI.chart, sym = c.sym, wk = c.tf==='5Y';
+  const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], prices[sym]);
+  const bars = wk ? weekly(daily) : daily;
+  const fromIdx = wk ? 0 : bars.length-1-({'1M':21,'3M':63,'6M':126,'1Y':252})[c.tf];
+  const chart = LightweightCharts.createChart(el, {autoSize:true,
+    layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:true},
+    grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
+    rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3}, crosshair:{mode:0}});
+  const out = {chart, sym, bars, cmp:!!c.cmp};
+  const marks = markersFor(sym, bars.map(b=>b.time), {trades:c.marks, events:c.ev, wk});
+  let spyBars = null;
+  if (c.cmp){
+    const sd = seriesFor('SPY').daily.slice(); sd[L] = liveBar(sd[L], prices.SPY);
+    spyBars = wk ? weekly(sd) : sd;
+    out.b0 = bars[fromIdx].close; out.sb0 = spyBars[fromIdx].close;
+    const fmt = {type:'custom', minMove:0.01, formatter:v=>(v>=0?'+':'')+v.toFixed(1)+'%'};
+    const spyS = chart.addLineSeries({color:'#8a97a8', lineWidth:2, lineStyle:2, priceFormat:fmt, priceLineVisible:false});
+    spyS.setData(spyBars.map(b=>({time:b.time, value:(b.close/out.sb0-1)*100})));
+    const me = chart.addLineSeries({color:'#ef5b70', lineWidth:3, priceFormat:fmt});
+    me.setData(bars.map(b=>({time:b.time, value:(b.close/out.b0-1)*100})));
+    if (marks.length) me.setMarkers(marks);
+    out.main = me;
+  } else {
+    const candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f'});
+    candle.priceScale().applyOptions({scaleMargins:{top:0.08, bottom:0.24}});
+    candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+    const volS = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:'', lastValueVisible:false, priceLineVisible:false});
+    volS.priceScale().applyOptions({scaleMargins:{top:0.8, bottom:0}});
+    volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,.32)':'rgba(240,96,111,.32)'})));
+    if (c.ma){
+      const opt = col => ({color:col, lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+      chart.addLineSeries(opt('#c9a34e')).setData(sma(bars, wk?10:50));
+      chart.addLineSeries(opt('#6b8fbf')).setData(sma(bars, wk?40:200));
+    }
+    if (marks.length) candle.setMarkers(marks);
+    out.main = candle;
+  }
+  if (wk) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
+  const leg = document.getElementById('ohlc');
+  const evAt = {};
+  if (c.ev){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
+  out.showAt = (i) => {
+    if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
+    const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');
+    if (out.cmp){ const sb = spyBars[i];
+      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
+    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
+  };
+  out.hover = false;
+  chart.subscribeCrosshairMove(p => { const has = p && p.logical!==undefined && p.logical!==null && p.point; out.hover = !!has; out.showAt(has ? Math.round(p.logical) : bars.length-1); });
+  out.showAt(bars.length-1);
+  CH = out;
+}
+function tickChart(){
+  if (!CH) return;
+  const sym = CH.sym, p = prices[sym], i = CH.bars.length-1;
+  CH.bars[i] = liveBar(CH.bars[i], p); const b = CH.bars[i];
+  if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
+  else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
+  if (!CH.hover) CH.showAt(i);
+  const chg = (p/prev[sym]-1)*100, pe = document.getElementById('cPrice'), ce = document.getElementById('cChg');
+  if (pe) pe.textContent = money(p);
+  if (ce){ ce.textContent = pct(chg)+' today'; ce.className = 'num '+cls(chg); }
+  document.querySelectorAll('[data-px]').forEach(e=>{ e.textContent = prices[e.dataset.px].toFixed(2); });
+  document.querySelectorAll('[data-pc]').forEach(e=>{ const s=e.dataset.pc, ch=(prices[s]/prev[s]-1)*100; e.textContent = pct(ch); e.className = 'num '+cls(ch); });
+}
+
+/* ---------- ui state ---------- */
+const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
+  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
+  trade:{type:'stock', pick:{stock:'NVDA',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000} };
+const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'standings'; };
+
+/* ---------- views ---------- */
+function vStandings(){
+  const tabs = [['students','Students'],['classes','Classes'],['teachers','Teachers'],['schools','Schools']];
+  let items=[], title='', cap='';
+  if (UI.tab==='students'){
+    let l = liveStudents();
+    if (UI.school) l = l.filter(s=>s.school===UI.school);
+    if (UI.sec!==null) l = l.filter(s=>s.sec===UI.sec);
+    const total = l.length;
+    l = l.slice().sort((a,b)=>b.ret-a.ret);
+    let top = l.slice(0,12); if (!top.includes(ME) && l.includes(ME)) top = top.concat([ME]);
+    if (UI.sec!==null){ const sec=D.sections[UI.sec]; title=secLabel(sec); cap=sec.school+' · '+sec.size+' students'; }
+    else if (UI.school){ title=UI.school+' Leaderboard'; cap='Top 12 of '+total+' students'; }
+    else { title='District Leaderboard'; cap='Top 12 of '+total+' students'; }
+    items = top.map(s=>({rank:l.indexOf(s)+1, name:s.name, school:s.school, sub:secLabel(D.sections[s.sec]), avg:s.ret, open:'student:'+s.id, me:s.isMe}));
+  } else if (UI.tab==='classes'){
+    title='Class Leaderboard'; cap=D.sections.length+' class periods · average student return';
+    items = D.sections.map(sec=>({name:secLabel(sec), school:sec.school, sub:sec.school, avg:secAvg(sec), open:'class:'+sec.id})).sort((a,b)=>b.avg-a.avg);
+  } else if (UI.tab==='teachers'){
+    title='Teacher Leaderboard'; cap='12 teachers · all of their classes combined';
+    items = T.map((t,i)=>({name:t[0], school:t[1], sub:t[1], avg:teacherAvg(i), open:'teacher:'+i})).sort((a,b)=>b.avg-a.avg);
+  } else {
+    title='School Leaderboard'; cap='6 schools · average of each school’s teachers';
+    items = SCHOOLS.map(s=>({name:s, school:s, sub:schoolSize(s)+' students · '+T.filter(t=>t[1]===s).length+' teachers', avg:schoolAvg(s), open:'school:'+s})).sort((a,b)=>b.avg-a.avg);
+  }
+  items.forEach((x,i)=>{ if(x.rank===undefined) x.rank=i+1; });
+  const max = Math.max(...items.map(x=>Math.abs(x.avg)), 0.01);
+  const podium = items.slice(0,3), rest = items.slice(3);
+  const spy = totals().spy;
+  const chip = (on,label,act,lg) => `<button type="button" class="chip" aria-pressed="${on}" data-act="${act}">${lg||''}<span>${label}</span></button>`;
+  return `
+  <div class="wrap">
+    <div class="head"><h1 class="h1">Standings</h1>
+      <div style="display:flex;align-items:baseline;gap:12px"><span class="label" style="color:var(--dim)">S&amp;P 500</span><span class="num ${cls(spy)}" style="font-size:28px">${pct(spy)}</span></div></div>
+    <div class="pills" role="tablist" aria-label="Standings view" style="padding-bottom:22px">
+      ${tabs.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${UI.tab===id}" data-act="tab:${id}">${l}</button>`).join('')}
+    </div>
+    ${UI.tab==='students' ? `<div class="filters">
+      <div class="frow"><span class="label">School</span>${chip(!UI.school,'All schools','school:')}${SCHOOLS.map(s=>chip(UI.school===s,s,'school:'+s,logo(s,30))).join('')}</div>
+      ${UI.school ? `<div class="frow"><span class="label">Class</span>${chip(UI.sec===null,'All classes','sec:')}${D.sections.filter(s=>s.school===UI.school).map(s=>chip(UI.sec===s.id,secLabel(s),'sec:'+s.id)).join('')}</div>`:''}
+    </div>`:''}
+    <div class="viewbar"><span class="t">${title}</span><span class="c">${cap}</span></div>
+    <div class="podium">${podium.map(x=>`
+      <button type="button" class="pod" data-act="open:${x.open}">
+        <span class="spread"><span class="rk">${x.rank}</span>${logo(x.school,84)}</span>
+        <span style="display:flex;flex-direction:column;gap:4px"><span class="nm">${esc(x.name)}${x.me?' (you)':''}</span><span class="sb">${esc(x.sub)}</span></span>
+        <span class="spread"><span class="num ${cls(x.avg)}" style="font-size:32px">${pct(x.avg)}</span><span class="num" style="font-size:19px;color:var(--soft)">${whole(100000*(1+x.avg/100))}</span></span>
+      </button>`).join('')}</div>
+    <div class="rows">${rest.map(x=>`
+      <button type="button" class="row${x.me?' me':''}" data-act="open:${x.open}">
+        <span class="rk">${x.rank}</span>${logo(x.school,44)}
+        <span style="display:flex;align-items:baseline;gap:12px;min-width:0"><span class="nm">${esc(x.name)}${x.me?' (you)':''}</span><span class="sb">${esc(x.sub)}</span></span>
+        <span class="bar"><i style="width:${Math.max(3,Math.round(Math.abs(x.avg)/max*100))}%;background:${x.avg>=0?'#6b7c91':'var(--down)'}"></i></span>
+        <span class="num dol" style="text-align:right;font-size:18px;color:var(--soft)">${whole(100000*(1+x.avg/100))}</span>
+        <span class="num ${cls(x.avg)}" style="text-align:right;font-size:20px">${pct(x.avg)}</span>
+      </button>`).join('')}</div>
+  </div>
+  <section class="wrap" style="padding-block:56px 72px">
+    <h2 class="h2">Today &amp; This Week</h2>
+    <div class="awards">${AWARDS.map((a,i)=>`
+      <button type="button" class="award${a.good===false?' lesson':''}" data-act="open:award:${i}">
+        <span class="label" style="color:${a.good===false?'var(--warn)':'var(--muted)'}">${a.label}</span>
+        <span class="v" style="color:${a.good===null?'var(--white)':a.good?'var(--up)':'var(--down)'}">${a.value}</span>
+        <span class="who">${logo(a.school,40)}<span>${esc(a.name)}</span></span>
+        ${a.lesson?`<span class="ls">${a.lesson}</span>`:''}
+      </button>`).join('')}</div>
+  </section>`;
+}
+const AWARDS = [
+  {label:'Trader of the Day',value:'+9.8%',name:'Maya R.',school:'Hersey',good:true},
+  {label:'Mover of the Day',value:'+3.61%',name:'Jordan K.',school:'Prospect',good:true},
+  {label:'Mover of the Week',value:'+8.93%',name:'Priya S.',school:'Rolling Meadows',good:true},
+  {label:'Best Trade of the Week',value:'+18.4%',name:'Sofia M.',school:'Elk Grove',good:true},
+  {label:'Most Active of the Week',value:'38 trades',name:'Ethan W.',school:'Buffalo Grove',good:null},
+  {label:'Hardest Lesson · Day',value:'−2.87%',name:'A trader in Ms. Pryor’s class',school:'Prospect',good:false,sub:'Ms. Pryor · P3 · Prospect · name hidden',stats:[['Day loss','−$2,960'],['In one stock','60%']],lesson:'Lesson: don’t put most of your money in one stock.'},
+  {label:'Hardest Lesson · Week',value:'−6.12%',name:'Liam O.',school:'Wheeling',good:false,sub:'Mr. Hollis · P7 · Wheeling',stats:[['Week loss','−$6,520'],['Held through','Earnings miss']],lesson:'Lesson: know when your stocks report earnings.'},
+  {label:'Worst Trade of the Week',value:'−21.3%',name:'A trader in Mr. Fitzgerald’s class',school:'Buffalo Grove',good:false,sub:'Mr. Fitzgerald · P6 · Buffalo Grove · name hidden',stats:[['Trade','Biotech $48 → $38'],['Held','2 days']],lesson:'Lesson: a big news day is a coin flip, not an investment.'}
+];
+
+function vPortfolio(){
+  const t = totals(), r = myRanks(), mix = mixOf(), sec = D.sections[ME.sec];
+  const stocksPct = mix.filter(m=>m.name==='Stocks').map(m=>m.pct)[0] || 0;
+  const biggest = P.pos.filter(p=>p.side==='long').map(p=>({sym:p.sym,w:posValue(p)/t.total*100})).sort((a,b)=>b.w-a.w)[0];
+  // chart: fixed history plus today's live point
+  const days = ['AUG 24','','','','','TODAY'];
+  const you = [0,1.40,0.70,3.40,4.45,t.ret], mkt = [0,0.58,1.05,1.63,2.10,t.spy];
+  const lo = Math.min(0,...you,...mkt)-0.5, hi = Math.max(...you,...mkt)+0.8;
+  const X = i => 30 + i*134, Y = v => 200 - (v-lo)/(hi-lo)*170;
+  const pts = a => a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' ');
+  const tagC = {Stock:'#8a97a8',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e'};
+  const cards = P.pos.map(p=>{ const ty = p.side==='short'?'Short':({stock:'Stock',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]]; const g=posGain(p), gp=g/(p.n*p.b)*100;
+      return {key:'pos:'+p.sym+':'+p.side, sym:p.sym, ty, g, gp, w:posValue(p)/t.total*100, bond: (ty==='Bond') ? bondInfo(p) : null, rule: p.side==='short'?'var(--warn)':(g>=0?'var(--red)':'#5a6778')}; })
+    .concat(P.mm.bal>0.005 ? [{key:'mm', sym:'MONEY MKT', ty:'MM', g:P.mm.earned, gp:0, w:P.mm.bal/t.total*100, rule:'var(--cd)', mm:true}] : []);
+  const wins = P.closed.filter(c=>c.s>=c.b), losses = P.closed.filter(c=>c.s<c.b);
+  const pl = c => (c.s-c.b)*c.n, sum = l => l.reduce((a,c)=>a+pl(c),0);
+  const ctRow = c => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:21px;color:var(--white)">${c.sym}</span><span style="font-size:14px;color:var(--dim)">${fmtSh(c.n)} sh · ${money(c.b)} → ${money(c.s)} · ${c.d}</span></span>
+    <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px" class="num ${cls(pl(c))}"><span style="font-size:21px">${signed2(pl(c))}</span><span style="font-size:15px">${pct((c.s-c.b)/c.b*100)}</span></span></div>`;
+  return `
+  <div class="wrap">
+    ${P.notes.length ? `<div class="note good" role="status">${P.notes.map(n=>`<span>${esc(n)}</span>`).join('')}<button type="button" class="ghost" style="min-height:40px;margin-left:auto" data-act="dismiss">Dismiss</button></div>` : ''}
+    <div class="hero">
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="who">${logo('Hersey',52)}<span class="n">Jack M.</span><span style="color:var(--dim);font-size:17px">${secLabel(sec)} · Hersey</span></div>
+        <span class="big">${whole(t.total)}</span>
+        <div class="gainline"><span class="${cls(t.ret)}">${pct(t.ret)}</span><span class="${cls(t.ret)}">${signed(t.total-100000)}</span>
+          <span class="vs">${t.vs>=0?'beating':'trailing'} the S&amp;P by <b style="color:var(--white)">${Math.abs(t.vs).toFixed(2)} pts</b></span></div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div class="cashbox"><span class="num" style="font-size:28px;color:var(--white)">${whole(P.cash)}</span><span class="label" style="font-size:12px;color:var(--dim)">Cash</span></div>
+        <a class="cta" href="#trade">Trade</a>
+      </div>
+    </div>
+    <div class="ranks">
+      ${[[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize('Hersey'),'At Hersey'],[r.district,D.students.length,'In the district']].map(([k,of,l],i)=>`
+      <div class="rankc${i===0?' top':''}"><span class="r">${ord(k)}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
+    </div>
+    <div class="panels">
+      <div class="panel">
+        <div class="spread" style="flex-wrap:wrap"><span class="label">You vs. the market</span>
+          <span class="legend"><span><i style="width:22px;height:4px;background:var(--link);display:block"></i>You</span><span><i style="width:22px;border-top:2px dashed var(--dim);display:block"></i>S&amp;P 500</span></span></div>
+        <svg viewBox="0 0 840 240" width="100%" role="img" aria-label="Your return ${t.ret.toFixed(2)} percent versus the S&amp;P 500 at ${t.spy.toFixed(2)} percent">
+          <line x1="20" y1="${Y(0).toFixed(1)}" x2="820" y2="${Y(0).toFixed(1)}" stroke="#34455a" stroke-width="1"/>
+          <polyline points="${pts(mkt)}" fill="none" stroke="#8a97a8" stroke-width="3" stroke-dasharray="8 7"/>
+          <polyline points="${pts(you)}" fill="none" stroke="#ef5b70" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${X(5)}" cy="${Y(t.ret).toFixed(1)}" r="8" fill="#ef5b70"/><circle cx="${X(5)}" cy="${Y(t.spy).toFixed(1)}" r="6" fill="#8a97a8"/>
+          <g font-family="IBM Plex Mono, monospace">
+            <text x="${X(5)+16}" y="${(Y(t.ret)-2).toFixed(1)}" fill="#ffffff" font-size="17">${t.ret>=0?'+':''}${t.ret.toFixed(2)}%</text>
+            <text x="${X(5)+16}" y="${(Y(t.spy)+4).toFixed(1)}" fill="#aab4c3" font-size="16">${t.spy>=0?'+':''}${t.spy.toFixed(2)}%</text>
+            <text x="24" y="232" fill="#8a97a8" font-size="15">${days[0]}</text><text x="${X(5)-40}" y="232" fill="#8a97a8" font-size="15">TODAY</text>
+          </g>
+        </svg>
+      </div>
+      <div class="panel">
+        <span class="label">Where your money is</span>
+        <div class="donutwrap">
+          <div class="donut" style="background:${conic(mix,'#141e29')}" role="img" aria-label="${mix.map(m=>m.name+' '+m.pct.toFixed(1)+' percent').join(', ')}">
+            <div class="hole"><span class="num" style="font-size:24px;color:var(--white)">${Math.round(stocksPct)}%</span><span class="label" style="font-size:11px;color:var(--dim)">Stocks</span></div></div>
+          <div class="mix">${mix.map(m=>`<div><span class="sw" style="background:${m.color}"></span><span style="flex:1;color:var(--soft)">${m.name}</span><span class="num" style="font-size:14px;color:var(--dim)">${whole(m.v)}</span><span class="num" style="width:54px;text-align:right;color:var(--white)">${m.pct.toFixed(1)}%</span></div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+    ${biggest && biggest.w>20 ? `<div class="note"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e0b45a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg><span><b style="color:var(--white)">${Math.round(biggest.w)}%</b> of your money is in ${biggest.sym}.</span></div>`:''}
+  </div>
+  <section class="wrap" style="padding-top:48px">
+    <div class="spread" style="flex-wrap:wrap"><h2 class="h2">Holdings</h2><span style="color:var(--dim)">Tap a holding for details, to buy more, or to sell</span></div>
+    <div class="hold">${cards.length?cards.map(c=>`
+      <button type="button" class="hc" style="border-top-color:${c.rule}" data-act="sheet:${c.key}">
+        <span class="spread"><span class="sym">${c.sym}</span><span class="tag" style="color:${tagC[c.ty]}">${c.ty.toUpperCase()}</span></span>
+        ${c.bond ? bondCardHtml(c) : c.mm ? `<span class="num up" style="font-size:28px">+${money(c.g)}</span>
+        <span class="num" style="font-size:14px;color:var(--soft)">+${money(mmPerDay())} a day · ${P.mm.rate.toFixed(2)}%</span>
+        <span style="font-size:13px;color:var(--dim)">Balance ${money(P.mm.bal)} · move money anytime</span>
+        <span class="spread"><span style="font-size:13px;color:var(--dim)">Interest earned</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
+        : `<span class="num ${cls(c.g)}" style="font-size:28px">${pct(c.gp)}</span>
+        <span class="spread"><span class="num ${cls(c.g)}" style="font-size:17px">${signed(c.g)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`}
+      </button>`).join(''):'<p class="empty">No holdings yet. Head to Trade to make your first investment.</p>'}
+      <button type="button" class="hc" style="border-top-color:var(--cashc)" disabled>
+        <span class="spread"><span class="sym">CASH</span><span class="tag" style="color:#6b7c91">CASH</span></span>
+        <span class="num" style="font-size:28px;color:var(--dim)">0.00%</span>
+        <span class="spread"><span class="num" style="font-size:17px;color:var(--dim)">${whole(P.cash)}</span><span class="num" style="font-size:14px;color:var(--dim)">${(P.cash/t.total*100).toFixed(1)}%</span></span>
+      </button>
+    </div>
+  </section>
+  ${incomeSection()}
+  <section class="wrap" style="padding-block:56px 72px">
+    <div class="spread" style="flex-wrap:wrap"><h2 class="h2">Closed Trades</h2><span style="color:var(--muted);font-size:17px">Wins <span class="num up">${signed2(sum(wins))}</span> · Losses <span class="num down">${signed2(sum(losses))}</span></span></div>
+    <div class="closed">
+      <div class="ct"><div class="spread" style="padding-bottom:10px"><span class="disp" style="font-size:28px;color:var(--white)">Wins</span><span class="num up" style="font-size:21px">${signed2(sum(wins))}</span></div>${wins.slice().reverse().map(ctRow).join('')||'<p class="empty">None yet.</p>'}</div>
+      <div class="ct loss"><div class="spread" style="padding-bottom:10px"><span class="disp" style="font-size:28px;color:var(--white)">Losses</span><span class="num down" style="font-size:21px">${signed2(sum(losses))}</span></div>${losses.slice().reverse().map(ctRow).join('')||'<p class="empty">None yet.</p>'}</div>
+    </div>
+  </section>`;
+}
+
+function checkup(){
+  const t = totals();
+  const longs = P.pos.filter(p=>p.side==='long');
+  const big = longs.map(p=>({sym:p.sym,w:posValue(p)/t.total*100})).sort((a,b)=>b.w-a.w)[0] || {sym:'none',w:0};
+  const cashPct = P.cash/t.total*100;
+  const losers = P.pos.filter(p=>posGain(p)<0);
+  const sectorish = new Set(longs.map(p=>MARKET[p.sym][1]==='stock'?p.sym:MARKET[p.sym][1])).size;
+  const vsG = t.vs>=1?'A':t.vs>=0?'B':t.vs>=-2?'C':'D';
+  const spG = big.w<=15?'A':big.w<=20?'B':big.w<=30?'C':'D';
+  const caG = cashPct<5?'A':cashPct<10?'B':cashPct<20?'C':'D';
+  const loG = losers.length===0?'A':losers.length===1?'B':losers.length===2?'C':'D';
+  const pts = {A:4,B:3,C:2,D:1}; const avg = (pts[vsG]+pts[spG]+pts[caG]+pts[loG])/4;
+  const overall = avg>=3.75?'A':avg>=3.4?'A−':avg>=3.1?'B+':avg>=2.75?'B':avg>=2.4?'B−':avg>=2.1?'C+':avg>=1.75?'C':'D';
+  return { overall, grades:[
+    {l:'Vs. market',g:vsG,stat:(t.vs>=0?'+':'−')+Math.abs(t.vs).toFixed(2)+' pts',what:t.vs>=0?'You’re beating the S&P 500.':'The S&P 500 is ahead of you.',fix:t.vs>=0?'Keep it up. Check again next week.':'Compare your picks to the market. What’s dragging?'},
+    {l:'Spread out',g:spG,stat:Math.round(big.w)+'% in '+big.sym,what:big.w>20?'One stock holds a big share of your money.':'No single stock dominates your portfolio.',fix:big.w>20?'Get your biggest stock under 20%.':'Nice balance. Keep each position under 20%.'},
+    {l:'Cash',g:caG,stat:Math.round(cashPct)+'% idle',what:'Uninvested cash doesn’t grow.',fix:cashPct>=10?'Invest it or move it to the money market. Keep cash under 10%.':'Good. A little cash lets you buy dips.'},
+    {l:'Losers',g:loG,stat:losers.length+' of '+P.pos.length+' down',what:losers.length?(losers.map(p=>p.sym).join(', ')+' '+(losers.length>1?'are':'is')+' losing money.'):'Every position is in the green.',fix:losers.length?'Decide: hold, or cut the loss?':'Set a plan for when to take profits.'}
+  ], checks:[
+    ['Own 5 or more investments', P.pos.length+(P.mm.bal>0?1:0), P.pos.length+(P.mm.bal>0?1:0)>=5],
+    ['3 or more kinds of investments', sectorish>=3?sectorish:sectorish, sectorish>=3],
+    ['Beating the S&P 500', (t.vs>=0?'+':'−')+Math.abs(t.vs).toFixed(2), t.vs>=0],
+    ['No stock over 20%', Math.round(big.w)+'%', big.w<=20],
+    ['Cash under 10%', Math.round(cashPct)+'%', cashPct<10],
+    ['Traded this week', P.tradesWeek, P.tradesWeek>0]
+  ]};
+}
+function vCheckup(){
+  const c = checkup(), good = g => g==='A'||g==='B';
+  return `
+  <div class="wrap">
+    <div class="head" style="align-items:center">
+      <div style="display:flex;flex-direction:column;gap:12px"><span class="disp" style="font-weight:700;font-size:28px;color:var(--muted)">Jack M.</span><h1 class="h1">Checkup</h1></div>
+      <div class="grade"><span class="disp" style="font-size:84px;line-height:1;color:var(--white)">${c.overall}</span><span class="label" style="color:var(--dim)">Overall</span></div>
+    </div>
+    <div class="grades">${c.grades.map(g=>`
+      <div class="gc${good(g.g)?'':' warn'}">
+        <span class="label">${g.l}</span>
+        <span class="g" style="color:${good(g.g)?'var(--white)':'var(--warn)'}">${g.g}</span>
+        <span class="num" style="font-size:19px;color:var(--white)">${g.stat}</span>
+        <span class="what">${g.what}</span>
+        <span class="fix"><b>To improve:</b> ${g.fix}</span>
+      </div>`).join('')}</div>
+  </div>
+  <section class="wrap" style="padding-block:56px 72px">
+    <h2 class="h2">Checklist</h2>
+    <div class="checks">${c.checks.map(([t,v,ok])=>`
+      <div class="ck">${ok?'<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#45c08a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Passed"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>':'<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e0b45a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Needs work"><circle cx="12" cy="12" r="10"/><path d="M12 7v6"/><path d="M12 16.5h.01"/></svg>'}
+        <span class="t">${t}</span><span class="num" style="font-size:19px;color:${ok?'var(--white)':'var(--warn)'}">${v}</span></div>`).join('')}</div>
+  </section>`;
+}
+
+function vTrade(){
+  const tr = UI.trade;
+  const types = [['stock','Stocks'],['bond','Bonds'],['mm','Money market'],['crypto','Crypto']];
+  let body = '';
+  if (tr.done){
+    body = `<div class="done"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#45c08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+      <span class="disp" style="font-size:40px;color:var(--white)">${tr.done.title}</span><span class="num" style="font-size:20px;color:var(--muted)">${tr.done.sub}</span>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><a class="cta" href="#portfolio">See portfolio</a><button type="button" class="ghost" data-act="newtrade">New trade</button></div></div>`;
+  } else if (tr.type==='mm'){
+    const m = P.mm, rate = m.rate, isIn = tr.mmDir==='in', avail = isIn ? P.cash : m.bal;
+    const amt = Math.min(tr.mmAmt, avail), tooMuch = tr.mmAmt > avail + 0.005 || amt <= 0;
+    const newBal = isIn ? m.bal + amt : m.bal - amt, perDayNew = newBal*rate/100/365;
+    const amtPerDay = tr.mmAmt*rate/100/365, amtMonth = tr.mmAmt*(Math.pow(1+rate/100/365,30)-1);
+    body = `
+      <div class="side">
+        <button type="button" class="buy" aria-pressed="${isIn}" data-act="mmdir:in"><span class="w" style="font-size:26px">Move in</span><span class="d">${money(P.cash)} in cash</span></button>
+        <button type="button" class="buy" aria-pressed="${!isIn}" data-act="mmdir:out"><span class="w" style="font-size:26px">Move out</span><span class="d">${money(m.bal)} in money market</span></button>
+      </div>
+      <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="mmamt:-" aria-label="Less money">−</button><span class="v" style="min-width:150px">${whole(tr.mmAmt)}</span><button type="button" data-act="mmamt:+" aria-label="More money">+</button><button type="button" data-act="mmamt:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div class="line"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:19px;color:var(--muted)">${isIn?'Earns about':'Stops earning about'}</span><span class="num" style="font-size:15px;color:var(--dim)">+${money(amtPerDay)} a day · ${rate.toFixed(2)}% a year</span></span><span class="num ${isIn?'up':''}" style="font-size:36px;${isIn?'':'color:var(--soft)'}">+${money(amtMonth)}<span style="font-size:18px;color:var(--dim)"> /month</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
+        <span class="label">How your money moves</span>
+        <ol class="flow">${isIn ? `
+          <li><span class="fwhen">Now</span><span class="num famt">−${whole(tr.mmAmt)}</span><span class="fwhat">Leaves your cash and goes into the money market.</span></li>
+          <li><span class="fwhen">Every day</span><span class="num famt up">+${money(amtPerDay)}</span><span class="fwhat">Interest is added to your balance, and tomorrow you earn interest on that too.</span></li>
+          <li><span class="fwhen">Anytime</span><span class="num famt">No penalty</span><span class="fwhat">Move it back to cash whenever you want to buy something.</span></li>` : `
+          <li><span class="fwhen">Now</span><span class="num famt up">+${whole(tr.mmAmt)}</span><span class="fwhat">Comes back to your cash, ready to invest right away.</span></li>
+          <li><span class="fwhen">From then on</span><span class="num famt">$0.00</span><span class="fwhat">Money in cash stops earning interest.</span></li>
+          <li><span class="fwhen">What's left</span><span class="num famt up">+${money(perDayNew)}</span><span class="fwhat">The rest of your balance keeps earning every day.</span></li>`}
+        </ol>
+        <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(isIn ? P.cash-amt : P.cash+amt)}</span></div>
+        <div class="line"><span style="color:var(--dim)">Money market after</span><span class="num" style="color:var(--soft)">${money(newBal)}</span></div>
+        <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--cd)">RATE</span><span>Set by the master teacher. Real money market rates rise and fall with the Federal Reserve’s interest rate.</span></div>
+      </div>
+      ${tooMuch ? `<span class="down" style="font-size:17px">${avail<=0 ? (isIn?'You don’t have any cash to move.':'Your money market balance is empty.') : 'That’s more than you have. Tap All to move everything.'}</span>` : ''}
+      <button type="button" class="go" data-act="mmmove" ${tooMuch?'disabled':''}>Move ${whole(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
+  } else {
+    const sym = tr.pick[tr.type], m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
+    const canShort = tr.type!=='bond', isBuy = !canShort || tr.side==='buy';
+    const cost = price*tr.n, tooMuch = cost > P.cash;
+    body = `<div style="display:flex;flex-direction:column;gap:12px">
+        <label for="search" class="label">${({stock:'Stock',bond:'Bond fund',crypto:'Crypto fund'})[tr.type]}</label>
+        <input id="search" type="text" autocomplete="off" placeholder="${tr.type==='stock'?'Search a company or ticker':'Search a fund or ticker'}" value="${esc(tr.q)}">
+        <div class="frow" id="chips">${chipsHtml()}</div>
+      </div>
+      <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white)">${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
+        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
+      ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
+        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month, about <b style="color:var(--white)">${fundOf(sym)[2].toFixed(1)}%</b> a year. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button><span class="v">${tr.n}</span><button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
+      <div class="line" style="padding-top:20px;border-top:1px solid var(--line)"><span style="font-size:19px;color:var(--muted)">${isBuy?'Total':'Set aside to short'}</span><span class="num" style="font-size:40px;color:var(--white)">${money(cost)}</span></div>
+      <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-cost)}</span></div>
+      ${tooMuch?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
+      <button type="button" class="go" data-act="submit" ${tooMuch?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>`;
+  }
+  return `<div class="wrap"><div class="tradebox">
+    <div class="line"><h1 class="h1">Trade</h1><span style="font-size:18px;color:var(--muted)">Cash <span class="num" style="color:var(--white)">${money(P.cash)}</span></span></div>
+    <div class="types" role="tablist" aria-label="Investment type">${types.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.type===id}" data-act="type:${id}">${l}</button>`).join('')}</div>
+    ${body}</div></div>`;
+}
+function chipsHtml(){
+  const tr = UI.trade, q = tr.q.trim().toLowerCase();
+  const list = Object.keys(MARKET).filter(s=>MARKET[s][1]===tr.type && (!q || s.toLowerCase().includes(q) || MARKET[s][0].toLowerCase().includes(q)));
+  if (tr.type==='stock' && q) REF.filter(r=>!MARKET[r[0]] && (r[0].toLowerCase().includes(q) || r[1].toLowerCase().includes(q))).slice(0,8).forEach(r=>list.push(r[0]));
+  if (!list.length) return `<span class="empty">No match in the demo list. The real app will search every U.S. ticker.</span>`;
+  return list.map(s=>`<button type="button" class="chip num" aria-pressed="${tr.pick[tr.type]===s}" data-act="pick:${s}">${s}</button>`).join('');
+}
+
+/* ---------- drawer (details on standings) ---------- */
+function vDrawer(){
+  const d = UI.drawer; if (!d) return '';
+  const [kind, id] = [d.split(':')[0], d.split(':').slice(1).join(':')];
+  let html='';
+  if (kind==='student'){
+    const s = D.students[+id], sec = D.sections[s.sec]; liveStudents();
+    const value = s.isMe ? totals().total : 100000*(1+s.ret/100);
+    const rk = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(s)+1;
+    const hs = holdsOf(s), pal=['#ef5b70','#6b8fbf','#c9a34e','#9a86c9','#3fa58a','#e08a4f','#5fb3c9','#d17fb0'];
+    const parts = hs.map((h,i)=>({...h,color:h.ty==='Cash'?'#4a5768':pal[i%pal.length],pct:h.w}));
+    html = `<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
+      <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(value)}</span><span class="num ${cls(s.ret)}" style="font-size:20px">${pct(s.ret)} · ${signed(value-100000)}</span></div>
+      <div class="kv">${[[rk(D.students.filter(x=>x.sec===s.sec)),'of '+sec.size+' in class'],[rk(D.students.filter(x=>x.school===s.school)),'of '+schoolSize(s.school)+' at '+s.school],[rk(D.students),'of '+D.students.length+' in district']].map(([r,l])=>`<span><span class="disp" style="font-size:30px;color:${r<=3?'var(--red)':'var(--white)'}">${ord(r)}</span> <span style="color:var(--muted);font-size:14px">${l}</span></span>`).join('')}</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${hs.length-1}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
+      <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
+        ${parts.map(h=>`<div><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
+      ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>':'<p class="empty">Students see other portfolios as a snapshot only. Teachers see full detail.</p>'}`;
+  } else if (kind==='award'){
+    const a = AWARDS[+id], stu = D.students.find(s=>s.name===a.name);
+    if (stu && !a.stats){ UI.drawer = 'student:'+stu.id; return vDrawer(); }
+    html = `<div class="who">${logo(a.school,60)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${a.label}</span><span style="color:var(--dim)">${a.sub||a.name}</span></span></div>
+      <span class="num" style="font-size:40px;color:${a.good===false?'var(--down)':'var(--up)'}">${a.value}</span>
+      ${a.stats?`<div class="kv">${a.stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${v}</span></span>`).join('')}</div>`:''}
+      ${a.lesson?`<p style="margin:0;padding-top:14px;border-top:1px solid var(--line-2);font-size:18px;color:var(--cream)">${a.lesson}</p>`:''}
+      ${a.good===false && !stu?'<p class="empty">Names stay hidden on the loss boards unless a student opts in.</p>':''}`;
+  } else {
+    let title='', sub='', sch='', stats=[];
+    const best = l => l.slice().sort((a,b)=>b.ret-a.ret)[0];
+    liveStudents();
+    if (kind==='class'){ const sec=D.sections[+id], l=D.students.filter(s=>s.sec===sec.id); title=secLabel(sec); sub=sch=sec.school;
+      stats=[['Average return',pct(secAvg(sec))],['Average value',whole(100000*(1+secAvg(sec)/100))],['Top student',best(l).name],['Students',l.length]]; }
+    else if (kind==='teacher'){ const i=+id, t=T[i], secs=D.sections.filter(s=>s.ti===i), l=D.students.filter(s=>D.sections[s.sec].ti===i); title=t[0]; sub=sch=t[1];
+      stats=[['Classes',secs.map(s=>s.period).join(', ')],['Students',l.length],['Top student',best(l).name],['Beating S&P',l.filter(s=>s.ret>totals().spy).length+' of '+l.length]]; }
+    else { const l=D.students.filter(s=>s.school===id), ts=T.map((t,i)=>i).filter(i=>T[i][1]===id).sort((a,b)=>teacherAvg(b)-teacherAvg(a)); title=id; sch=id; sub=ts.length+' teachers';
+      stats=[['Average return',pct(schoolAvg(id))],['Top teacher',T[ts[0]][0]],['Top student',best(l).name],['Students',l.length]]; }
+    html = `<div class="who">${logo(sch,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:34px;color:var(--white)">${esc(title)}</span><span style="color:var(--dim)">${esc(sub)}</span></span></div>
+      <div class="kv">${stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${esc(v)}</span></span>`).join('')}</div>`;
+  }
+  return `<div class="scrim" data-act="close"><div class="drawer" role="dialog" aria-modal="true" data-stop>
+    <button type="button" class="x" data-act="close" aria-label="Close">×</button>${html}</div></div>`;
+}
+
+/* ---------- sheet (holding details + sell) ---------- */
+function vSheet(){
+  const sh = UI.sheet; if (!sh) return '';
+  let html = '';
+  if (sh.done){
+    html = `<div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#45c08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+      <span class="disp" style="font-size:38px;color:var(--white)">${sh.done.title}</span>${sh.done.sub ? `<span class="num" style="font-size:20px;color:var(--muted)">${sh.done.sub}</span>` : `<span class="num ${cls(sh.done.p)}" style="font-size:21px">${signed2(sh.done.p)} locked in</span>`}
+      <button type="button" class="cta" data-act="close">Done</button></div>`;
+  } else {
+    const [,sym,side] = sh.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); if(!p){ UI.sheet=null; return ''; }
+    const isShort = side==='short', n = Math.min(sh.n, p.n), price = prices[sym];
+    const g = isShort ? (p.b-price)*n : (price-p.b)*n;
+    const canBuy = !isShort, buying = canBuy && sh.mode==='buy';
+    const bn = sh.bn||1, bCost = price*bn, bTooMuch = bCost > P.cash + 0.005, newAvg = (p.b*p.n + price*bn)/(p.n+bn);
+    const tabs = canBuy ? `<div class="pills" role="tablist" aria-label="Buy or sell"><button type="button" role="tab" class="pill" aria-selected="${!buying}" data-act="smode:sell">Sell</button><button type="button" role="tab" class="pill" aria-selected="${buying}" data-act="smode:buy">Buy More</button></div>` : '';
+    const head = `<div><h2 class="h2" style="font-size:40px">${isShort?'Close '+sym+' short':(buying?'Buy more '+sym:'Sell '+sym)}</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${MARKET[sym][0]}</p><button type="button" class="chip" data-act="chartsym:${sym}" style="min-height:38px;margin-top:10px">View chart</button></div>`;
+    if (buying){
+      html = `${head}${tabs}
+      <div class="kv"><span><span class="k">Bought at</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
+        <span><span class="k">You own</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">Cash</span><span class="v">${money(P.cash)}</span></span></div>
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="bn:-" aria-label="Fewer shares">−</button><span class="v" style="min-width:80px">${bn}</span><button type="button" data-act="bn:+" aria-label="More shares">+</button><button type="button" data-act="bn:max" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">Max</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
+        <div class="line"><span style="color:var(--muted);font-size:18px">Total</span><span class="num" style="font-size:28px;color:var(--white)">${money(bCost)}</span></div>
+        <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-bCost)}</span></div>
+        <div class="line"><span style="color:var(--dim)">Shares after</span><span class="num" style="color:var(--soft)">${fmtSh(p.n+bn)}</span></div>
+        <div class="line"><span style="color:var(--dim)">New average cost</span><span class="num" style="color:var(--soft)">${money(p.b)} → <span style="color:var(--white)">${money(newAvg)}</span></span></div></div>
+      ${bTooMuch?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="buymore" ${bTooMuch?'disabled':''}>Buy ${bn} more ${bn===1?'share':'shares'}</button></div>`;
+      return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
+    }
+    html = `${head}${tabs}
+      <div class="kv"><span><span class="k">${isShort?'Shorted at':'Bought at'}</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
+        <span><span class="k">Shares</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">${isBond(sym)&&!isShort?'Price change':'Gain so far'}</span><span class="v ${cls(posGain(p))}">${signed2(posGain(p))}</span></span></div>
+      ${isBond(sym)&&!isShort ? bondSheetHtml(p) : ''}
+      ${WHY[sym]?`<p class="disp" style="margin:0;font-weight:700;font-style:italic;font-size:17px;color:var(--fg)">“${WHY[sym]}” <span style="font-family:var(--body);font-style:normal;font-weight:400;font-size:14px;color:var(--dim)">your reason when you bought</span></p>`:''}
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="sn:-" aria-label="Fewer shares">−</button><span class="v" style="min-width:80px">${fmtSh(n)}</span><button type="button" data-act="sn:+" aria-label="More shares">+</button><button type="button" data-act="sn:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
+        <div class="line"><span style="color:var(--muted);font-size:18px">${isShort?'It costs to buy back':'You get'}</span><span class="num" style="font-size:28px;color:var(--white)">${money(price*n)}</span></div>
+        <div class="line"><span style="color:var(--muted);font-size:18px">Profit</span><span class="num ${cls(g)}" style="font-size:28px">${signed2(g)}</span></div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="sell">${isShort?'Close':'Sell'} ${fmtSh(n)} ${n===1?'share':'shares'}</button></div>`;
+  }
+  return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
+}
+
+/* ---------- actions ---------- */
+function act(a, el){
+  const [k, ...rest] = a.split(':'); const v = rest.join(':'); const tr = UI.trade;
+  switch(k){
+    case 'tab': UI.tab=v; break;
+    case 'school': UI.school=v||null; UI.sec=null; break;
+    case 'sec': UI.sec = v===''?null:+v; break;
+    case 'open': UI.drawer=v; break;
+    case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; break;
+    case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.mmAmt=1000; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0,mode:'sell',bn:1}; break; }
+    case 'smode': UI.sheet.mode = v; UI.sheet.done = null; break;
+    case 'bn': { const sym = UI.sheet.key.split(':')[1], mx = Math.max(1, Math.floor(P.cash/prices[sym]));
+      UI.sheet.bn = v==='max' ? mx : Math.max(1, (UI.sheet.bn||1)+(v==='+'?1:-1)); break; }
+    case 'buymore': {
+      const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side);
+      const n = UI.sheet.bn||1, price = prices[sym], cost = price*n; if (!p || side!=='long' || cost>P.cash+0.005) return;
+      P.cash -= cost; p.b = (p.b*p.n + price*n)/(p.n+n); p.n = +(p.n+n).toFixed(4);
+      P.log.push({sym, act:'buy', n, price, date:TDATES[TDATES.length-1]});
+      P.tradesWeek++; save();
+      UI.sheet.done = {title:'Bought '+n+' more '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
+    }
+    case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(Math.min(1,p.n),Math.min(p.n, Math.floor(UI.sheet.n)+(v==='+'?1:-1))); break; }
+    case 'sell': {
+      const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); const n = Math.min(UI.sheet.n,p.n), price = prices[sym];
+      let g;
+      if (side==='long'){ P.cash += n*price; g=(price-p.b)*n; P.closed.push({sym,n,b:p.b,s:price,d:'just now'}); }
+      else { P.cash += n*(2*p.b-price); g=(p.b-price)*n; P.closed.push({sym:sym+' (short)',n,b:price,s:price+(p.b-price),d:'just now'}); }
+      p.n = +(p.n-n).toFixed(4); if (p.n<=0.0001) P.pos = P.pos.filter(x=>x!==p);
+      P.log.push({sym, act:side==='long'?'sell':'cover', n, price, date:TDATES[TDATES.length-1]});
+      P.tradesWeek++; save();
+      UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:g}; break;
+    }
+    case 'dismiss': P.notes = []; save(); break;
+    case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.n=10; tr.q=''; break;
+    case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
+    case 'side': tr.side=v; break;
+    case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
+    case 'mmdir': tr.mmDir = v; tr.mmAmt = 1000; break;
+    case 'mmamt': { const avail = tr.mmDir==='in' ? P.cash : P.mm.bal;
+      tr.mmAmt = v==='all' ? avail : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
+    case 'newtrade': tr.done=null; tr.mmAmt=1000; tr.n=10; break;
+    case 'submit': {
+      const sym = tr.pick[tr.type], price = prices[sym], n = tr.n, cost = price*n; if (cost>P.cash) return;
+      const side = (tr.type==='bond'||tr.side==='buy') ? 'long' : 'short';
+      P.cash -= cost;
+      const ex = P.pos.find(x=>x.sym===sym&&x.side===side);
+      if (ex){ ex.b = (ex.b*ex.n + price*n)/(ex.n+n); ex.n += n; } else P.pos.push({sym,side,n,b:price});
+      P.log.push({sym, act:side==='long'?'buy':'short', n, price, date:TDATES[TDATES.length-1]});
+      P.tradesWeek++; save();
+      tr.done = {title:(side==='long'?'Bought ':'Shorted ')+n+' '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
+    }
+    case 'mmmove': {
+      mmSettle(); const isIn = tr.mmDir==='in', avail = isIn ? P.cash : P.mm.bal, amt = tr.mmAmt;
+      if (amt<=0 || amt>avail+0.005) return;
+      if (isIn){ P.cash -= amt; P.mm.bal += amt; } else { P.mm.bal -= amt; P.cash += amt; if (P.mm.bal<0.005) P.mm.bal = 0; }
+      save();
+      tr.done = {title:'Moved '+money(amt)+' to '+(isIn?'money market':'cash'), sub:isIn ? 'Earning '+P.mm.rate.toFixed(2)+'% · about +'+money(mmPerDay())+' a day' : 'Money market balance: '+money(P.mm.bal)}; break;
+    }
+    case 'csym': ensureSym(v); UI.chart.sym = v; break;
+    case 'wadd': ensureSym(v); if (!watchList().includes(v)) P.watch.push(v); save(); UI.chart.sym = v; UI.wq = ''; break;
+    case 'wtog': if (P.watch.includes(v)) P.watch = P.watch.filter(x=>x!==v); else P.watch.push(v); save(); break;
+    case 'guide': UI.guide = true; break;
+    case 'tf': UI.chart.tf = v; break;
+    case 'cview': UI.chart.view = v; break;
+    case 'ctog': UI.chart[v] = !UI.chart[v]; break;
+    case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
+    case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1]==='index' ? 'stock' : MARKET[sym][1];
+      tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
+    case 'drip': { const dp = P.pos.find(x=>x.sym===v && x.side==='long'); if (dp){ dp.drip = !dp.drip; save(); } break; }
+    case 'skip': P.demoOffset = (P.demoOffset||0)+30; mmSettle(); processIncome(); save(); break;
+    case 'reset': P = START(); normalizeMM(); normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
+  }
+  const y = window.scrollY;
+  render();
+  if (k==='tf' || k==='ctog' || k==='cview') window.scrollTo(0, y);
+}
+
+/* ---------- render ---------- */
+function renderTape(changed){
+  document.getElementById('tape').innerHTML = TAPE.map(s=>{ const c=(prices[s]/prev[s]-1)*100;
+    return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"><span class="s">${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
+}
+function render(){
+  const r = route();
+  const dm = document.getElementById('demoMsg'); if (dm) dm.textContent = 'Demo mode · sample prices · signed in as Jack M.' + (P.demoOffset ? ' · demo date '+fmtDay(todayStr()) : '');
+  document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current', a.dataset.route===r?'page':'false'));
+  const app = document.getElementById('app');
+  if (CH){ CH.chart.remove(); CH = null; }
+  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
+  if (r==='charts') mountChart();
+  document.getElementById('overlay').innerHTML = vDrawer() + vSheet() + vGuide();
+  renderTape(false);
+}
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  if (el.classList.contains('scrim') && e.target.closest('[data-stop]')) return;
+  if (el.tagName==='A' && el.getAttribute('href')){ UI.drawer=null; UI.sheet=null; return; }
+  e.preventDefault(); act(el.dataset.act, el);
+});
+document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
+document.addEventListener('mouseover', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false; });
+document.addEventListener('mousemove', e=>{ const tip = document.getElementById('ftip'); if (!tip || tip.hidden) return; tip.style.left = Math.max(8, Math.min(e.clientX+16, window.innerWidth-tip.offsetWidth-8))+'px'; tip.style.top = Math.max(8, Math.min(e.clientY+16, window.innerHeight-tip.offsetHeight-8))+'px'; });
+document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
+document.addEventListener('keydown', e=>{ if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide)){ UI.drawer=null; UI.sheet=null; UI.guide=false; render(); } });
+window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.wq=''; render(); window.scrollTo(0,0); });
+
+/* sample price movement: stands in for the 15-minute refresh from the market data feed */
+setInterval(()=>{
+  mmSettle(); processIncome();
+  Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); });
+  if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
+  if (UI.sheet || UI.drawer || document.activeElement && (document.activeElement.id==='search' || document.activeElement.id==='wsearch')) { renderTape(true); return; }
+  const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
+}, 8000);
+
+render();
+})();
+</script>
+
+</body></html>
