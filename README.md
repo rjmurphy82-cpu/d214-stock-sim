@@ -4,6 +4,17 @@ A working demo of the District 214 stock market simulation. Students and classma
 
 Pages: My Portfolio, Standings, Checkup, Charts, Trade.
 
+## Signing in (demo accounts)
+
+Students pick their school, then their teacher, then their name (first name and last initial), and type the password from their login card. Every account starts with $100,000 in cash. Jack M. (Hersey, Mr. Callahan) is the sample account with a few months of history.
+
+- The roster is the sample roster built into the page. No real student data is stored anywhere.
+- Demo passwords are on the login cards page at `/#cards`, which prints one card per student.
+- Each account's portfolio is saved in the browser it was used on. "Reset my account" starts it over at $100,000.
+- Classmates on the Standings page are still samples.
+
+Real accounts need a database approved by the district for student data (Illinois SOPPA). Once that's chosen, the roster, passwords, and portfolios move to the server and the passwords come off the public page.
+
 ## Live market data from Massive
 
 When the Massive API key is set up, the demo uses real prices from Massive.com. Without it, the page runs exactly as before on sample prices.

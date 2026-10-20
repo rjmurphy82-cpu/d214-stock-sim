@@ -45,6 +45,27 @@ nav a:hover{color:var(--white)}
 .demo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:10px;font-size:14px;color:var(--dim)}
 .demo button{color:var(--link);font-weight:600}
 
+/* sign in */
+body.out nav,body.out #demoBar button{display:none}
+.login{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding-block:40px 72px}
+.steps{display:flex;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--dim)}
+.steps b{color:var(--soft);font-weight:600}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.pick button{display:flex;align-items:center;gap:14px;min-height:72px;padding:12px 18px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;text-align:left;font-size:18px;font-weight:600;color:var(--white)}
+.pick button:hover{border-color:var(--line-3);background:var(--card-hi)}
+.pick button small{display:block;font-size:13px;font-weight:500;color:var(--dim);margin-top:2px}
+.pick.names{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.pick.names button{min-height:60px;font-size:17px}
+.back{align-self:flex-start;color:var(--link);font-weight:600;font-size:16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:var(--card);border:1px dashed var(--line-3);border-radius:6px;break-inside:avoid}
+@media print{
+  body{background:#fff;color:#000}
+  header,.tape,#demoBar,.attr,.noprint{display:none!important}
+  .card{background:#fff;border:1px dashed #888;color:#000}
+  .card *{color:#000!important}
+}
+
 /* market data attribution: stays on screen on every page (required by the Massive order form) */
 .attr{position:sticky;bottom:0;z-index:30;background:rgba(11,18,25,.97);border-top:1px solid var(--line-2);padding-bottom:env(safe-area-inset-bottom,0px)}
 .attr .wrap{display:flex;justify-content:space-between;align-items:center;gap:6px 20px;flex-wrap:wrap;padding-block:10px;font-size:14px;color:var(--dim)}
@@ -152,7 +173,7 @@ section{padding-block:12px}
 .tradebox{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:26px;padding-block:36px 64px}
 .types{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .types .pill{padding:0 8px;height:58px}
-input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;font-family:var(--body);font-size:19px;color:var(--white)}
+input[type=password],input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;font-family:var(--body);font-size:19px;color:var(--white)}
 .quote{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:26px 30px;background:var(--card);border:1px solid var(--line);border-radius:6px}
 .side{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .side button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px;background:var(--card);border:2px solid var(--line-2);border-radius:6px}
@@ -299,7 +320,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
   </div>
 </header>
 <div class="tape" aria-label="Ticker"><div class="wrap" id="tape"></div></div>
-<div class="wrap demo"><span id="demoMsg">Demo mode · sample prices move every 8 seconds · you are signed in as Jack M.</span><span style="display:flex;gap:18px;flex-wrap:wrap"><button type="button" data-act="skip">Skip ahead 1 month</button><button type="button" data-act="reset">Reset demo</button></span></div>
+<div class="wrap demo" id="demoBar"><span id="demoMsg">Demo mode · sample prices move every 8 seconds</span><span style="display:flex;gap:18px;flex-wrap:wrap"><button type="button" data-act="skip">Skip ahead 1 month</button><button type="button" data-act="reset">Reset my account</button><button type="button" data-act="logout">Sign out</button></span></div>
 <main id="app"></main>
 <div class="attr" id="attr" role="contentinfo"><div class="wrap"><span class="src">Sample prices for the demo. Not real market data.</span><span class="mk" id="attrMk"></span></div></div>
 <div id="overlay"></div>
@@ -357,10 +378,22 @@ const START = () => ({
     {sym:'GOOGL',act:'buy',n:18,price:150.65,ago:20},{sym:'GOOGL',act:'sell',n:18,price:162.45,ago:11}
   ]
 });
-let P = load() || START();
-if (!P.log) P.log = START().log;
-function load(){ try{ const t = localStorage.getItem('d214sim'); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
-function save(){ try{ localStorage.setItem('d214sim', JSON.stringify(P)); }catch(e){} }
+/* ---------- sign-in (demo accounts) ----------
+   Who is signed in on this browser. Jack M. keeps the sample portfolio with history;
+   every other demo account starts fresh with $100,000. Each account saves only in this browser. */
+const SESSION = (function(){ try{ const s = JSON.parse(localStorage.getItem('d214session')||'null'); return s && typeof s.id==='number' ? s : null; }catch(e){ return null; } })();
+const SAMPLE_ACCOUNT = !SESSION || SESSION.name==='Jack M.';
+const STORE_KEY = SAMPLE_ACCOUNT ? 'd214sim' : 'd214sim:'+SESSION.id;
+const FRESH = () => { const d = new Date().toISOString().slice(0,10);
+  return {cash:100000, pos:[], mm:{bal:0, rate:3.90, earned:0, last:d}, closed:[], tradesWeek:0, log:[], notes:[], dca:[], income:[], incomeChecked:d,
+    watch:['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'], fresh:true, startDate:d}; };
+let P = load() || (SAMPLE_ACCOUNT ? START() : FRESH());
+if (!P.log) P.log = SAMPLE_ACCOUNT ? START().log : [];
+function load(){ try{ const t = localStorage.getItem(STORE_KEY); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(P)); }catch(e){} }
+// a new account measures "vs the S&P" from the day it started
+if (P.fresh && !P.spyStartSample){ P.spyStartSample = prices.SPY; save(); }
+if (P.fresh) SPY_START = P.spyStartSample;
 
 /* ---------- logos (filled in after publish) ---------- */
 const LOGOS = {'Hersey':'logos/hersey.png','Prospect':'logos/prospect.png','Buffalo Grove':'logos/buffalo-grove.png','Rolling Meadows':'logos/rolling-meadows.png','Elk Grove':'logos/elk-grove.png','Wheeling':'logos/wheeling.png'};
@@ -456,7 +489,11 @@ const D = (function build(){
   }));
   return {sections, students};
 })();
-const ME = D.students.find(s => s.isMe);
+// the signed-in student. Demo accounts are the sample roster above.
+D.students.forEach(s=>{ s.isMe = false; });
+const ME = (SESSION && D.students[SESSION.id] && D.students[SESSION.id].name===SESSION.name) ? D.students[SESSION.id] : D.students.find(s => s.name==='Jack M.');
+ME.isMe = true;
+const SIGNED_IN = !!SESSION && ME.id===SESSION.id;
 function liveStudents(){ ME.ret = totals().ret; return D.students; }
 function secAvg(sec){ const l = D.students.filter(s=>s.sec===sec.id); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
 function teacherAvg(ti){ const l = D.students.filter(s=>D.sections[s.sec].ti===ti); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
@@ -598,7 +635,7 @@ function rebase(qs){
     (P.dca||[]).forEach(pl=>{ if (pl.sym===s) (pl.buys||[]).forEach(b=>{ b.price = +(b.price*r).toFixed(4); b.sh = +(b.sh/r).toFixed(4); }); });
     (P.income||[]).forEach(e=>{ if (e.sym===s){ e.shares = whole(e.shares/r); e.perShare = +(e.perShare*r).toFixed(4); } });
   });
-  if (!P.spyStart && qs.SPY) P.spyStart = +(qs.SPY.p * 516.52 / MARKET.SPY[2]).toFixed(2);
+  if (!P.spyStart && qs.SPY) P.spyStart = P.fresh ? qs.SPY.p : +(qs.SPY.p * 516.52 / MARKET.SPY[2]).toFixed(2);
   if (P.spyStart) SPY_START = P.spyStart;
 }
 // Daily bars for the chart. Today's bar comes from the latest snapshot.
@@ -662,7 +699,7 @@ function keepQuotes(){ try{ localStorage.setItem('d214quotes', JSON.stringify({t
   if (!P.rebased) return;
   let c = null; try{ c = JSON.parse(localStorage.getItem('d214quotes')||'null'); }catch(e){}
   if (c && c.q && Date.now()-c.t < 3*DAY){ applyQuotes(c.q); LIVE.asOf = c.asOf||0; LIVE.cached = true; if (P.spyStart) SPY_START = P.spyStart; return; }
-  P = START(); normalizeMM(); save();   // too old to trust: go back to the sample demo
+  if (SAMPLE_ACCOUNT){ P = START(); normalizeMM(); save(); }   // too old to trust: go back to the sample demo
 })();
 function renderAttr(){
   const box = document.getElementById('attr'); if (!box) return;
@@ -1296,7 +1333,79 @@ function tickChart(){
 const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
   chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
-const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'portfolio'; };
+const route = () => { const h = (location.hash||'').replace('#','');
+  if (h==='cards') return 'cards';
+  if (!SIGNED_IN) return 'login';
+  return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'portfolio'; };
+UI.login = {school:null, ti:null, sid:null, pw:'', err:''};
+UI.cards = {school:SCHOOLS[0]};
+
+/* ---------- demo passwords ----------
+   Stand-ins for the passwords the admin will hand out. Every demo account's password is on the login cards page. */
+const PW_WORDS = 'bull bear stock bond cash coin trade share fund yield gain index asset market profit dollar budget saver hedge growth value capital equity dividend'.split(' ');
+const pwFor = s => { const h = hashOf('d214pw:'+s.id+':'+s.name); return PW_WORDS[h % PW_WORDS.length] + (10 + (h>>>8) % 90); };
+const teachersAt = sch => T.map((t,i)=>({name:t[0], school:t[1], ti:i})).filter(t=>t.school===sch);
+const studentsOf = ti => D.students.filter(s=>D.sections[s.sec].ti===ti)
+  .sort((a,b)=> D.sections[a.sec].period.localeCompare(D.sections[b.sec].period) || a.name.localeCompare(b.name));
+
+function vLogin(){
+  const L = UI.login, back = to => `<button type="button" class="back" data-act="lback:${to}">← Back</button>`;
+  const crumbs = [L.school, L.ti!==null ? T[L.ti][0] : null, L.sid!==null ? D.students[L.sid].name : null].filter(Boolean);
+  let step = '';
+  if (!L.school){
+    step = `<h2 class="h2" style="margin:0">Pick your school</h2>
+      <div class="pick">${SCHOOLS.map(s=>`<button type="button" data-act="lschool:${esc(s)}">${logo(s,44)}<span>${esc(s)}</span></button>`).join('')}</div>`;
+  } else if (L.ti===null){
+    step = `${back('school')}<h2 class="h2" style="margin:0">Pick your teacher</h2>
+      <div class="pick">${teachersAt(L.school).map(t=>`<button type="button" data-act="lteacher:${t.ti}"><span>${esc(t.name)}<small>${T[t.ti][3].map(x=>x[0]).join(', ')}</small></span></button>`).join('')}</div>`;
+  } else if (L.sid===null){
+    const list = studentsOf(L.ti), periods = [...new Set(list.map(s=>D.sections[s.sec].period))];
+    step = `${back('teacher')}<h2 class="h2" style="margin:0">Find your name</h2>
+      ${periods.map(p=>`<span class="label" style="padding-top:6px">${periods.length>1?'Period '+p.slice(1):'Your class'}</span>
+        <div class="pick names">${list.filter(s=>D.sections[s.sec].period===p).map(s=>`<button type="button" data-act="lstudent:${s.id}">${esc(s.name)}</button>`).join('')}</div>`).join('')}`;
+  } else {
+    const s = D.students[L.sid];
+    step = `${back('student')}<h2 class="h2" style="margin:0">Hi, ${esc(s.name.split(' ')[0])}</h2>
+      <form id="loginForm" style="display:flex;flex-direction:column;gap:14px" autocomplete="off">
+        <label for="pw" class="label">Password from your teacher</label>
+        <input id="pw" type="password" autocomplete="current-password" value="${esc(L.pw)}" autofocus>
+        ${L.err ? `<span class="down" style="font-size:17px" role="alert">${esc(L.err)}</span>` : ''}
+        <button type="submit" class="cta" style="align-self:flex-start">Sign in</button>
+      </form>
+      <p class="empty" style="margin:0">${s.name==='Jack M.' ? 'Jack M. is the sample account with a few months of history. ' : 'Your account starts with $100,000 in cash. '}Demo passwords are on the <a href="#cards">login cards</a> page.</p>`;
+  }
+  return `<div class="wrap"><div class="login">
+    <div style="display:flex;flex-direction:column;gap:10px"><span class="label">D214 Investing Competition</span><h1 class="h1">Sign in</h1>
+      ${crumbs.length ? `<div class="steps">${crumbs.map(c=>`<b>${esc(c)}</b>`).join('<span>›</span>')}</div>` : ''}</div>
+    ${step}
+    <p style="margin:0;font-size:14px;color:var(--dim)">Demo accounts only. Names are samples, and each account is saved in this browser. Real accounts will use passwords from your teacher.</p>
+  </div></div>`;
+}
+
+function vCards(){
+  const sch = UI.cards.school;
+  return `<div class="wrap" style="padding-block:36px 72px;display:flex;flex-direction:column;gap:22px">
+    <div class="spread noprint" style="flex-wrap:wrap;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:8px"><span class="label">Admin · demo</span><h1 class="h1">Login cards</h1></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="ghost" data-act="print">Print these cards</button><a class="cta" href="#portfolio" style="min-height:56px">${SIGNED_IN?'Back to my portfolio':'Go to sign in'}</a></div>
+    </div>
+    <p class="noprint" style="margin:0;color:var(--soft);max-width:760px">Cut these out and hand them to students. These are demo passwords for the sample roster, so they're shown openly here. In the real version, only the admin will see passwords.</p>
+    <div class="frow noprint" role="tablist" aria-label="School">${SCHOOLS.map(s=>`<button type="button" class="chip" aria-pressed="${s===sch}" data-act="cschool:${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    ${teachersAt(sch).map(t=>`<h2 class="h2" style="margin:12px 0 0">${esc(t.name)}</h2>
+      <div class="cards">${studentsOf(t.ti).map(s=>`<div class="card">
+        <span style="font-size:13px;color:var(--dim)">${esc(s.school)} · ${esc(t.name)} · ${D.sections[s.sec].period}</span>
+        <span style="font-size:20px;font-weight:600;color:var(--white)">${esc(s.name)}</span>
+        <span style="font-size:14px;color:var(--muted)">Password <b class="num" style="font-size:18px;color:var(--white)">${pwFor(s)}</b></span>
+        <span style="font-size:12px;color:var(--dim)">d214-stock-sim.vercel.app</span></div>`).join('')}</div>`).join('')}
+  </div>`;
+}
+function signIn(){
+  const L = UI.login, s = D.students[L.sid];
+  if (!s) return;
+  if ((L.pw||'').trim().toLowerCase() !== pwFor(s)){ L.err = 'That password doesn’t match. Check your login card and try again.'; L.pw = ''; render(); return; }
+  try{ localStorage.setItem('d214session', JSON.stringify({id:s.id, name:s.name})); }catch(e){}
+  location.hash = '#portfolio'; location.reload();
+}
 
 /* ---------- views ---------- */
 function vStandings(){
@@ -1391,10 +1500,12 @@ function vPortfolio(){
   const stocksPct = mix.filter(m=>m.name==='Stocks').map(m=>m.pct)[0] || 0;
   const biggest = P.pos.filter(p=>p.side==='long').map(p=>({sym:p.sym,w:posValue(p)/t.total*100})).sort((a,b)=>b.w-a.w)[0];
   // chart: fixed history plus today's live point
-  const days = ['AUG 24','','','','','TODAY'];
-  const you = [0,1.40,0.70,3.40,4.45,t.ret], mkt = [0,0.58,1.05,1.63,2.10,t.spy];
+  // the sample account shows a made-up history; a new account just shows the start and today
+  const days = P.fresh ? ['STARTED '+fmtDay(P.startDate||todayStr()).toUpperCase(),'TODAY'] : ['AUG 24','','','','','TODAY'];
+  const you = P.fresh ? [0,t.ret] : [0,1.40,0.70,3.40,4.45,t.ret], mkt = P.fresh ? [0,t.spy] : [0,0.58,1.05,1.63,2.10,t.spy];
+  const K = you.length-1;
   const lo = Math.min(0,...you,...mkt)-0.5, hi = Math.max(...you,...mkt)+0.8;
-  const X = i => 30 + i*134, Y = v => 200 - (v-lo)/(hi-lo)*170;
+  const X = i => 30 + i*670/K, Y = v => 200 - (v-lo)/(hi-lo)*170;
   const pts = a => a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' ');
   const tagC = {Stock:'#8a97a8',ETF:'#9a86c9',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e'};
   const cards = P.pos.map(p=>{ const ty = p.side==='short'?'Short':({stock:'Stock',etf:'ETF',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]]; const g=posGain(p), gp=g/(p.n*p.b)*100;
@@ -1409,7 +1520,7 @@ function vPortfolio(){
     ${P.notes.length ? `<div class="note good" role="status">${P.notes.map(n=>`<span>${esc(n)}</span>`).join('')}<button type="button" class="ghost" style="min-height:40px;margin-left:auto" data-act="dismiss">Dismiss</button></div>` : ''}
     <div class="hero">
       <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-        <div class="who">${logo('Hersey',52)}<span class="n">Jack M.</span><span style="color:var(--dim);font-size:17px">${secLabel(sec)} · Hersey</span></div>
+        <div class="who">${logo(ME.school,52)}<span class="n">${esc(ME.name)}</span><span style="color:var(--dim);font-size:17px">${secLabel(sec)} · ${esc(ME.school)}</span></div>
         <span class="big">${whole(t.total)}</span>
         <div class="gainline"><span class="${cls(t.ret)}">${pct(t.ret)}</span><span class="${cls(t.ret)}">${signed(t.total-100000)}</span>
           <span class="vs">${t.vs>=0?'beating':'trailing'} the S&amp;P by <b style="color:var(--white)">${Math.abs(t.vs).toFixed(2)} pts</b></span></div>
@@ -1420,7 +1531,7 @@ function vPortfolio(){
       </div>
     </div>
     <div class="ranks">
-      ${[[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize('Hersey'),'At Hersey'],[r.district,D.students.length,'In the district']].map(([k,of,l],i)=>`
+      ${[[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize(ME.school),'At '+ME.school],[r.district,D.students.length,'In the district']].map(([k,of,l],i)=>`
       <div class="rankc${i===0?' top':''}"><span class="r">${ord(k)}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
     </div>
     <div class="panels">
@@ -1431,11 +1542,11 @@ function vPortfolio(){
           <line x1="20" y1="${Y(0).toFixed(1)}" x2="820" y2="${Y(0).toFixed(1)}" stroke="#34455a" stroke-width="1"/>
           <polyline points="${pts(mkt)}" fill="none" stroke="#8a97a8" stroke-width="3" stroke-dasharray="8 7"/>
           <polyline points="${pts(you)}" fill="none" stroke="#ef5b70" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="${X(5)}" cy="${Y(t.ret).toFixed(1)}" r="8" fill="#ef5b70"/><circle cx="${X(5)}" cy="${Y(t.spy).toFixed(1)}" r="6" fill="#8a97a8"/>
+          <circle cx="${X(K)}" cy="${Y(t.ret).toFixed(1)}" r="8" fill="#ef5b70"/><circle cx="${X(K)}" cy="${Y(t.spy).toFixed(1)}" r="6" fill="#8a97a8"/>
           <g font-family="IBM Plex Mono, monospace">
-            <text x="${X(5)+16}" y="${(Y(t.ret)-2).toFixed(1)}" fill="#ffffff" font-size="17">${t.ret>=0?'+':''}${t.ret.toFixed(2)}%</text>
-            <text x="${X(5)+16}" y="${(Y(t.spy)+4).toFixed(1)}" fill="#aab4c3" font-size="16">${t.spy>=0?'+':''}${t.spy.toFixed(2)}%</text>
-            <text x="24" y="232" fill="#8a97a8" font-size="15">${days[0]}</text><text x="${X(5)-40}" y="232" fill="#8a97a8" font-size="15">TODAY</text>
+            <text x="${X(K)+16}" y="${(Y(t.ret)-2).toFixed(1)}" fill="#ffffff" font-size="17">${t.ret>=0?'+':''}${t.ret.toFixed(2)}%</text>
+            <text x="${X(K)+16}" y="${(Y(t.spy)+4+(Math.abs(Y(t.ret)-Y(t.spy))<20 ? 20-Math.abs(Y(t.ret)-Y(t.spy)) : 0)).toFixed(1)}" fill="#aab4c3" font-size="16">${t.spy>=0?'+':''}${t.spy.toFixed(2)}%</text>
+            <text x="24" y="232" fill="#8a97a8" font-size="15">${days[0]}</text><text x="${X(K)-40}" y="232" fill="#8a97a8" font-size="15">TODAY</text>
           </g>
         </svg>
       </div>
@@ -1511,7 +1622,7 @@ function vCheckup(){
   return `
   <div class="wrap">
     <div class="head" style="align-items:center">
-      <div style="display:flex;flex-direction:column;gap:12px"><span class="disp" style="font-weight:700;font-size:28px;color:var(--muted)">Jack M.</span><h1 class="h1">Checkup</h1></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><span class="disp" style="font-weight:700;font-size:28px;color:var(--muted)">${esc(ME.name)}</span><h1 class="h1">Checkup</h1></div>
       <div class="grade"><span class="disp" style="font-size:84px;line-height:1;color:var(--white)">${c.overall}</span><span class="label" style="color:var(--dim)">Overall</span></div>
     </div>
     <div class="grades">${c.grades.map(g=>`
@@ -1803,7 +1914,18 @@ function act(a, el){
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
     case 'drip': { const dp = P.pos.find(x=>x.sym===v && x.side==='long'); if (dp){ dp.drip = !dp.drip; save(); } break; }
     case 'skip': P.demoOffset = (P.demoOffset||0)+30; mmSettle(); processIncome(); processDCA(); save(); break;
-    case 'reset': P = START(); P.dca = []; normalizeMM(); if (LIVE.on) rebase(LIVE.quotes); else SPY_START = 516.52; normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
+    case 'lschool': UI.login = {school:v, ti:null, sid:null, pw:'', err:''}; break;
+    case 'lteacher': UI.login.ti = +v; UI.login.sid = null; break;
+    case 'lstudent': UI.login.sid = +v; UI.login.pw = ''; UI.login.err = ''; break;
+    case 'lback': { const L = UI.login; if (v==='school') L.school = null; if (v==='school'||v==='teacher') L.ti = null; L.sid = null; L.pw = ''; L.err = ''; break; }
+    case 'cschool': UI.cards.school = v; break;
+    case 'print': window.print(); return;
+    case 'logout': try{ localStorage.removeItem('d214session'); }catch(e){} location.hash = ''; location.reload(); return;
+    case 'reset': if (!SAMPLE_ACCOUNT){
+        if (!confirm('Start over with $100,000? This clears every trade on this account.')) return;
+        P = FRESH(); P.spyStartSample = prices.SPY; SPY_START = P.spyStartSample; if (LIVE.on){ P.rebased = {}; Object.keys(LIVE.quotes).forEach(s=>{ P.rebased[s] = 1; }); P.spyStart = prices.SPY; SPY_START = P.spyStart; }
+        normalizeMM(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break; }
+      P = START(); P.dca = []; normalizeMM(); if (LIVE.on) rebase(LIVE.quotes); else SPY_START = 516.52; normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
   }
   const y = window.scrollY;
   render();
@@ -1817,12 +1939,14 @@ function renderTape(changed){
 }
 function render(){
   const r = route();
-  const dm = document.getElementById('demoMsg'); if (dm) dm.textContent = (LIVE.on ? 'Demo mode · real market prices · sample classmates · signed in as Jack M.' : 'Demo mode · sample prices · signed in as Jack M.') + (P.demoOffset ? ' · demo date '+fmtDay(todayStr()) : '');
+  document.body.classList.toggle('out', !SIGNED_IN);
+  const dm = document.getElementById('demoMsg');
+  if (dm) dm.textContent = (LIVE.on ? 'Demo mode · real market prices · sample classmates' : 'Demo mode · sample prices') + (SIGNED_IN ? ' · signed in as '+ME.name : ' · not signed in') + (P.demoOffset && SIGNED_IN ? ' · demo date '+fmtDay(todayStr()) : '');
   renderAttr();
   document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current', a.dataset.route===r?'page':'false'));
   const app = document.getElementById('app');
   if (CH){ CH.chart.remove(); CH = null; }
-  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
+  app.innerHTML = r==='login'?vLogin() : r==='cards'?vCards() : r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
   if (r==='charts') mountChart();
   document.getElementById('overlay').innerHTML = vDrawer() + vSheet() + vGuide();
   renderTape(false);
@@ -1834,7 +1958,8 @@ document.addEventListener('click', e=>{
   if (el.tagName==='A' && el.getAttribute('href')){ UI.drawer=null; UI.sheet=null; return; }
   e.preventDefault(); act(el.dataset.act, el);
 });
-document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
+document.addEventListener('submit', e=>{ if (e.target.id==='loginForm'){ e.preventDefault(); const f = document.getElementById('pw'); if (f) UI.login.pw = f.value; signIn(); } });
+document.addEventListener('input', e=>{ if (e.target.id==='pw'){ UI.login.pw = e.target.value; return; } if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
 document.addEventListener('mouseover', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false; });
 document.addEventListener('mousemove', e=>{ const tip = document.getElementById('ftip'); if (!tip || tip.hidden) return; tip.style.left = Math.max(8, Math.min(e.clientX+16, window.innerWidth-tip.offsetWidth-8))+'px'; tip.style.top = Math.max(8, Math.min(e.clientY+16, window.innerHeight-tip.offsetHeight-8))+'px'; });
 document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
@@ -1845,7 +1970,7 @@ window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.gu
 function repaint(){
   renderAttr();
   if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
-  if (UI.sheet || UI.drawer || document.activeElement && (document.activeElement.id==='search' || document.activeElement.id==='wsearch')) { renderTape(true); return; }
+  if (route()==='login' || route()==='cards' || UI.sheet || UI.drawer || document.activeElement && ['search','wsearch','pw'].includes(document.activeElement.id)) { renderTape(true); return; }
   const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
 }
 /* demo mode: sample prices wiggle every 8 seconds. Live mode: real prices refresh every minute (see goLive). */
