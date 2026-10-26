@@ -1,8 +1,12 @@
-# D214 Investing Competition (demo)
+# D214 Investing Competition
 
-A working demo of the District 214 stock market simulation. Students and classmates are samples, and each visitor's trades are saved only in their own browser.
+The District 214 stock market simulation: 12 teachers, 6 schools, about 300 students, live prices from Massive.
 
-Pages: My Portfolio, Standings, Checkup, Charts, Trade.
+**To launch, follow [SETUP.md](SETUP.md).**
+
+Student pages: My Portfolio, Standings, Checkup, Charts, Trade. Teachers get My Classes; the district admin gets an Admin page (roster import, login slips, game settings, end of day).
+
+Every portfolio lives in a Postgres database (Neon on Vercel). Trades, the money market, auto-invest, dividends, splits, standings, and awards all run on the server; the page only displays them.
 
 ## Live market data from Massive
 
@@ -20,14 +24,12 @@ The key stays on the server. The browser only ever talks to this site's own `/ap
 
 | Live from Massive | Still sample |
 | --- | --- |
-| Prices and today's change (refreshed every minute) | Classmates, classes, teachers, schools |
-| Price charts (5 years of daily bars, split-adjusted) | P/E, dividend yield, revenue growth |
-| Search for any U.S. stock or ETF | Financial statements on the Charts page |
-| Company logos | Dividends and bond interest amounts |
-| Market cap, industry, company description | Earnings dates |
-| Market open or closed | |
-
-The first time real prices load, the sample portfolio is converted so each holding keeps the same dollar value and percent gain. Share counts and cost basis change to match real prices.
+| Prices for every trade, portfolio, and standing | P/E and revenue growth |
+| Price charts (5 years of daily bars, split-adjusted) | Financial statements on the Charts page |
+| Search for any U.S. stock or ETF | Earnings dates |
+| Dividends, bond interest, yields, stock splits | |
+| Company logos, market cap, industry, description | |
+| Market open or closed, holidays, official closing prices | |
 
 ### Server functions (`/api`)
 
@@ -51,5 +53,9 @@ In demo mode (no key) the bar says the prices are samples instead, since sample 
 ## Files
 
 - `index.html`: the whole app (Vercel serves it as is, no build step)
-- `api/`: Vercel functions for Massive data (Node 18 or newer)
+- `api/app.js`: sign-in, portfolio, trades, standings, teacher and admin tools (`/api/app?fn=...`)
+- `api/cron.js`: the end-of-day job (scheduled in `vercel.json`)
+- `api/` other files: Massive pass-through for prices, charts, search, logos
+- `lib/`: database schema, game rules (`portfolio.js`), standings, end of day (`eod.js`), roster import, sign-in
+- `scripts/`: local dev server and tests
 - `logos/`: school logos
