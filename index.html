@@ -284,26 +284,75 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
   .brand{font-size:26px}
 }
 @media (prefers-reduced-motion:reduce){.tape .flash{animation:none}}
+
+/* account + status banner */
+.acct{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--muted)}
+.acct b{color:var(--white);font-weight:600}
+.acct button{min-height:40px;padding:0 14px;border:1px solid var(--line-3);border-radius:6px;font-size:14px;font-weight:600;color:var(--soft)}
+.acct button:hover{color:var(--white)}
+.banner{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;padding-block:10px;font-size:15px;color:var(--dim)}
+.banner:empty{display:none}
+.banner .w{color:var(--warn)}
+.banner .e{color:#ffb3bf}
+.banner button{color:var(--link);font-weight:600}
+/* sign in */
+.login{max-width:900px;margin:0 auto;padding-block:44px 80px;display:flex;flex-direction:column;gap:26px}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.lbtn{display:flex;align-items:center;gap:16px;min-height:76px;padding:14px 20px;background:var(--card);border:1px solid var(--line);border-radius:6px;text-align:left;font-size:20px;font-weight:600;color:var(--white)}
+.lbtn:hover{background:var(--card-hi);border-color:#4a5d74}
+.lbtn small{display:block;font-size:14px;font-weight:400;color:var(--dim)}
+.crumbs{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:16px;color:var(--dim)}
+.crumbs button{color:var(--link);font-weight:600;min-height:36px}
+.err{padding:14px 18px;background:#2a1418;border:1px solid #5a2430;border-radius:6px;color:#ffc2cb;font-size:16px}
+.okmsg{padding:14px 18px;background:#14261e;border:1px solid #2c5a45;border-radius:6px;color:var(--fg);font-size:16px}
+input[type=password],input[type=number],textarea,select{width:100%;height:60px;padding:0 20px;background:var(--card);border:1px solid var(--line-2);border-radius:6px;font-family:var(--mono);font-size:22px;color:var(--white)}
+textarea{height:200px;padding:14px 16px;font-size:14px;line-height:1.5;resize:vertical}
+input[type=number]{font-size:19px;height:52px;max-width:180px}
+/* teacher + admin */
+.tbl{width:100%;border-collapse:collapse;font-size:16px}
+.tbl th{padding:10px 12px;text-align:left;font-size:12px;letter-spacing:.14em;font-weight:600;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line-2);white-space:nowrap}
+.tbl td{padding:12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl .r{text-align:right}
+.tbl tbody tr.click{cursor:pointer}
+.tbl tbody tr.click:hover td{background:var(--card-hi)}
+.card{display:flex;flex-direction:column;gap:16px;padding:24px 26px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.pw{font-family:var(--mono);font-size:28px;color:var(--white);letter-spacing:.04em}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.small{font-size:14px;color:var(--dim)}
+[aria-busy="true"]{opacity:.55;pointer-events:none}
+/* printable login slips (printing hides everything else) */
+#print{display:none}
+@media print{
+  @page{margin:12mm}
+  body{background:#fff!important;color:#000}
+  body > *:not(#print){display:none!important}
+  #print{display:block;font-family:'IBM Plex Sans',Arial,sans-serif;color:#000}
+  .slippage{break-after:page}
+  .slippage h2{font-family:'Playfair Display',Georgia,serif;font-size:22px;margin:0 0 4px}
+  .slippage .sub{font-size:13px;margin:0 0 12px}
+  .tslip{border:2px solid #000;padding:12px 14px;margin-bottom:14px;font-size:14px}
+  .slipgrid{display:grid;grid-template-columns:1fr 1fr}
+  .slip{border:1px dashed #777;padding:12px 14px;font-size:12.5px;line-height:1.5;break-inside:avoid}
+  .slip b{font-size:17px}
+  .slip .p,.tslip .p{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600}
+}
 </style>
 
 <header class="top">
   <div class="wrap">
     <span class="brand">D214 <b>·</b> <small>INVESTING</small></span>
-    <nav aria-label="Main">
-      <a href="#portfolio" data-route="portfolio">My Portfolio</a>
-      <a href="#standings" data-route="standings">Standings</a>
-      <a href="#checkup" data-route="checkup">Checkup</a>
-      <a href="#charts" data-route="charts">Charts</a>
-      <a href="#trade" data-route="trade">Trade</a>
-    </nav>
+    <nav aria-label="Main" id="nav"></nav>
+    <div class="acct" id="acct"></div>
   </div>
 </header>
 <div class="tape" aria-label="Ticker"><div class="wrap" id="tape"></div></div>
-<div class="wrap demo"><span id="demoMsg">Demo mode · sample prices move every 8 seconds · you are signed in as Jack M.</span><span style="display:flex;gap:18px;flex-wrap:wrap"><button type="button" data-act="skip">Skip ahead 1 month</button><button type="button" data-act="reset">Reset demo</button></span></div>
+<div class="wrap banner" id="banner" role="status"></div>
 <main id="app"></main>
-<div class="attr" id="attr" role="contentinfo"><div class="wrap"><span class="src">Sample prices for the demo. Not real market data.</span><span class="mk" id="attrMk"></span></div></div>
+<div class="attr" id="attr" role="contentinfo"><div class="wrap"><span class="src">Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a></span><span class="mk" id="attrMk"></span></div></div>
 <div id="overlay"></div>
 <div id="ftip" class="ftip" role="tooltip" hidden></div>
+<div id="print" aria-hidden="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
@@ -328,39 +377,18 @@ const MARKET = {
   MUB:['National Muni Bond ETF','bond',107.30,107.26], BNDX:['Total International Bond ETF','bond',49.60,49.58],
   GBTC:['Grayscale Bitcoin Trust','crypto',54.80,53.15], ETHE:['Grayscale Ethereum Trust','crypto',24.60,24.90]
 };
-let SPY_START = 516.52; // S&P level on the competition's first day (rescaled to the real S&P when live data is on)
+let SPY_START = null; // S&P 500 (SPY) price when this student's account was created
 const prices = {}; Object.keys(MARKET).forEach(s => prices[s] = MARKET[s][2]);
 const prev = {}; Object.keys(MARKET).forEach(s => prev[s] = MARKET[s][3]);
 const TAPE = ['SPY','AAPL','NVDA','AMZN','GOOGL','JPM','BND','GBTC','V','META','XOM','TLT'];
-const WHY = {NVDA:'Data center demand keeps growing.',AAPL:'New iPhone comes out in September.',COST:'People buy groceries in any economy.',JPM:'Biggest bank, pays a dividend.',XOM:'Oil prices were rising.',BND:'Something safer to balance my stocks.',GBTC:'Wanted a little crypto exposure.',AMZN:'Online sales will slow after the holidays.'};
+const WHY = {};   // reasons for a trade (a later feature)
 
-const START = () => ({
-  cash: 11466.34,
-  pos: [
-    {sym:'NVDA',side:'long',n:30,b:812.40},{sym:'AAPL',side:'long',n:60,b:214.10},{sym:'COST',side:'long',n:12,b:842.00},
-    {sym:'JPM',side:'long',n:50,b:191.20},{sym:'XOM',side:'long',n:70,b:121.80},{sym:'BND',side:'long',n:100,b:72.60},
-    {sym:'GBTC',side:'long',n:120,b:50.10},{sym:'AMZN',side:'short',n:30,b:188.40}
-  ],
-  mm: {bal:5000, rate:3.90, ago:75},
-  closed: [
-    {sym:'AMD',n:40,b:157.00,s:172.40,d:'11 days'},{sym:'TSLA',n:25,b:242.13,s:262.10,d:'16 days'},{sym:'GOOGL',n:18,b:150.65,s:162.45,d:'9 days'},
-    {sym:'PLTR',n:50,b:38.40,s:32.04,d:'6 days'},{sym:'SHOP',n:30,b:79.85,s:72.82,d:'14 days'}
-  ],
-  tradesWeek: 2,
-  watch: ['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'],
-  // when each trade happened, in trading days ago (drives the arrows on the chart)
-  log: [
-    {sym:'NVDA',act:'buy',n:30,price:812.40,ago:34},{sym:'AAPL',act:'buy',n:60,price:214.10,ago:52},{sym:'COST',act:'buy',n:12,price:842.00,ago:40},
-    {sym:'JPM',act:'buy',n:50,price:191.20,ago:45},{sym:'XOM',act:'buy',n:70,price:121.80,ago:28},{sym:'BND',act:'buy',n:100,price:72.60,ago:50},
-    {sym:'GBTC',act:'buy',n:120,price:50.10,ago:22},{sym:'AMZN',act:'short',n:30,price:188.40,ago:12},
-    {sym:'TSLA',act:'buy',n:25,price:242.13,ago:30},{sym:'TSLA',act:'sell',n:25,price:262.10,ago:14},
-    {sym:'GOOGL',act:'buy',n:18,price:150.65,ago:20},{sym:'GOOGL',act:'sell',n:18,price:162.45,ago:11}
-  ]
-});
-let P = load() || START();
-if (!P.log) P.log = START().log;
-function load(){ try{ const t = localStorage.getItem('d214sim'); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
-function save(){ try{ localStorage.setItem('d214sim', JSON.stringify(P)); }catch(e){} }
+/* ---------- who is signed in, and their portfolio (the server is the source of truth) ---------- */
+let ROLE = null, ME_INFO = null, SETTINGS = {}, HISTORY = [], BOOTED = false;
+const EMPTY = () => ({cash:0, pos:[], mm:{bal:0, rate:0, earned:0, last:null}, closed:[], tradesWeek:0,
+  watch:['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'], log:[], dca:[], income:[], notes:[], spyStart:null, adj:{}});
+let P = EMPTY();
+function save(){}   // nothing is stored in the browser: every change goes to the server
 
 /* ---------- logos (filled in after publish) ---------- */
 const LOGOS = {'Hersey':'logos/hersey.png','Prospect':'logos/prospect.png','Buffalo Grove':'logos/buffalo-grove.png','Rolling Meadows':'logos/rolling-meadows.png','Elk Grove':'logos/elk-grove.png','Wheeling':'logos/wheeling.png'};
@@ -394,7 +422,7 @@ const fmtDay = s => { const [y,m,d] = s.split('-'); return MONTHS_S[+m-1]+' '+(+
 const mmPerDay = () => P.mm.bal*P.mm.rate/100/365;
 function mmSettle(){
   const m = P.mm, today = todayStr(), d = daysBetween(m.last, today);
-  if (d>0){ const add = m.bal*(Math.pow(1+m.rate/100/365, d)-1); m.bal += add; m.earned += add; m.last = today; save(); }
+  if (d>0){ const add = m.bal*(Math.pow(1+m.rate/100/365, d)-1); m.bal += add; m.earned += add; m.last = today; }
 }
 function normalizeMM(){
   if (!P.notes) P.notes = [];
@@ -404,12 +432,11 @@ function normalizeMM(){
   if (!P.mm.last) P.mm.last = todayStr();
   if (P.cds){ P.cds.forEach(c=>{ P.mm.bal += c.amt + (c.accrued||0); }); delete P.cds; save(); }   // older saves had CDs
 }
-normalizeMM(); mmSettle();
 function totals(){
   const inv = P.pos.reduce((a,p)=>a+posValue(p),0) + P.mm.bal;
   const total = P.cash + inv;
   const ret = (total/100000 - 1)*100;
-  const spy = (prices.SPY/SPY_START - 1)*100;
+  const spy = SPY_START ? (prices.SPY/SPY_START - 1)*100 : 0;
   return {total, ret, spy, vs: ret - spy};
 }
 function mixOf(){
@@ -420,64 +447,47 @@ function mixOf(){
 }
 function conic(parts, bg){ let a=0; return 'conic-gradient(' + parts.map(p=>{ const s=a; a+=p.pct; return `${p.color} ${s.toFixed(2)}% ${(a-0.5).toFixed(2)}%, ${bg} ${(a-0.5).toFixed(2)}% ${a.toFixed(2)}%`; }).join(', ') + ')'; }
 
-/* ---------- district sample data ---------- */
-const T = [
-  ['Mr. Callahan','Hersey',6.42,[['P2',13,0.6],['P6',13,-0.6]]],['Ms. Novak','Prospect',5.87,[['P3',24,0]]],
-  ['Ms. Brooks','Hersey',5.10,[['P1',25,0]]],['Mr. Delgado','Buffalo Grove',4.66,[['P4',14,0.5],['P7',13,-0.5]]],
-  ['Ms. Tran','Rolling Meadows',4.21,[['P5',23,0]]],['Mr. Kowalczyk','Elk Grove',3.95,[['P2',25,0]]],
-  ['Ms. Sandoval','Wheeling',3.12,[['P3',13,0.8],['P8',13,-0.8]]],['Mr. Fitzgerald','Buffalo Grove',2.74,[['P6',22,0]]],
-  ['Ms. Adeyemi','Elk Grove',1.98,[['P1',24,0]]],['Mr. Lindgren','Rolling Meadows',1.05,[['P4',12,0.4],['P5',13,-0.4]]],
-  ['Mr. Hollis','Wheeling',-0.44,[['P7',23,0]]],['Ms. Pryor','Prospect',-1.37,[['P3',26,0]]]
-];
+/* ---------- district standings (from the server, refreshed every minute) ---------- */
 const SCHOOLS = ['Hersey','Prospect','Buffalo Grove','Rolling Meadows','Elk Grove','Wheeling'];
-const STARS = {'Ms. Tran P5':[['Priya S.',14.82]],'Mr. Kowalczyk P2':[['Sofia M.',13.20]],'Mr. Callahan P2':[['Maya R.',12.64]],
-  'Ms. Novak P3':[['Jordan K.',11.93]],'Mr. Delgado P4':[['Ethan W.',11.10]],'Ms. Brooks P1':[['Ava T.',10.42]],
-  'Ms. Sandoval P3':[['Noah B.',9.81]],'Mr. Fitzgerald P6':[['Grace L.',9.25]],'Ms. Adeyemi P1':[['Lucas D.',8.70]],
-  'Mr. Lindgren P4':[['Emma H.',8.13]],'Mr. Hollis P7':[['Owen P.',7.64],['Liam O.',-3.40]],'Ms. Pryor P3':[['Chloe N.',7.18]],
-  'Mr. Callahan P6':[['JACK',0]]};
-const FIRST = 'Aiden Bella Caleb Dani Eli Fiona Gabe Hana Ian Jade Kai Lena Mateo Nora Omar Piper Quinn Rosa Sam Tess Uma Vince Wren Xavier Yara Zoe Adam Brooke Carlos Dylan Erin Felix Gia Henry Isla Jonah Kira Leo Mia Nate Olive Paul Ruby Seth Tara Victor Will Zara Abby Ben Cora Drew Ella Finn Grant Holly Ivy Jake Kate Luke Maddie Nico Paige Reid Sara Tyler Violet Wes Yusuf Alex Blake Chris Diego Eva Frank Greta Hugo Iris Josh Kyle Lily Marco Nia Oscar'.split(' ');
-const POOL = [['NVDA','Stock'],['AAPL','Stock'],['MSFT','Stock'],['AMZN','Stock'],['COST','Stock'],['JPM','Stock'],['XOM','Stock'],['META','Stock'],['TSLA','Stock'],['GOOGL','Stock'],['V','Stock'],['BND','Bond'],['TLT','Bond'],['GBTC','Crypto'],['Money mkt','MM']];
-const D = (function build(){
-  let seed = 214; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
-  const sections=[], students=[]; let fi=0;
-  T.forEach((t,ti) => t[3].forEach(([p,size,off]) => {
-    const sec = {id:sections.length, teacher:t[0], school:t[1], period:p, size, ti, base:t[2]+off}; sections.push(sec);
-    const stars = STARS[t[0]+' '+p] || [];
-    for (let k=0;k<size;k++){
-      let name, ret, isMe=false;
-      if (k<stars.length){ name=stars[k][0]; ret=stars[k][1]; if(name==='JACK'){ name='Jack M.'; isMe=true; } }
-      else { name = FIRST[fi%FIRST.length]+' '+'ABCDEFGHJKLMNPRSTVW'[(fi*7)%19]+'.'; fi++; ret = Math.min(sec.base + (rnd()*11-7), 6.9 - rnd()*0.4); ret = Math.round(ret*100)/100; }
-      const n = 4+Math.floor(rnd()*3), picked=[];
-      while (picked.length<n){ const c=POOL[Math.floor(rnd()*POOL.length)]; if(picked.indexOf(c)<0) picked.push(c); }
-      const cashPct = 0.05+rnd()*0.15, ws = picked.map(()=>0.4+rnd()), sum = ws.reduce((a,b)=>a+b,0);
-      const g0 = picked.map(c => c[1]==='MM'?0.35 : c[1]==='Bond'? Math.round((rnd()*3-1)*100)/100 : Math.round((ret+rnd()*24-12)*100)/100);
-      students.push({id:students.length, name, sec:sec.id, school:sec.school, ret, isMe, picked, ws, sum, cashPct, g0});
-    }
-  }));
-  return {sections, students};
-})();
-const ME = D.students.find(s => s.isMe);
-function liveStudents(){ ME.ret = totals().ret; return D.students; }
-function secAvg(sec){ const l = D.students.filter(s=>s.sec===sec.id); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
-function teacherAvg(ti){ const l = D.students.filter(s=>D.sections[s.sec].ti===ti); return l.reduce((a,s)=>a+s.ret,0)/l.length; }
-function schoolAvg(sch){ const ts = T.map((t,i)=>i).filter(i=>T[i][1]===sch); return ts.reduce((a,i)=>a+teacherAvg(i),0)/ts.length; }
+let T = [], D = {sections:[], students:[]}, ME = null, ST = null;
+function applyStandings(st){
+  ST = st;
+  const tIdx = new Map(), sIdx = new Map();
+  T = st.teachers.map((t,i)=>{ tIdx.set(t.id, i); return [t.name, t.school, t.id]; });
+  D.sections = st.sections.map((s,i)=>{ sIdx.set(s.id, i); return {id:i, dbId:s.id, teacher:s.teacher, school:s.school, period:s.period, size:s.size, ti:tIdx.get(s.tid)}; });
+  D.students = st.students.filter(s=>sIdx.has(s.sec)).map((s,i)=>({id:i, dbId:s.id, name:s.name, sec:sIdx.get(s.sec), school:s.school, ret:s.ret, value:s.value,
+    isMe: ROLE==='student' && !!ME_INFO && s.id===ME_INFO.id}));
+  ME = D.students.find(s=>s.isMe) || null;
+}
+function liveStudents(){ if (ME) ME.ret = totals().ret; return D.students; }
+const avgRet = l => l.length ? l.reduce((a,s)=>a+s.ret,0)/l.length : 0;
+function secAvg(sec){ return avgRet(D.students.filter(s=>s.sec===sec.id)); }
+function teacherAvg(ti){ return avgRet(D.students.filter(s=>D.sections[s.sec].ti===ti)); }
+function schoolAvg(sch){ const ts = T.map((t,i)=>i).filter(i=>T[i][1]===sch); return ts.length ? ts.reduce((a,i)=>a+teacherAvg(i),0)/ts.length : 0; }
 const schoolSize = sch => D.sections.filter(s=>s.school===sch).reduce((a,s)=>a+s.size,0);
+const activeSchools = () => SCHOOLS.filter(s=>T.some(t=>t[1]===s));
 const secLabel = sec => sec.teacher + ' · ' + sec.period;
 function myRanks(){
+  if (!ME) return null;
   const all = liveStudents().slice().sort((a,b)=>b.ret-a.ret);
   const rankIn = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(ME)+1;
   return { class: rankIn(D.students.filter(s=>s.sec===ME.sec)), school: rankIn(D.students.filter(s=>s.school===ME.school)), district: all.indexOf(ME)+1 };
 }
+// Another student's holdings come from the server as a snapshot (their teacher sees full detail).
+const HOLDS = {};
+function loadHolds(id){
+  HOLDS[id] = {loading:true};
+  api('/api/app?fn=student&id='+id).then(d=>{ HOLDS[id] = d; }).catch(()=>{ HOLDS[id] = {holds:[], failed:true}; }).finally(()=>{ if (UI.drawer) render(); });
+}
 function holdsOf(s){
   if (s.isMe){
     const t = totals().total;
-    return P.pos.map(p=>({s:p.sym, ty:p.side==='short'?'Short':({stock:'Stock',etf:'ETF',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]], v:posValue(p), g:posGain(p)/(p.n*p.b)*100}))
+    return P.pos.map(p=>({s:p.sym, ty:p.side==='short'?'Short':({stock:'Stock',etf:'ETF',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]]||'Stock', v:posValue(p), g:posGain(p)/(p.n*p.b)*100}))
       .concat(P.mm.bal>0.005 ? [{s:'Money mkt',ty:'MM',v:P.mm.bal,g:P.mm.earned/Math.max(1,P.mm.bal-P.mm.earned)*100}] : []).sort((a,b)=>b.v-a.v).concat([{s:'Cash',ty:'Cash',v:P.cash,g:null}]).map(h=>({...h,w:h.v/t*100}));
   }
-  const value = 100000*(1+s.ret/100);
-  const h = s.picked.map((c,i)=>({s:c[0],ty:c[1],v:value*(1-s.cashPct)*s.ws[i]/s.sum,g:s.g0[i]})).sort((a,b)=>b.v-a.v);
-  h.push({s:'Cash',ty:'Cash',v:value*s.cashPct,g:null});
-  return h.map(x=>({...x,w:x.v/value*100}));
+  const h = HOLDS[s.dbId];
+  if (!h){ loadHolds(s.dbId); return null; }
+  return h.loading ? null : h.holds;
 }
 
 /* ---------- chart data (sample; the live app loads daily and minute bars from Massive) ---------- */
@@ -515,26 +525,7 @@ const CACHE = {};
 function volOf(sym){ return ({ARKK:.032,IWM:.014,QQQ:.014,XLK:.016,XLE:.016,VXUS:.009,SCHD:.008,NVDA:.03,TSLA:.034,META:.024,GBTC:.04,ETHE:.045,TLT:.009,SHY:.0015,BIL:.0002,IEF:.005,TIP:.004,LQD:.006,HYG:.004,MUB:.003,BNDX:.0035})[sym] || ({stock:.017,bond:.004,crypto:.04,etf:.011})[MARKET[sym][1]]; }
 function hashOf(sym){ let h = 2166136261; for (const ch of sym){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); } return h>>>0; }
 /* stocks you can find with search (the live version searches every U.S. ticker through Massive's reference data); prices are samples */
-const REF = [
-  ['NFLX','Netflix','Communication','Streams movies and TV shows.',690],['DIS','Walt Disney','Communication','Theme parks, movies, and Disney+.',98],
-  ['NKE','Nike','Consumer','Makes athletic shoes and clothing.',82],['SBUX','Starbucks','Consumer','Runs coffee shops around the world.',92],
-  ['MCD',"McDonald's",'Consumer','The world’s largest fast-food chain.',295],['KO','Coca-Cola','Consumer staples','Makes soft drinks and other beverages.',68],
-  ['PEP','PepsiCo','Consumer staples','Makes drinks and snacks like Pepsi and Lay’s.',165],['WMT','Walmart','Consumer staples','The largest U.S. retailer.',80],
-  ['TGT','Target','Consumer','Runs general merchandise stores.',150],['HD','Home Depot','Consumer','Sells home improvement supplies.',390],
-  ['AMD','Advanced Micro Devices','Semiconductors','Designs computer and graphics chips.',160],['INTC','Intel','Semiconductors','Designs and manufactures computer chips.',22],
-  ['AVGO','Broadcom','Semiconductors','Makes chips for networking and phones.',170],['CRM','Salesforce','Technology','Sells customer management software.',280],
-  ['ADBE','Adobe','Technology','Makes Photoshop, Acrobat, and creative software.',510],['ORCL','Oracle','Technology','Sells databases and cloud services.',170],
-  ['IBM','IBM','Technology','Sells business software and consulting.',220],['UBER','Uber','Technology','Runs ride-hailing and food delivery apps.',75],
-  ['ABNB','Airbnb','Consumer','Lists homes and rooms for travelers.',130],['SPOT','Spotify','Communication','Streams music and podcasts.',380],
-  ['RBLX','Roblox','Communication','Runs an online game platform.',45],['EA','Electronic Arts','Communication','Makes video games like EA Sports FC.',150],
-  ['PLTR','Palantir','Technology','Makes data analysis software.',38],['SHOP','Shopify','Technology','Helps businesses run online stores.',80],
-  ['BA','Boeing','Industrials','Builds airplanes and defense systems.',155],['CAT','Caterpillar','Industrials','Makes construction and mining equipment.',370],
-  ['F','Ford','Autos','Makes cars and trucks.',10.5],['GM','General Motors','Autos','Makes cars and trucks.',48],
-  ['LLY','Eli Lilly','Health care','Develops and sells medicines.',900],['JNJ','Johnson & Johnson','Health care','Makes medicines and medical devices.',160],
-  ['PFE','Pfizer','Health care','Develops and sells medicines and vaccines.',28],['UNH','UnitedHealth','Health care','The largest U.S. health insurer.',560],
-  ['CVX','Chevron','Energy','Produces and refines oil and natural gas.',150],['BAC','Bank of America','Financials','One of the largest U.S. banks.',40],
-  ['GS','Goldman Sachs','Financials','An investment bank.',480],['MA','Mastercard','Financials','Runs the Mastercard payment network.',500],
-  ['LULU','Lululemon','Consumer','Makes athletic clothing.',270],['CMG','Chipotle','Consumer','Runs fast-casual Mexican restaurants.',56]
+const REF = [   // the live app searches every U.S. stock and ETF through Massive
 ];
 /* sample fundamentals: [P/E, market cap in $ billions, dividend yield %, revenue growth %] */
 const FUND = {
@@ -545,8 +536,10 @@ const FUND = {
   TIP:[null,null,3.0,null], LQD:[null,null,4.6,null], HYG:[null,null,6.3,null], MUB:[null,null,3.1,null], BNDX:[null,null,3.3,null], GBTC:[null,null,0,null], ETHE:[null,null,0,null]
 };
 function fundOf(sym){
-  if (FUND[sym]) return FUND[sym];
-  const h = hashOf(sym); return [12+h%34, 20+h%480, h%3===0 ? 0 : +(0.5+(h%25)/10).toFixed(2), -4+(h%24)];
+  const h = hashOf(sym), f = (FUND[sym] || [12+h%34, 20+h%480, h%3===0 ? 0 : +(0.5+(h%25)/10).toFixed(2), -4+(h%24)]).slice();
+  const y = YLD[sym];
+  if (y && prices[sym] > 0) f[2] = +(y.ttm/prices[sym]*100).toFixed(2);   // real trailing 12-month yield
+  return f;
 }
 /* real stock splits inside the 5-year window */
 const SPLITS = {NVDA:['2024-06-10','10-for-1'], TSLA:['2022-08-25','3-for-1'], GOOGL:['2022-07-18','20-for-1'], AMZN:['2022-06-06','20-for-1']};
@@ -581,25 +574,9 @@ async function fetchQuotes(syms){
   return out;
 }
 function applyQuotes(qs){
-  Object.keys(qs).forEach(s=>{ if (!MARKET[s]) return; const q = qs[s]; LIVE.quotes[s] = q; prices[s] = q.p; prev[s] = q.pc || q.p; });
-}
-// The demo portfolio was written in sample prices. The first time real prices arrive, convert each
-// holding so its dollar value and percent gain stay the same: cost basis scales with the price, share count the other way.
-function rebase(qs){
-  if (!P.rebased) P.rebased = {};
-  const whole = n => n>=1 ? Math.max(1, Math.round(n)) : +n.toFixed(4);
-  Object.keys(qs).forEach(s=>{
-    if (P.rebased[s] || !MARKET[s]) return;
-    P.rebased[s] = 1;
-    const r = qs[s].p / MARKET[s][2]; if (!isFinite(r) || r<=0) return;
-    P.pos.forEach(p=>{ if (p.sym===s){ p.n = whole(p.n/r); p.b = +(p.b*r).toFixed(4); } });
-    (P.log||[]).forEach(l=>{ if (l.sym===s){ l.n = whole(l.n/r); l.price = +(l.price*r).toFixed(4); } });
-    (P.closed||[]).forEach(c=>{ if (c.sym===s){ c.n = whole(c.n/r); c.b = +(c.b*r).toFixed(4); c.s = +(c.s*r).toFixed(4); } });
-    (P.dca||[]).forEach(pl=>{ if (pl.sym===s) (pl.buys||[]).forEach(b=>{ b.price = +(b.price*r).toFixed(4); b.sh = +(b.sh/r).toFixed(4); }); });
-    (P.income||[]).forEach(e=>{ if (e.sym===s){ e.shares = whole(e.shares/r); e.perShare = +(e.perShare*r).toFixed(4); } });
-  });
-  if (!P.spyStart && qs.SPY) P.spyStart = +(qs.SPY.p * 516.52 / MARKET.SPY[2]).toFixed(2);
-  if (P.spyStart) SPY_START = P.spyStart;
+  // A stock split takes effect overnight: shares change the evening before, prices the next morning.
+  const adj = (P && P.adj) || {};
+  Object.keys(qs).forEach(s=>{ if (!MARKET[s]) return; const q = qs[s], k = adj[s] || 1; LIVE.quotes[s] = q; prices[s] = q.p/k; prev[s] = (q.pc || q.p)/k; });
 }
 // Daily bars for the chart. Today's bar comes from the latest snapshot.
 function liveSeries(sym){
@@ -637,8 +614,6 @@ async function liveAdd(sym){
     if (!q) return false;
     MARKET[sym] = [meta.n || sym, meta.k==='etf' ? 'etf' : 'stock', q.p, q.pc || q.p];
     if (!ABOUT[sym]) ABOUT[sym] = [meta.sector || (meta.k==='etf'?'ETF':''), meta.about || ''];
-    if (!P.rebased) P.rebased = {};
-    P.rebased[sym] = 1; save();
     applyQuotes({[sym]:q});
     return true;
   }catch(e){ return false; }
@@ -656,19 +631,10 @@ function liveSearch(q, done){
   }, 250);
 }
 const liveHits = (q, kind) => (LIVE.on && LIVE.hits[q.trim()] || []).filter(h=>!kind || h.k===kind);
-// Last real prices, so a returning student never sees their real-price portfolio valued at sample prices.
-function keepQuotes(){ try{ localStorage.setItem('d214quotes', JSON.stringify({t:Date.now(), asOf:LIVE.asOf, q:LIVE.quotes})); }catch(e){} }
-(function restoreQuotes(){
-  if (!P.rebased) return;
-  let c = null; try{ c = JSON.parse(localStorage.getItem('d214quotes')||'null'); }catch(e){}
-  if (c && c.q && Date.now()-c.t < 3*DAY){ applyQuotes(c.q); LIVE.asOf = c.asOf||0; LIVE.cached = true; if (P.spyStart) SPY_START = P.spyStart; return; }
-  P = START(); normalizeMM(); save();   // too old to trust: go back to the sample demo
-})();
 function renderAttr(){
   const box = document.getElementById('attr'); if (!box) return;
   const src = box.querySelector('.src'), mk = document.getElementById('attrMk');
-  if (!LIVE.on && LIVE.cached){ LIVE.stale = true; }
-  else if (!LIVE.on){ src.textContent = 'Sample prices for the demo. Not real market data.'; mk.className = 'mk'; mk.textContent = ''; return; }
+  if (!LIVE.on){ mk.className = 'mk'; mk.textContent = ''; return; }
   src.innerHTML = 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>';
   const st = LIVE.status && LIVE.status.market, open = st==='open';
   const when = LIVE.asOf ? new Date(LIVE.asOf).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+' CT' : '';
@@ -678,23 +644,21 @@ function renderAttr(){
 }
 async function refreshLive(){
   if (document.visibilityState==='hidden') return;
-  try{ applyQuotes(await fetchQuotes(Object.keys(MARKET))); LIVE.stale = false; keepQuotes(); }
+  try{ applyQuotes(await fetchQuotes(Object.keys(MARKET))); LIVE.stale = false; }
   catch(e){ LIVE.stale = true; }
   repaint();
 }
-async function goLive(){
-  try{
-    LIVE.status = await api('/api/status');
-    const qs = await fetchQuotes(Object.keys(MARKET));
-    if (!qs.SPY) throw new Error('no quotes');
-    rebase(qs); applyQuotes(qs); save(); keepQuotes();
-    LIVE.on = true; LIVE.stale = false;
-    Object.keys(CACHE).forEach(k=>delete CACHE[k]);
-    render();
-    setInterval(refreshLive, 60000);
-    setInterval(()=>{ api('/api/status').then(s=>{ LIVE.status = s; renderAttr(); }).catch(()=>{}); }, 300000);
-    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshLive(); });
-  }catch(e){ LIVE.on = false; renderAttr(); }
+// Prices refresh every minute while the page is open (Vercel's cache shares each answer across students).
+let liveTimers = false;
+function goLive(){
+  LIVE.on = true; LIVE.stale = false;
+  if (liveTimers) return;
+  liveTimers = true;
+  const st = () => api('/api/status').then(s=>{ LIVE.status = s; renderAttr(); renderBanner(); }).catch(()=>{});
+  st();
+  setInterval(refreshLive, 60000);
+  setInterval(st, 300000);
+  document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshLive(); });
 }
 /* ---------- bond funds: monthly interest ---------- */
 // [rate sensitivity, credit quality]
@@ -724,72 +688,43 @@ function exDatesBetween(a, b){ // ex-dividend dates after a, up to and including
 }
 function nextEx(from){ const d = new Date(from+'T00:00:00Z'); let y = d.getUTCFullYear(), m = d.getUTCMonth(); let ex = exDateFor(y, m); if (ex<=from){ if (++m>11){ m=0; y++; } ex = exDateFor(y, m); } return ex; }
 function payFactor(sym, date){ const h = hashOf(sym+date); return sym==='TIP' ? 0.05 + (h%216)/100 : 0.92 + (h%17)/100; }
-function perShareFor(sym, ex){ return +(prices[sym]*fundOf(sym)[2]/1200*payFactor(sym, ex)).toFixed(4); }
-function normalizeIncome(){
-  if (P.income) return;
-  const today = todayStr(); P.income = [];
-  exDatesBetween(addDays(today, -70), today).slice(-2).forEach(ex=>{
-    const ps = perShareFor('BND', ex), pay = payDateFor(ex);
-    P.income.push({sym:'BND', ex, pay, perShare:ps, shares:100, amount:+(ps*100).toFixed(2), paid:pay<=today});
-  });
-  const bnd = P.pos.find(p=>p.sym==='BND' && p.side==='long');
-  if (bnd) bnd.income = P.income.filter(e=>e.paid).reduce((a,e)=>a+e.amount, 0);
-  P.incomeChecked = today;
+// Real payment history from Massive: the last payment per share and the past year's total.
+const YLD = {};
+function loadYield(sym){
+  if (YLD[sym] !== undefined) return;
+  YLD[sym] = null;
+  api('/api/app?fn=yield&sym='+encodeURIComponent(sym)).then(d=>{ YLD[sym] = d; repaint(); }).catch(()=>{});
 }
-function processIncome(){
-  const today = todayStr(); let changed = false;
-  // on each ex-dividend date, whoever owns the fund locks in that month's payment
-  exDatesBetween(P.incomeChecked, today).forEach(ex=>{
-    P.pos.filter(p=>p.side==='long' && isBond(p.sym)).forEach(p=>{
-      const ps = perShareFor(p.sym, ex);
-      P.income.push({sym:p.sym, ex, pay:payDateFor(ex), perShare:ps, shares:p.n, amount:+(ps*p.n).toFixed(2), paid:false}); changed = true;
-    });
-  });
-  if (P.incomeChecked<today){ P.incomeChecked = today; changed = true; }
-  // on the payment date the cash arrives, even if the fund was sold after the ex-dividend date
-  P.income.filter(e=>!e.paid && e.pay<=today).forEach(e=>{
-    e.paid = true; changed = true;
-    const p = P.pos.find(x=>x.sym===e.sym && x.side==='long');
-    if (p) p.income = (p.income||0) + e.amount;
-    if (p && p.drip){
-      const add = e.amount/prices[e.sym];
-      p.b = (p.b*p.n + e.amount)/(p.n+add); p.n = +(p.n+add).toFixed(4); e.reinvested = +add.toFixed(4);
-      P.notes.push(e.sym+' paid you '+money(e.amount)+' in interest and bought '+add.toFixed(3)+' more shares with it.');
-    } else {
-      P.cash += e.amount;
-      P.notes.push(e.sym+' paid you '+money(e.amount)+' in interest. It went to your cash.');
-    }
-  });
-  if (changed) save();
-}
+function perShareFor(sym){ const y = YLD[sym]; return y && y.last > 0 ? y.last : null; }
 function bondInfo(p){
   const today = todayStr(), g = posGain(p), income = p.income||0, total = g+income;
   const pending = P.income.find(e=>e.sym===p.sym && !e.paid);
   const ex = nextEx(today);
-  return {g, income, total, totalPct:total/(p.n*p.b)*100, pending, next:{ex, pay:payDateFor(ex), est:perShareFor(p.sym, ex)*p.n}};
+  const ps = perShareFor(p.sym);
+  return {g, income, total, totalPct:total/(p.n*p.b)*100, pending, next:{ex, pay:payDateFor(ex), est: ps===null ? null : ps*p.n}};
 }
 function bondCardHtml(c){
   const b = c.bond;
   return `<span class="num ${cls(b.total)}" style="font-size:28px">${pct(b.totalPct)}</span>
     <span class="num" style="font-size:13px;color:var(--soft)">Price <span class="${cls(b.g)}">${signed(b.g)}</span> · Interest <span class="up">+${money(b.income)}</span></span>
-    <span style="font-size:13px;color:var(--dim)">${b.pending ? 'Payment coming '+fmtDay(b.pending.pay)+': '+money(b.pending.amount) : 'Next payment about '+money(b.next.est)+' on '+fmtDay(b.next.pay)}</span>
+    <span style="font-size:13px;color:var(--dim)">${b.pending ? 'Payment coming '+fmtDay(b.pending.pay)+': '+money(b.pending.amount) : b.next.est===null ? 'Pays interest monthly' : 'Next payment about '+money(b.next.est)+' around '+fmtDay(b.next.pay)}</span>
     <span class="spread"><span class="num ${cls(b.total)}" style="font-size:17px">${signed(b.total)} total</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`;
 }
 function incomeSection(){
   const today = todayStr(), held = P.pos.filter(p=>p.side==='long' && isBond(p.sym));
   if (!held.length && !P.income.length) return '';
   const ex = nextEx(today), pay = payDateFor(ex);
-  const rows = held.filter(p=>!P.income.some(e=>e.sym===p.sym && !e.paid)).map(p=>({d:pay, sym:p.sym, amt:perShareFor(p.sym, ex)*p.n, st:'Expected', note:'own it on '+fmtDay(ex)}))
+  const rows = held.filter(p=>!P.income.some(e=>e.sym===p.sym && !e.paid) && perShareFor(p.sym)!==null).map(p=>({d:pay, sym:p.sym, amt:perShareFor(p.sym)*p.n, st:'Expected', note:'about, if you own it on '+fmtDay(ex)}))
     .concat(P.income.filter(e=>!e.paid).map(e=>({d:e.pay, sym:e.sym, amt:e.amount, st:'Coming', note:'locked in on '+fmtDay(e.ex)})))
     .concat(P.income.filter(e=>e.paid).slice().reverse().slice(0,4).map(e=>({d:e.pay, sym:e.sym, amt:e.amount, st:'Paid', note:e.reinvested?'reinvested':'to cash'})));
   const received = P.income.filter(e=>e.paid).reduce((a,e)=>a+e.amount, 0);
   const stc = {Expected:'var(--dim)', Coming:'var(--cd)', Paid:'var(--up)'};
   return `<section class="wrap" style="padding-top:48px">
-    <div class="spread" style="flex-wrap:wrap"><h2 class="h2">Interest payments</h2><span style="color:var(--muted);font-size:17px">Bond funds pay monthly · received <span class="num up">+${money(received)}</span></span></div>
+    <div class="spread" style="flex-wrap:wrap"><h2 class="h2">Dividends &amp; Interest</h2><span style="color:var(--muted);font-size:17px">Bond funds pay monthly · received <span class="num ${cls(received)}">${signed2(received)}</span></span></div>
     <div class="side-card" style="margin-top:18px;gap:0;padding-block:6px">
       ${rows.map(r=>`<div class="irow"><span class="num" style="color:var(--dim);font-size:14px">${fmtDay(r.d)}</span><span class="num" style="color:var(--white)">${r.sym}</span>
         <span style="font-size:14px"><b style="color:${stc[r.st]};font-weight:600">${r.st}</b> <span style="color:var(--dim)">· ${r.note}</span></span>
-        <span class="num ${r.st==='Paid'?'up':''}" style="text-align:right;${r.st==='Paid'?'':'color:var(--soft)'}">${r.st==='Expected'?'about ':''}+${money(r.amt)}</span></div>`).join('')}
+        <span class="num ${r.st==='Paid'?cls(r.amt):''}" style="text-align:right;${r.st==='Paid'?'':'color:var(--soft)'}">${r.st==='Expected'?'about ':''}${signed2(r.amt)}</span></div>`).join('')}
     </div></section>`;
 }
 function bondSheetHtml(p){
@@ -801,35 +736,10 @@ function bondSheetHtml(p){
       ${b.pending ? `Your <b class="up">${money(b.pending.amount)}</b> payment arrives ${fmtDay(b.pending.pay)}, even if you sell first. ` : ''}
       Next ex-dividend date: <b style="color:var(--white)">${fmtDay(b.next.ex)}</b>. Sell before then and that month’s payment goes to the buyer, but the price you get already includes the interest built up so far.</p>`;
 }
-normalizeIncome(); processIncome();
 /* ---------- auto-invest (dollar cost averaging): the same dollar amount on a schedule, whatever the price ---------- */
 const DCA_FREQ = {week:[7,'every week'], '2week':[14,'every 2 weeks'], month:[0,'every month']};
 const dcaNext = (d, f) => f==='month' ? addMonths(d,1) : addDays(d, DCA_FREQ[f][0]);
 const nextBizDay = d => { let t = Date.parse(d+'T00:00:00Z'); while ([0,6].includes(new Date(t).getUTCDay())) t += DAY; return new Date(t).toISOString().slice(0,10); };
-function dcaPrice(sym, date){ // the live app uses that day's price; the demo nudges catch-up buys so the averaging is visible
-  if (date>=todayStr()) return prices[sym];
-  const h = hashOf(sym+date); return +(prices[sym]*(1 + ((h%201)-100)/100*volOf(sym)*2.5)).toFixed(2);
-}
-function dcaBuy(pl, date){
-  const price = dcaPrice(pl.sym, date);
-  if (P.cash < pl.amt - 0.005){ pl.skipped = (pl.skipped||0)+1; P.notes.push('Your '+pl.sym+' auto-invest waits for cash: it needs '+whole(pl.amt)+'.'); return; }
-  const sh = +(pl.amt/price).toFixed(4);
-  P.cash -= pl.amt;
-  const p = P.pos.find(x=>x.sym===pl.sym && x.side==='long');
-  if (p){ p.b = (p.b*p.n + pl.amt)/(p.n+sh); p.n = +(p.n+sh).toFixed(4); } else P.pos.push({sym:pl.sym, side:'long', n:sh, b:pl.amt/sh});
-  pl.buys.push({date, price, sh});
-  P.log.push({sym:pl.sym, act:'buy', n:sh, price, date, auto:true});   // auto-invest buys do not count as trades this week
-}
-function processDCA(){
-  const today = todayStr(); let changed = false;
-  P.dca.filter(pl=>!pl.paused).forEach(pl=>{
-    let k = 0;
-    while (pl.next<=today && k++<60){ const d = pl.next; dcaBuy(pl, d); pl.next = nextBizDay(dcaNext(d, pl.freq)); changed = true; }
-  });
-  if (changed) save();
-}
-if (!P.dca) P.dca = [];
-processDCA();
 function dcaSection(){
   if (!P.dca.length) return '';
   return `<section class="wrap" style="padding-top:48px">
@@ -867,7 +777,7 @@ function sampleSeriesFor(sym){
   }
   // random walk pinned to the starting level, each sample trade price, and today's price; earnings days move more
   const anchors = [{i:0,p:now*(START_MULT[sym]||0.6)}];
-  START().log.filter(l=>l.sym===sym).forEach(l=>anchors.push({i:N-1-l.ago, p:l.price}));
+  // (sample series only: used if live history is missing)
   anchors.push({i:N-1,p:now}); anchors.sort((a,b)=>a.i-b.i); anchors.forEach(a=>{ a.p /= acc[a.i]; });
   const lp = new Array(N); lp[0] = Math.log(anchors[0].p);
   for (let k=1;k<anchors.length;k++){
@@ -995,7 +905,7 @@ function vCharts(){
             <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
           </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>
+        ${ROLE==='student' ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>` : ''}
       </div>
       <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button></div>
       ${c.view==='fin' ? vFin(sym) : `
@@ -1015,7 +925,7 @@ function vCharts(){
         <span class="keys">${keys}</span>
         <span>${LIVE.on ? 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>' : 'Sample prices'} · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
       </div>
-      <div class="side-card" style="gap:2px;margin-top:8px">
+      <div class="side-card" style="gap:2px;margin-top:8px;${ROLE==='student'?'':'display:none'}">
         <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
         ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
           return `<div class="trow"><span class="num" style="color:var(--dim);font-size:14px">${dLabel(logDate(l))}</span><span style="color:var(--white)"><b>${w} ${fmtSh(l.n)}</b> <span style="color:var(--muted)">at ${money(l.price)}</span></span><span class="num ${v.good?'up':'down'}" style="text-align:right">${pct(v.ch)}</span><span class="vd">${v.text}</span></div>`; }).join('')
@@ -1293,13 +1203,14 @@ function tickChart(){
 }
 
 /* ---------- ui state ---------- */
-const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null,
+const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
   chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
-const route = () => { const h = (location.hash||'').replace('#',''); return ['standings','portfolio','checkup','charts','trade'].includes(h) ? h : 'portfolio'; };
 
 /* ---------- views ---------- */
 function vStandings(){
+  if (!ST) return `<div class="wrap"><div class="head"><h1 class="h1">Standings</h1></div><p class="empty">Loading the standings…</p></div>`;
+  if (!D.students.length) return `<div class="wrap"><div class="head"><h1 class="h1">Standings</h1></div><p class="empty">No students yet. The district admin adds classes from the roster spreadsheet.</p></div>`;
   const tabs = [['students','Students'],['classes','Classes'],['teachers','Teachers'],['schools','Schools']];
   let items=[], title='', cap='';
   if (UI.tab==='students'){
@@ -1317,16 +1228,16 @@ function vStandings(){
     title='Class Leaderboard'; cap=D.sections.length+' class periods · average student return';
     items = D.sections.map(sec=>({name:secLabel(sec), school:sec.school, sub:sec.school, avg:secAvg(sec), open:'class:'+sec.id})).sort((a,b)=>b.avg-a.avg);
   } else if (UI.tab==='teachers'){
-    title='Teacher Leaderboard'; cap='12 teachers · all of their classes combined';
+    title='Teacher Leaderboard'; cap=T.length+' teachers · all of their classes combined';
     items = T.map((t,i)=>({name:t[0], school:t[1], sub:t[1], avg:teacherAvg(i), open:'teacher:'+i})).sort((a,b)=>b.avg-a.avg);
   } else {
-    title='School Leaderboard'; cap='6 schools · average of each school’s teachers';
-    items = SCHOOLS.map(s=>({name:s, school:s, sub:schoolSize(s)+' students · '+T.filter(t=>t[1]===s).length+' teachers', avg:schoolAvg(s), open:'school:'+s})).sort((a,b)=>b.avg-a.avg);
+    title='School Leaderboard'; cap=activeSchools().length+' schools · average of each school’s teachers';
+    items = activeSchools().map(s=>({name:s, school:s, sub:schoolSize(s)+' students · '+T.filter(t=>t[1]===s).length+' teachers', avg:schoolAvg(s), open:'school:'+s})).sort((a,b)=>b.avg-a.avg);
   }
   items.forEach((x,i)=>{ if(x.rank===undefined) x.rank=i+1; });
   const max = Math.max(...items.map(x=>Math.abs(x.avg)), 0.01);
   const podium = items.slice(0,3), rest = items.slice(3);
-  const spy = totals().spy;
+  const spy = ST.spyRet || 0;
   const chip = (on,label,act,lg) => `<button type="button" class="chip" aria-pressed="${on}" data-act="${act}">${lg||''}<span>${label}</span></button>`;
   return `
   <div class="wrap">
@@ -1336,7 +1247,7 @@ function vStandings(){
       ${tabs.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${UI.tab===id}" data-act="tab:${id}">${l}</button>`).join('')}
     </div>
     ${UI.tab==='students' ? `<div class="filters">
-      <div class="frow"><span class="label">School</span>${chip(!UI.school,'All schools','school:')}${SCHOOLS.map(s=>chip(UI.school===s,s,'school:'+s,logo(s,30))).join('')}</div>
+      <div class="frow"><span class="label">School</span>${chip(!UI.school,'All schools','school:')}${activeSchools().map(s=>chip(UI.school===s,s,'school:'+s,logo(s,30))).join('')}</div>
       ${UI.school ? `<div class="frow"><span class="label">Class</span>${chip(UI.sec===null,'All classes','sec:')}${D.sections.filter(s=>s.school===UI.school).map(s=>chip(UI.sec===s.id,secLabel(s),'sec:'+s.id)).join('')}</div>`:''}
     </div>`:''}
     <div class="viewbar"><span class="t">${title}</span><span class="c">${cap}</span></div>
@@ -1357,6 +1268,7 @@ function vStandings(){
   </div>
   <section class="wrap" style="padding-block:56px 72px">
     <h2 class="h2">Today &amp; This Week</h2>
+    ${awardsList().length ? '' : '<p class="empty" style="padding-top:12px">Awards are picked after each market day closes. The first ones show up after the first full trading day.</p>'}
     <div class="awards">${awardsList().map((a,i)=>`
       <button type="button" class="award" data-act="open:award:${i}">
         <span class="label" style="color:var(--muted)">${a.label}</span>
@@ -1366,36 +1278,46 @@ function vStandings(){
       </button>`).join('')}</div>
   </section>`;
 }
-const AWARDS = [
-  {label:'Trader of the Day',value:'+9.8%',name:'Maya R.',school:'Hersey',good:true},
-  {label:'Mover of the Day',value:'+3.61%',name:'Jordan K.',school:'Prospect',good:true},
-  {label:'Mover of the Week',value:'+8.93%',name:'Priya S.',school:'Rolling Meadows',good:true},
-  {label:'Best Trade of the Week',value:'+18.4%',name:'Sofia M.',school:'Elk Grove',good:true},
-  {label:'Most Active of the Week',value:'38 trades',name:'Ethan W.',school:'Buffalo Grove',good:null},
-  {label:'Biggest Climber · Week',value:'+41',name:'Chloe N.',school:'Prospect',good:true,lesson:'Climbed 41 spots in the district standings.'},
-  {label:'Steady Hands · Week',value:'0 trades',name:'Grace L.',school:'Buffalo Grove',good:true,sub:'Mr. Fitzgerald · P6 · Buffalo Grove',stats:[['Week','+2.40%'],['Held through','A down Monday']],lesson:'Held every position all week and still finished up.'}
-];
+// Awards are picked by the server after each market day (see lib/eod.js).
+function awardsList(){
+  if (!ST) return [];
+  const byDb = new Map(D.students.map(s=>[s.dbId, s]));
+  const out = (ST.awards||[]).map(a=>{
+    const s = byDb.get(a.student); if (!s) return null;
+    return {label:a.label, value:a.text, name:s.name, school:s.school, good:a.neutral ? null : true, stu:s,
+      sub:secLabel(D.sections[s.sec])+' · '+s.school, stats:a.stats, lesson:a.lesson};
+  }).filter(Boolean);
+  const pd = popularDown(); if (pd) out.push(pd);
+  return out;
+}
 /* district-wide, never about one student: the stock the most students own that is down today */
 function popularDown(){
-  liveStudents();
-  const owners = sym => D.students.filter(s => s.isMe ? P.pos.some(p=>p.sym===sym && p.side==='long') : s.picked.some(c=>c[0]===sym)).length;
-  const list = POOL.filter(c=>c[1]==='Stock').map(c=>c[0]).map(sym=>({sym, n:owners(sym), chg:(prices[sym]/prev[sym]-1)*100})).sort((a,b)=>b.n-a.n);
-  const pick = list.find(x=>x.chg<0) || list[0], down = pick.chg<0;
-  return {stock:pick.sym, label: down?'Most Owned · Down Today':'Most Owned Stock', value:pct(pick.chg), name:MARKET[pick.sym][0], owners:pick.n, good:null, chg:pick.chg,
-    lesson: down ? pick.n+' students own it. On sale, or slipping? Check the chart before you decide.' : pick.n+' students own it. No popular stock is down right now.'};
+  const p = ST && ST.popular; if (!p) return null;
+  if (!MARKET[p.sym]){ const q = ST.quotes[p.sym] || {p:0, pc:0}; MARKET[p.sym] = [p.name, 'stock', q.p, q.pc]; prices[p.sym] = q.p; prev[p.sym] = q.pc || q.p; }
+  const down = p.chg<0;
+  return {stock:p.sym, label: down?'Most Owned · Down Today':'Most Owned Stock', value:pct(p.chg), name:p.name, owners:p.owners, good:null, chg:p.chg,
+    lesson: down ? p.owners+' students own it. On sale, or slipping? Check the chart before you decide.' : p.owners+' students own it. No popular stock is down right now.'};
 }
-const awardsList = () => AWARDS.concat([popularDown()]);
 
 function vPortfolio(){
-  const t = totals(), r = myRanks(), mix = mixOf(), sec = D.sections[ME.sec];
+  const t = totals(), r = myRanks(), mix = mixOf(), sec = ME ? D.sections[ME.sec] : null, mi = ME_INFO || {};
   const stocksPct = mix.filter(m=>m.name==='Stocks').map(m=>m.pct)[0] || 0;
   const biggest = P.pos.filter(p=>p.side==='long').map(p=>({sym:p.sym,w:posValue(p)/t.total*100})).sort((a,b)=>b.w-a.w)[0];
-  // chart: fixed history plus today's live point
-  const days = ['AUG 24','','','','','TODAY'];
-  const you = [0,1.40,0.70,3.40,4.45,t.ret], mkt = [0,0.58,1.05,1.63,2.10,t.spy];
+  // chart: each market day's closing value (saved every evening) plus today's live point
+  const tday = nyToday();
+  const first = HISTORY.length && (!SETTINGS.startDate || HISTORY[0].d < SETTINGS.startDate) ? HISTORY[0].d : SETTINGS.startDate;
+  const series = [{d:first||'', you:0, mkt:0}]
+    .concat(HISTORY.filter(h=>h.d<tday).map(h=>({d:h.d, you:(h.v/100000-1)*100, mkt:(h.spy && SPY_START) ? (h.spy/SPY_START-1)*100 : null})))
+    .concat([{d:tday, you:t.ret, mkt:t.spy}]);
+  for (let i=1;i<series.length;i++) if (series[i].mkt===null) series[i].mkt = series[i-1].mkt;
+  const you = series.map(x=>x.you), mkt = series.map(x=>x.mkt), N = series.length;
+  const days = [series[0].d ? fmtDay(series[0].d).toUpperCase() : 'START'];
   const lo = Math.min(0,...you,...mkt)-0.5, hi = Math.max(...you,...mkt)+0.8;
-  const X = i => 30 + i*134, Y = v => 200 - (v-lo)/(hi-lo)*170;
+  const X = i => 30 + i*(670/Math.max(1,N-1)), Y = v => 200 - (v-lo)/(hi-lo)*170;
   const pts = a => a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' ');
+  // keep the two end labels from overlapping when the lines finish close together
+  let yYou = Y(t.ret)-2, ySpy = Y(t.spy)+4;
+  if (Math.abs(yYou-ySpy) < 20){ const mid = (yYou+ySpy)/2, up = t.ret>=t.spy; yYou = mid + (up?-10:10); ySpy = mid + (up?10:-10); }
   const tagC = {Stock:'#8a97a8',ETF:'#9a86c9',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e'};
   const cards = P.pos.map(p=>{ const ty = p.side==='short'?'Short':({stock:'Stock',etf:'ETF',bond:'Bond',crypto:'Crypto'})[MARKET[p.sym][1]]; const g=posGain(p), gp=g/(p.n*p.b)*100;
       return {key:'pos:'+p.sym+':'+p.side, sym:p.sym, ty, g, gp, w:posValue(p)/t.total*100, bond: (ty==='Bond') ? bondInfo(p) : null, rule: p.side==='short'?'var(--warn)':(g>=0?'var(--red)':'#5a6778')}; })
@@ -1409,7 +1331,7 @@ function vPortfolio(){
     ${P.notes.length ? `<div class="note good" role="status">${P.notes.map(n=>`<span>${esc(n)}</span>`).join('')}<button type="button" class="ghost" style="min-height:40px;margin-left:auto" data-act="dismiss">Dismiss</button></div>` : ''}
     <div class="hero">
       <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-        <div class="who">${logo('Hersey',52)}<span class="n">Jack M.</span><span style="color:var(--dim);font-size:17px">${secLabel(sec)} · Hersey</span></div>
+        <div class="who">${logo(mi.school,52)}<span class="n">${esc(mi.name||'')}</span><span style="color:var(--dim);font-size:17px">${esc(mi.teacher+' · '+mi.period)} · ${esc(mi.school)}</span></div>
         <span class="big">${whole(t.total)}</span>
         <div class="gainline"><span class="${cls(t.ret)}">${pct(t.ret)}</span><span class="${cls(t.ret)}">${signed(t.total-100000)}</span>
           <span class="vs">${t.vs>=0?'beating':'trailing'} the S&amp;P by <b style="color:var(--white)">${Math.abs(t.vs).toFixed(2)} pts</b></span></div>
@@ -1420,8 +1342,9 @@ function vPortfolio(){
       </div>
     </div>
     <div class="ranks">
-      ${[[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize('Hersey'),'At Hersey'],[r.district,D.students.length,'In the district']].map(([k,of,l],i)=>`
-      <div class="rankc${i===0?' top':''}"><span class="r">${ord(k)}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
+      ${(r ? [[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize(mi.school),'At '+mi.school],[r.district,D.students.length,'In the district']]
+            : [[null,'…','In class'],[null,'…','At '+mi.school],[null,'…','In the district']]).map(([k,of,l],i)=>`
+      <div class="rankc${i===0?' top':''}"><span class="r">${k ? ord(k) : '—'}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
     </div>
     <div class="panels">
       <div class="panel">
@@ -1430,12 +1353,12 @@ function vPortfolio(){
         <svg viewBox="0 0 840 240" width="100%" role="img" aria-label="Your return ${t.ret.toFixed(2)} percent versus the S&amp;P 500 at ${t.spy.toFixed(2)} percent">
           <line x1="20" y1="${Y(0).toFixed(1)}" x2="820" y2="${Y(0).toFixed(1)}" stroke="#34455a" stroke-width="1"/>
           <polyline points="${pts(mkt)}" fill="none" stroke="#8a97a8" stroke-width="3" stroke-dasharray="8 7"/>
-          <polyline points="${pts(you)}" fill="none" stroke="#ef5b70" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="${X(5)}" cy="${Y(t.ret).toFixed(1)}" r="8" fill="#ef5b70"/><circle cx="${X(5)}" cy="${Y(t.spy).toFixed(1)}" r="6" fill="#8a97a8"/>
+          <polyline points="${pts(you)}" fill="none" stroke="#ef5b70" stroke-width="${N>30?3:5}" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${X(N-1)}" cy="${Y(t.ret).toFixed(1)}" r="8" fill="#ef5b70"/><circle cx="${X(N-1)}" cy="${Y(t.spy).toFixed(1)}" r="6" fill="#8a97a8"/>
           <g font-family="IBM Plex Mono, monospace">
-            <text x="${X(5)+16}" y="${(Y(t.ret)-2).toFixed(1)}" fill="#ffffff" font-size="17">${t.ret>=0?'+':''}${t.ret.toFixed(2)}%</text>
-            <text x="${X(5)+16}" y="${(Y(t.spy)+4).toFixed(1)}" fill="#aab4c3" font-size="16">${t.spy>=0?'+':''}${t.spy.toFixed(2)}%</text>
-            <text x="24" y="232" fill="#8a97a8" font-size="15">${days[0]}</text><text x="${X(5)-40}" y="232" fill="#8a97a8" font-size="15">TODAY</text>
+            <text x="${X(N-1)+16}" y="${yYou.toFixed(1)}" fill="#ffffff" font-size="17">${t.ret>=0?'+':''}${t.ret.toFixed(2)}%</text>
+            <text x="${X(N-1)+16}" y="${ySpy.toFixed(1)}" fill="#aab4c3" font-size="16">${t.spy>=0?'+':''}${t.spy.toFixed(2)}%</text>
+            <text x="24" y="232" fill="#8a97a8" font-size="15">${days[0]}</text><text x="${X(N-1)-40}" y="232" fill="#8a97a8" font-size="15">TODAY</text>
           </g>
         </svg>
       </div>
@@ -1511,7 +1434,7 @@ function vCheckup(){
   return `
   <div class="wrap">
     <div class="head" style="align-items:center">
-      <div style="display:flex;flex-direction:column;gap:12px"><span class="disp" style="font-weight:700;font-size:28px;color:var(--muted)">Jack M.</span><h1 class="h1">Checkup</h1></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><span class="disp" style="font-weight:700;font-size:28px;color:var(--muted)">${esc(ME_INFO ? ME_INFO.name : '')}</span><h1 class="h1">Checkup</h1></div>
       <div class="grade"><span class="disp" style="font-size:84px;line-height:1;color:var(--white)">${c.overall}</span><span class="label" style="color:var(--dim)">Overall</span></div>
     </div>
     <div class="grades">${c.grades.map(g=>`
@@ -1566,9 +1489,10 @@ function vTrade(){
         <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--cd)">RATE</span><span>Set by the master teacher. Real money market rates rise and fall with the Federal Reserve’s interest rate.</span></div>
       </div>
       ${tooMuch ? `<span class="down" style="font-size:17px">${avail<=0 ? (isIn?'You don’t have any cash to move.':'Your money market balance is empty.') : 'That’s more than you have. Tap All to move everything.'}</span>` : ''}
-      <button type="button" class="go" data-act="mmmove" ${tooMuch?'disabled':''}>Move ${whole(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
+      <button type="button" class="go" data-act="mmmove" ${tooMuch||SETTINGS.trading===false?'disabled':''}>Move ${whole(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
   } else {
     const sym = tr.pick[tr.type], m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
+    if (m && m[1]==='bond') loadYield(sym);
     const canShort = tr.type!=='bond', isBuy = !canShort || tr.side==='buy';
     const cost = price*tr.n, tooMuch = cost > P.cash;
     body = `<div style="display:flex;flex-direction:column;gap:12px">
@@ -1599,16 +1523,17 @@ function vTrade(){
           <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio. Auto-invest buys don’t count toward your trades this week.</span></div>
         </div>
         ${dupe ? `<span style="font-size:17px;color:var(--warn)">You already auto-invest in ${sym}. Change it from My Portfolio.</span>` : dTooMuch ? '<span class="down" style="font-size:17px">Not enough cash for the first buy.</span>' : ''}
-        <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe?'disabled':''}>Auto-invest ${whole(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
+        <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${whole(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button><span class="v">${tr.n}</span><button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
       <div class="line" style="padding-top:20px;border-top:1px solid var(--line)"><span style="font-size:19px;color:var(--muted)">${isBuy?'Total':'Set aside to short'}</span><span class="num" style="font-size:40px;color:var(--white)">${money(cost)}</span></div>
       <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-cost)}</span></div>
       ${tooMuch?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
-      <button type="button" class="go" data-act="submit" ${tooMuch?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>`}`;
+      <button type="button" class="go" data-act="submit" ${tooMuch||!tradingOpen()?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>`}`;
   }
   return `<div class="wrap"><div class="tradebox">
     <div class="line"><h1 class="h1">Trade</h1><span style="font-size:18px;color:var(--muted)">Cash <span class="num" style="color:var(--white)">${money(P.cash)}</span></span></div>
     <div class="types" role="tablist" aria-label="Investment type">${types.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.type===id}" data-act="type:${id}">${l}</button>`).join('')}</div>
+    ${tr.done ? '' : errBox() + closedBox(tr.type)}
     ${body}</div></div>`;
 }
 function chipsHtml(){
@@ -1633,24 +1558,25 @@ function vDrawer(){
     const s = D.students[+id], sec = D.sections[s.sec]; liveStudents();
     const value = s.isMe ? totals().total : 100000*(1+s.ret/100);
     const rk = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(s)+1;
-    const hs = holdsOf(s), pal=['#ef5b70','#6b8fbf','#c9a34e','#9a86c9','#3fa58a','#e08a4f','#5fb3c9','#d17fb0'];
+    const hs = holdsOf(s) || [], pal=['#ef5b70','#6b8fbf','#c9a34e','#9a86c9','#3fa58a','#e08a4f','#5fb3c9','#d17fb0'], hd = HOLDS[s.dbId];
     const parts = hs.map((h,i)=>({...h,color:h.ty==='Cash'?'#4a5768':pal[i%pal.length],pct:h.w}));
     html = `<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(value)}</span><span class="num ${cls(s.ret)}" style="font-size:20px">${pct(s.ret)} · ${signed(value-100000)}</span></div>
       <div class="kv">${[[rk(D.students.filter(x=>x.sec===s.sec)),'of '+sec.size+' in class'],[rk(D.students.filter(x=>x.school===s.school)),'of '+schoolSize(s.school)+' at '+s.school],[rk(D.students),'of '+D.students.length+' in district']].map(([r,l])=>`<span><span class="disp" style="font-size:30px;color:${r<=3?'var(--red)':'var(--white)'}">${ord(r)}</span> <span style="color:var(--muted);font-size:14px">${l}</span></span>`).join('')}</div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${hs.length-1}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
         ${parts.map(h=>`<div><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
-      ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>':'<p class="empty">Students see other portfolios as a snapshot only. Teachers see full detail.</p>'}`;
+      ${!s.isMe && (!hd || hd.loading) ? '<p class="empty">Loading…</p>' : ''}
+      ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>' : hd && hd.trades ? teacherDetail(s, hd) : '<p class="empty">Students see other portfolios as a snapshot only. Teachers see full detail.</p>'}`;
   } else if (kind==='award'){
-    const a = awardsList()[+id], stu = a.stock ? null : D.students.find(s=>s.name===a.name);
+    const a = awardsList()[+id]; if (!a){ UI.drawer = null; return ''; } const stu = a.stock ? null : a.stu;
     if (stu && !a.stats){ UI.drawer = 'student:'+stu.id; return vDrawer(); }
     if (a.stock){
       const wk = (prices[a.stock]/MARKET[a.stock][3]-1)*100;
       html = `<div style="display:flex;flex-direction:column;gap:4px"><span class="label" style="color:var(--muted)">${a.label}</span><span class="num" style="font-size:44px;color:var(--white)">${a.stock}</span><span style="color:var(--dim);font-size:18px">${esc(a.name)}</span></div>
       <div class="kv"><span><span class="k">Price</span><span class="v">${money(prices[a.stock])}</span></span><span><span class="k">Today</span><span class="v ${cls(a.chg)}">${pct(a.chg)}</span></span><span><span class="k">Students who own it</span><span class="v">${a.owners}</span></span></div>
       <p style="margin:0;padding-top:14px;border-top:1px solid var(--line-2);font-size:18px;color:var(--cream)">${a.lesson}</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="ghost" data-act="chartsym:${a.stock}">See chart</button><button type="button" class="cta" data-act="go:buy:${a.stock}">Trade ${a.stock}</button></div>`;
+      <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="ghost" data-act="chartsym:${a.stock}">See chart</button>${ROLE==='student' ? `<button type="button" class="cta" data-act="go:buy:${a.stock}">Trade ${a.stock}</button>` : ''}</div>`;
     } else html = `<div class="who">${logo(a.school,60)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${a.label}</span><span style="color:var(--dim)">${a.sub||a.name}</span></span></div>
       <span class="num" style="font-size:40px;color:${a.good===false?'var(--down)':'var(--up)'}">${a.value}</span>
       ${a.stats?`<div class="kv">${a.stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${v}</span></span>`).join('')}</div>`:''}
@@ -1658,12 +1584,12 @@ function vDrawer(){
 `;
   } else {
     let title='', sub='', sch='', stats=[];
-    const best = l => l.slice().sort((a,b)=>b.ret-a.ret)[0];
+    const best = l => (l.slice().sort((a,b)=>b.ret-a.ret)[0] || {name:'—'});
     liveStudents();
     if (kind==='class'){ const sec=D.sections[+id], l=D.students.filter(s=>s.sec===sec.id); title=secLabel(sec); sub=sch=sec.school;
       stats=[['Average return',pct(secAvg(sec))],['Average value',whole(100000*(1+secAvg(sec)/100))],['Top student',best(l).name],['Students',l.length]]; }
     else if (kind==='teacher'){ const i=+id, t=T[i], secs=D.sections.filter(s=>s.ti===i), l=D.students.filter(s=>D.sections[s.sec].ti===i); title=t[0]; sub=sch=t[1];
-      stats=[['Classes',secs.map(s=>s.period).join(', ')],['Students',l.length],['Top student',best(l).name],['Beating S&P',l.filter(s=>s.ret>totals().spy).length+' of '+l.length]]; }
+      stats=[['Classes',secs.map(s=>s.period).join(', ')],['Students',l.length],['Top student',best(l).name],['Beating S&P',l.filter(s=>s.ret>(ST.spyRet||0)).length+' of '+l.length]]; }
     else { const l=D.students.filter(s=>s.school===id), ts=T.map((t,i)=>i).filter(i=>T[i][1]===id).sort((a,b)=>teacherAvg(b)-teacherAvg(a)); title=id; sch=id; sub=ts.length+' teachers';
       stats=[['Average return',pct(schoolAvg(id))],['Top teacher',T[ts[0]][0]],['Top student',best(l).name],['Students',l.length]]; }
     html = `<div class="who">${logo(sch,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:34px;color:var(--white)">${esc(title)}</span><span style="color:var(--dim)">${esc(sub)}</span></span></div>
@@ -1690,7 +1616,7 @@ function vSheet(){
     const tabs = canBuy ? `<div class="pills" role="tablist" aria-label="Buy or sell"><button type="button" role="tab" class="pill" aria-selected="${!buying}" data-act="smode:sell">Sell</button><button type="button" role="tab" class="pill" aria-selected="${buying}" data-act="smode:buy">Buy More</button></div>` : '';
     const head = `<div><h2 class="h2" style="font-size:40px">${isShort?'Close '+sym+' short':(buying?'Buy more '+sym:'Sell '+sym)}</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${MARKET[sym][0]}</p><button type="button" class="chip" data-act="chartsym:${sym}" style="min-height:38px;margin-top:10px">View chart</button></div>`;
     if (buying){
-      html = `${head}${tabs}
+      html = `${head}${tabs}${errBox()}${closedBox('trade')}
       <div class="kv"><span><span class="k">Bought at</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
         <span><span class="k">You own</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">Cash</span><span class="v">${money(P.cash)}</span></span></div>
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="bn:-" aria-label="Fewer shares">−</button><span class="v" style="min-width:80px">${bn}</span><button type="button" data-act="bn:+" aria-label="More shares">+</button><button type="button" data-act="bn:max" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">Max</button></div></div>
@@ -1700,10 +1626,10 @@ function vSheet(){
         <div class="line"><span style="color:var(--dim)">Shares after</span><span class="num" style="color:var(--soft)">${fmtSh(p.n+bn)}</span></div>
         <div class="line"><span style="color:var(--dim)">New average cost</span><span class="num" style="color:var(--soft)">${money(p.b)} → <span style="color:var(--white)">${money(newAvg)}</span></span></div></div>
       ${bTooMuch?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="buymore" ${bTooMuch?'disabled':''}>Buy ${bn} more ${bn===1?'share':'shares'}</button></div>`;
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="buymore" ${bTooMuch||!tradingOpen()?'disabled':''}>Buy ${bn} more ${bn===1?'share':'shares'}</button></div>`;
       return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
     }
-    html = `${head}${tabs}
+    html = `${head}${tabs}${errBox()}${closedBox('trade')}
       <div class="kv"><span><span class="k">${isShort?'Shorted at':'Bought at'}</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
         <span><span class="k">Shares</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">${isBond(sym)&&!isShort?'Price change':'Gain so far'}</span><span class="v ${cls(posGain(p))}">${signed2(posGain(p))}</span></span></div>
       ${isBond(sym)&&!isShort ? bondSheetHtml(p) : ''}
@@ -1712,88 +1638,108 @@ function vSheet(){
       <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
         <div class="line"><span style="color:var(--muted);font-size:18px">${isShort?'It costs to buy back':'You get'}</span><span class="num" style="font-size:28px;color:var(--white)">${money(price*n)}</span></div>
         <div class="line"><span style="color:var(--muted);font-size:18px">Profit</span><span class="num ${cls(g)}" style="font-size:28px">${signed2(g)}</span></div></div>
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="sell">${isShort?'Close':'Sell'} ${fmtSh(n)} ${n===1?'share':'shares'}</button></div>`;
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="sell" ${!tradingOpen()?'disabled':''}>${isShort?'Close':'Sell'} ${fmtSh(n)} ${n===1?'share':'shares'}</button></div>`;
   }
   return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
 }
 
 /* ---------- actions ---------- */
+/* ---------- talking to the server ---------- */
+async function call(fn, body, qs){
+  const r = await fetch('/api/app?fn='+fn+(qs||''), body===undefined
+    ? {headers:{Accept:'application/json'}, credentials:'same-origin'}
+    : {method:'POST', credentials:'same-origin', headers:{'content-type':'application/json', 'x-d214':'1', Accept:'application/json'}, body:JSON.stringify(body)});
+  const j = await r.json().catch(()=>({}));
+  if (r.status===401 && fn!=='login' && fn!=='me'){ signedOut(); }
+  if (!r.ok){ const e = new Error(j.error || 'Something went wrong. Try again in a minute.'); e.status = r.status; throw e; }
+  return j;
+}
+const errBox = () => UI.err ? `<div class="err" role="alert">${esc(UI.err)}</div>` : '';
+function tradingOpen(){ return SETTINGS.trading!==false && (!LIVE.status || !LIVE.status.market || LIVE.status.market==='open'); }
+function closedBox(kind){
+  if (SETTINGS.trading===false) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">PAUSED</span><span>Trading is paused right now. Check with your teacher.</span></div>`;
+  if (kind!=='mm' && !tradingOpen()) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">CLOSED</span><span>The market is closed. Trades go through 8:30 AM to 3:00 PM Central on days the market is open. You can still move money in and out of the money market.</span></div>`;
+  return '';
+}
+// Send a change to the server. On success the server's copy of the portfolio replaces ours.
+let BUSY = false;
+async function change(body, el, onDone){
+  if (BUSY) return;
+  BUSY = true; UI.err = null;
+  if (el) el.setAttribute('aria-busy','true');
+  try{
+    const r = await call('act', body);
+    applyState(r);
+    if (onDone) onDone(r.result || {});
+    if (['trade','mm','dca_start'].includes(body.a)) loadStandings();
+  }catch(e){ UI.err = e.message; }
+  finally{ BUSY = false; const y = window.scrollY; render(); window.scrollTo(0, y); }
+}
+
+/* ---------- actions ---------- */
 function act(a, el){
   const [k, ...rest] = a.split(':'); const v = rest.join(':'); const tr = UI.trade;
-  // live data: a ticker the demo doesn't know yet gets its real price before it can be picked or charted
+  // live data: a ticker the page doesn't know yet gets its real price before it can be picked or charted
   if (LIVE.on && ['pick','wadd','csym','chartsym'].includes(k) && v && !MARKET[v]){
     if (el) el.setAttribute('aria-busy','true');
     liveAdd(v).then(ok=>{ if (ok) act(a); else { if (el) el.removeAttribute('aria-busy'); alert('Couldn’t load a price for '+v+' right now. Try again in a minute.'); } });
     return;
   }
+  if (!['sheet','smode','bn','sn','n','amt','mmamt','pick','side','freq','mmdir'].includes(k)) UI.err = null;
   switch(k){
     case 'tab': UI.tab=v; break;
     case 'school': UI.school=v||null; UI.sec=null; break;
     case 'sec': UI.sec = v===''?null:+v; break;
     case 'open': UI.drawer=v; break;
-    case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; break;
+    case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
+    case 'clearerr': UI.err = null; break;
     case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.mmAmt=1000; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0,mode:'sell',bn:1}; break; }
     case 'smode': UI.sheet.mode = v; UI.sheet.done = null; break;
     case 'bn': { const sym = UI.sheet.key.split(':')[1], mx = Math.max(1, Math.floor(P.cash/prices[sym]));
       UI.sheet.bn = v==='max' ? mx : Math.max(1, (UI.sheet.bn||1)+(v==='+'?1:-1)); break; }
     case 'buymore': {
-      const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side);
-      const n = UI.sheet.bn||1, price = prices[sym], cost = price*n; if (!p || side!=='long' || cost>P.cash+0.005) return;
-      P.cash -= cost; p.b = (p.b*p.n + price*n)/(p.n+n); p.n = +(p.n+n).toFixed(4);
-      P.log.push({sym, act:'buy', n, price, date:TDATES[TDATES.length-1]});
-      P.tradesWeek++; save();
-      UI.sheet.done = {title:'Bought '+n+' more '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
+      const [,sym] = UI.sheet.key.split(':'), n = UI.sheet.bn||1;
+      change({a:'trade', sym, side:'buy', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:'Bought '+fmtSh(n)+' more '+sym, sub:'at '+money(r.price)+' · '+money(r.total)}; });
+      return;
     }
     case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(Math.min(1,p.n),Math.min(p.n, Math.floor(UI.sheet.n)+(v==='+'?1:-1))); break; }
     case 'sell': {
-      const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); const n = Math.min(UI.sheet.n,p.n), price = prices[sym];
-      let g;
-      if (side==='long'){ P.cash += n*price; g=(price-p.b)*n; P.closed.push({sym,n,b:p.b,s:price,d:'just now'}); }
-      else { P.cash += n*(2*p.b-price); g=(p.b-price)*n; P.closed.push({sym:sym+' (short)',n,b:price,s:price+(p.b-price),d:'just now'}); }
-      p.n = +(p.n-n).toFixed(4); if (p.n<=0.0001) P.pos = P.pos.filter(x=>x!==p);
-      P.log.push({sym, act:side==='long'?'sell':'cover', n, price, date:TDATES[TDATES.length-1]});
-      P.tradesWeek++; save();
-      UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:g}; break;
+      const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); if (!p) return;
+      const n = Math.min(UI.sheet.n, p.n);
+      change({a:'trade', sym, side: side==='long'?'sell':'cover', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:r.pnl}; });
+      return;
     }
-    case 'dismiss': P.notes = []; save(); break;
+    case 'dismiss': P.notes = []; change({a:'dismiss'}); return;
     case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.n=10; tr.q=''; tr.freq='once'; break;
     case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; if (v==='short') tr.freq='once'; break;
     case 'freq': tr.freq=v; break;
     case 'amt': tr.amt = Math.max(100, tr.amt + (v==='+'?100:-100)); break;
     case 'dcastart': {
-      const sym = tr.pick[tr.type]; if (tr.amt > P.cash + 0.005 || P.dca.some(pl=>pl.sym===sym)) return;
-      const pl = {id:Date.now().toString(36), sym, amt:tr.amt, freq:tr.freq, next:todayStr(), buys:[], paused:false};
-      P.dca.push(pl); processDCA(); save();
-      tr.done = {title:'Auto-investing in '+sym, sub:whole(pl.amt)+' '+DCA_FREQ[pl.freq][1]+' · first buy done · next '+fmtDay(pl.next)}; tr.freq='once'; break;
+      const sym = tr.pick[tr.type], amt = tr.amt, freq = tr.freq;
+      change({a:'dca_start', sym, amt, freq}, el, r=>{ tr.done = {title:'Auto-investing in '+sym, sub:whole(amt)+' '+DCA_FREQ[freq][1]+' · first buy done · next '+fmtDay(r.next)}; tr.freq='once'; });
+      return;
     }
-    case 'dcatog': { const pl = P.dca.find(x=>x.id===v); if (pl){ pl.paused = !pl.paused; if (!pl.paused && pl.next<=todayStr()) pl.next = nextBizDay(addDays(todayStr(),1)); save(); } break; }
-    case 'dcastop': P.dca = P.dca.filter(x=>x.id!==v); save(); break;
+    case 'dcatog': change({a:'dca_toggle', id:v}, el); return;
+    case 'dcastop': if (!confirm('Stop this auto-invest plan? The shares it already bought stay in your portfolio.')) return; change({a:'dca_stop', id:v}, el); return;
     case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
     case 'mmdir': tr.mmDir = v; tr.mmAmt = 1000; break;
     case 'mmamt': { const avail = tr.mmDir==='in' ? P.cash : P.mm.bal;
-      tr.mmAmt = v==='all' ? avail : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
+      tr.mmAmt = v==='all' ? Math.floor(avail*100)/100 : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
     case 'newtrade': tr.done=null; tr.mmAmt=1000; tr.n=10; break;
     case 'submit': {
-      const sym = tr.pick[tr.type], price = prices[sym], n = tr.n, cost = price*n; if (cost>P.cash) return;
-      const side = (tr.type==='bond'||tr.side==='buy') ? 'long' : 'short';
-      P.cash -= cost;
-      const ex = P.pos.find(x=>x.sym===sym&&x.side===side);
-      if (ex){ ex.b = (ex.b*ex.n + price*n)/(ex.n+n); ex.n += n; } else P.pos.push({sym,side,n,b:price});
-      P.log.push({sym, act:side==='long'?'buy':'short', n, price, date:TDATES[TDATES.length-1]});
-      P.tradesWeek++; save();
-      tr.done = {title:(side==='long'?'Bought ':'Shorted ')+n+' '+sym, sub:'at '+money(price)+' · '+money(cost)}; break;
+      const sym = tr.pick[tr.type], n = tr.n, side = (tr.type==='bond'||tr.side==='buy') ? 'buy' : 'short';
+      change({a:'trade', sym, side, n}, el, r=>{ tr.done = {title:(side==='buy'?'Bought ':'Shorted ')+fmtSh(n)+' '+sym, sub:'at '+money(r.price)+' · '+money(r.total)}; });
+      return;
     }
     case 'mmmove': {
-      mmSettle(); const isIn = tr.mmDir==='in', avail = isIn ? P.cash : P.mm.bal, amt = tr.mmAmt;
-      if (amt<=0 || amt>avail+0.005) return;
-      if (isIn){ P.cash -= amt; P.mm.bal += amt; } else { P.mm.bal -= amt; P.cash += amt; if (P.mm.bal<0.005) P.mm.bal = 0; }
-      save();
-      tr.done = {title:'Moved '+money(amt)+' to '+(isIn?'money market':'cash'), sub:isIn ? 'Earning '+P.mm.rate.toFixed(2)+'% · about +'+money(mmPerDay())+' a day' : 'Money market balance: '+money(P.mm.bal)}; break;
+      const isIn = tr.mmDir==='in';
+      change({a:'mm', dir:isIn?'in':'out', amt:tr.mmAmt}, el, r=>{ tr.done = {title:'Moved '+money(r.amt)+' to '+(isIn?'money market':'cash'), sub:isIn ? 'Earning '+P.mm.rate.toFixed(2)+'% · about +'+money(mmPerDay())+' a day' : 'Money market balance: '+money(P.mm.bal)}; });
+      return;
     }
     case 'csym': ensureSym(v); UI.chart.sym = v; break;
-    case 'wadd': ensureSym(v); if (!watchList().includes(v)) P.watch.push(v); save(); UI.chart.sym = v; UI.wq = ''; break;
-    case 'wtog': if (P.watch.includes(v)) P.watch = P.watch.filter(x=>x!==v); else P.watch.push(v); save(); break;
+    case 'wadd': ensureSym(v); if (!watchList().includes(v)){ P.watch.push(v); if (ROLE==='student') call('act', {a:'watch', sym:v, on:true}).catch(()=>{}); } UI.chart.sym = v; UI.wq = ''; break;
+    case 'wtog': { const on = !P.watch.includes(v); if (on) P.watch.push(v); else P.watch = P.watch.filter(x=>x!==v); if (ROLE==='student') call('act', {a:'watch', sym:v, on}).catch(()=>{}); break; }
     case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
     case 'cview': UI.chart.view = v; break;
@@ -1801,9 +1747,8 @@ function act(a, el){
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
-    case 'drip': { const dp = P.pos.find(x=>x.sym===v && x.side==='long'); if (dp){ dp.drip = !dp.drip; save(); } break; }
-    case 'skip': P.demoOffset = (P.demoOffset||0)+30; mmSettle(); processIncome(); processDCA(); save(); break;
-    case 'reset': P = START(); P.dca = []; normalizeMM(); if (LIVE.on) rebase(LIVE.quotes); else SPY_START = 516.52; normalizeIncome(); save(); UI.sheet=null; UI.drawer=null; UI.trade.done=null; break;
+    case 'drip': change({a:'drip', sym:v}, el); return;
+    default: if (moreActs(k, v, el)) return;
   }
   const y = window.scrollY;
   render();
@@ -1812,19 +1757,414 @@ function act(a, el){
 
 /* ---------- render ---------- */
 function renderTape(changed){
-  document.getElementById('tape').innerHTML = TAPE.map(s=>{ const c=(prices[s]/prev[s]-1)*100;
+  document.getElementById('tape').innerHTML = TAPE.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
     return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"><span class="s">${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
+}
+/* ---------- sign in ---------- */
+const LOGIN = {dir:null, school:null, kind:'student', teacher:null, tdir:null, sec:null, student:null, admin:false, err:null};
+(function remember(){ try{ const m = JSON.parse(localStorage.getItem('d214login')||'null'); if (m){ LOGIN.school = m.school||null; LOGIN.kind = m.kind||'student'; } }catch(e){} })();
+async function loadDir(){
+  try{ LOGIN.dir = await call('dir'); }catch(e){ LOGIN.err = e.message; }
+  if (LOGIN.school && !LOGIN.dir?.schools?.some(s=>s.name===LOGIN.school && s.teachers.length)) LOGIN.school = null;
+  render();
+}
+async function loadTeacherDir(id){
+  LOGIN.tdir = null; render();
+  try{ LOGIN.tdir = await call('dir', undefined, '&teacher='+id); if (LOGIN.tdir.sections.length===1) LOGIN.sec = LOGIN.tdir.sections[0].id; }catch(e){ LOGIN.err = e.message; }
+  render();
+}
+function vLogin(){
+  const L = LOGIN, d = L.dir;
+  const pwForm = (who, hint) => `<form id="lform" class="card" style="gap:18px" autocomplete="off">
+      <span class="disp" style="font-size:30px;color:var(--white)">${esc(who)}</span>
+      <label for="lpw" class="label">Password</label>
+      <input id="lpw" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      ${hint ? `<span class="small">${hint}</span>` : ''}
+      <button type="submit" class="go">Sign in</button></form>`;
+  const school = d && d.schools.find(s=>s.name===L.school);
+  const teacher = school && school.teachers.find(t=>t.id===L.teacher);
+  const sec = L.tdir && L.tdir.sections.find(s=>s.id===L.sec);
+  const stu = sec && sec.students.find(s=>s.id===L.student);
+  const crumbs = [];
+  if (L.admin) crumbs.push(['lback:all','Start over']);
+  else {
+    if (L.school) crumbs.push(['lback:all', L.school]);
+    if (teacher) crumbs.push(['lback:teacher', teacher.name]);
+    if (sec && L.tdir.sections.length>1) crumbs.push(['lback:sec', sec.period]);
+    if (stu) crumbs.push(['lback:student', stu.name]);
+  }
+  let body = '', title = 'Sign in';
+  if (L.admin){ title = 'District admin'; body = pwForm('District admin', 'The admin password is set in Vercel (see SETUP.md).'); }
+  else if (!d) body = L.err ? '' : '<p class="empty">Loading…</p>';
+  else if (!L.school){
+    const list = d.schools.filter(s=>s.teachers.length);
+    body = list.length ? `<span class="label">Pick your school</span><div class="lgrid">${list.map(s=>`<button type="button" class="lbtn" data-act="lschool:${esc(s.name)}">${logo(s.name,48)}<span>${esc(s.name)}</span></button>`).join('')}</div>`
+      : '<p class="empty">No classes are set up yet. The district admin adds them from the roster spreadsheet.</p>';
+  } else if (!L.teacher){
+    body = `<div class="pills" role="tablist" aria-label="I am a"><button type="button" role="tab" class="pill" aria-selected="${L.kind==='student'}" data-act="lkind:student">I’m a student</button><button type="button" role="tab" class="pill" aria-selected="${L.kind==='teacher'}" data-act="lkind:teacher">I’m a teacher</button></div>
+      <span class="label">${L.kind==='student' ? 'Who’s your teacher?' : 'Which teacher are you?'}</span>
+      <div class="lgrid">${school.teachers.map(t=>`<button type="button" class="lbtn" data-act="lteacher:${t.id}"><span>${esc(t.name)}</span></button>`).join('')}</div>`;
+  } else if (L.kind==='teacher') body = pwForm(teacher.name, 'Your password is on the sheet the district admin gave you.');
+  else if (!L.tdir) body = L.err ? '' : '<p class="empty">Loading…</p>';
+  else if (!sec){
+    body = `<span class="label">Which class are you in?</span><div class="lgrid">${L.tdir.sections.map(s=>`<button type="button" class="lbtn" data-act="lsec:${s.id}"><span>${esc(s.period)}<small>${s.students.length} students</small></span></button>`).join('')}</div>`;
+  } else if (!stu){
+    body = `<span class="label">Find your name</span><div class="lgrid">${sec.students.map(s=>`<button type="button" class="lbtn" style="min-height:62px;font-size:18px" data-act="lstudent:${s.id}">${esc(s.name)}</button>`).join('')}</div>`;
+  } else body = pwForm(stu.name, 'Your password is on the slip from your teacher. Lost it? Your teacher can make you a new one.');
+  return `<div class="wrap"><div class="login">
+    <div style="display:flex;flex-direction:column;gap:10px"><h1 class="h1">${title}</h1>
+      <p style="margin:0;font-size:18px;color:var(--muted)">District 214 Investing Competition</p></div>
+    ${crumbs.length ? `<div class="crumbs">${crumbs.map(([a,l],i)=>`${i?'<span aria-hidden="true">›</span>':''}<button type="button" data-act="${a}">${esc(l)}</button>`).join('')}</div>` : ''}
+    ${L.err ? `<div class="err" role="alert">${esc(L.err)}</div>` : ''}
+    ${body}
+    ${L.admin ? '' : '<button type="button" class="small" style="align-self:flex-start;text-decoration:underline" data-act="ladmin">District admin sign-in</button>'}
+  </div></div>`;
+}
+async function signIn(){
+  const L = LOGIN, pw = (document.getElementById('lpw')||{}).value || '';
+  if (!pw) return;
+  const body = L.admin ? {kind:'admin', password:pw} : L.kind==='teacher' ? {kind:'teacher', id:L.teacher, password:pw} : {kind:'student', id:L.student, password:pw};
+  const form = document.getElementById('lform'); if (form) form.setAttribute('aria-busy','true');
+  try{
+    await call('login', body);
+    try{ localStorage.setItem('d214login', JSON.stringify({school:L.school, kind:L.kind})); }catch(e){}
+    Object.assign(LOGIN, {err:null, admin:false, teacher:null, tdir:null, sec:null, student:null});
+    history.replaceState(null, '', location.pathname);
+    boot();
+  }catch(e){
+    LOGIN.err = e.message; render();
+    const i = document.getElementById('lpw'); if (i) i.focus();
+  }
+}
+function signedOut(){
+  ROLE = null; ME_INFO = null; P = EMPTY(); ST = null; T = []; D = {sections:[], students:[]}; ME = null; CLS = null; ADM = null;
+  BOOTED = true; UI.drawer = null; UI.sheet = null; UI.modal = null; UI.err = null; UI.slips = null; UI.preview = null; UI.csv = ''; UI.eodLog = null; UI.adminTeacher = null;
+  if (!LOGIN.dir) loadDir(); else render();
+}
+
+/* ---------- teacher dashboard ---------- */
+let CLS = null;
+async function loadClasses(){
+  try{ CLS = await call('teacher', undefined, ROLE==='admin' && UI.adminTeacher ? '&teacher='+UI.adminTeacher : ''); }catch(e){ UI.err = e.message; }
+  repaint();
+}
+const ago = t => { if (!t) return '—'; const m = Math.round((Date.now()-new Date(t))/60000); return m<2 ? 'just now' : m<60 ? m+' min ago' : m<1440 ? Math.round(m/60)+' hr ago' : Math.round(m/1440)+(Math.round(m/1440)===1?' day ago':' days ago'); };
+function vClasses(){
+  const title = ROLE==='teacher' ? 'My Classes' : 'Classes';
+  if (!CLS) return `<div class="wrap"><div class="head"><h1 class="h1">${title}</h1></div><p class="empty">Loading…</p></div>`;
+  const classRank = id => { const l = D.sections.slice().sort((a,b)=>secAvg(b)-secAvg(a)); const i = l.findIndex(s=>s.dbId===id); return i<0 ? null : [i+1, l.length]; };
+  const who = ROLE==='admin' ? (UI.adminTeacher ? (CLS.sections[0]||{}).teacher || 'Teacher' : 'All teachers') : ME_INFO.name;
+  return `<div class="wrap">
+    <div class="head"><div style="display:flex;flex-direction:column;gap:10px"><span class="disp" style="font-weight:700;font-size:26px;color:var(--muted)">${esc(who)}</span><h1 class="h1">${title}</h1></div>
+      <div style="display:flex;align-items:baseline;gap:12px"><span class="label" style="color:var(--dim)">S&amp;P 500</span><span class="num ${cls(CLS.spyRet||0)}" style="font-size:28px">${pct(CLS.spyRet||0)}</span></div></div>
+    ${ROLE==='admin' && UI.adminTeacher ? '<button type="button" class="chip" data-act="aview:">← All teachers</button>' : ''}
+    ${errBox()}
+    ${CLS.sections.length ? '' : '<p class="empty">No classes yet.</p>'}
+    ${CLS.sections.map(se=>{ const cr = classRank(se.id);
+      return `<section style="padding-top:28px"><div class="card">
+        <div class="spread" style="flex-wrap:wrap;align-items:center">
+          <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
+          <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
+        </div>
+        <div class="btnrow"><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button></div>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
+        <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
+          <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
+          <td class="r num">${k.week||0}</td><td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+      </div></section>`; }).join('')}
+    <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
+  </div>`;
+}
+// Full detail of one student, for their teacher and the admin.
+function fullDetail(id, h){
+  const TYC = {Stock:'#8a97a8',ETF:'#9a86c9',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e',Cash:'#6b7c91'};
+  const act = h.activity || {};
+  const W = {buy:'Bought', sell:'Sold', short:'Shorted', cover:'Closed short'};
+  return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
+      <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
+    <div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Gain</th></tr></thead>
+      <tbody>${h.holds.map(x=>`<tr><td><span class="num" style="color:var(--white)">${esc(x.s)}</span> <span class="tag" style="color:${TYC[x.ty]||'#8a97a8'}">${esc(x.ty).toUpperCase()}</span></td>
+        <td class="r num">${x.n!==undefined ? fmtSh(+x.n.toFixed(4)) : ''}</td><td class="r num">${x.b!==undefined ? money(x.b) : ''}</td><td class="r num">${whole(x.v)}</td>
+        <td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td></tr>`).join('')}</tbody></table></div>
+    <span class="label">Recent trades</span>
+    ${h.trades.length ? `<div class="tscroll"><table class="tbl" style="font-size:14px"><tbody>${h.trades.slice(0,40).map(t=>`<tr><td class="small">${new Date(t.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
+      <td style="color:var(--white)">${W[t.act]} ${fmtSh(+t.n.toFixed(4))} ${esc(t.sym)}${t.auto?' <span class="small">(auto)</span>':''}</td><td class="r num">${money(t.price)}</td>
+      <td class="r num ${t.pnl===null?'':cls(t.pnl)}">${t.pnl===null?'':signed2(t.pnl)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No trades yet.</p>'}
+    <div class="btnrow"><button type="button" class="ghost" data-act="treset:${id}">Reset password</button><button type="button" class="ghost" style="color:var(--down)" data-act="tremove:${id}">Remove from class</button></div>`;
+}
+function teacherDetail(s, h){ return fullDetail(s.dbId, h); }
+function vTeacherStudent(id){
+  const h = HOLDS[id];
+  if (!h) loadHolds(id);
+  const k = CLS && CLS.sections.flatMap(se=>se.students.map(x=>({...x, se}))).find(x=>x.id===id);
+  if (!k) return '<p class="empty">Student not found.</p>';
+  return `<div class="who">${logo(k.se.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(k.name)}</span><span style="color:var(--dim)">${esc(k.se.teacher)} · ${esc(k.se.period)} · ${esc(k.se.school)}</span></span></div>
+    <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(k.value)}</span><span class="num ${cls(k.ret)}" style="font-size:20px">${pct(k.ret)} · ${signed(k.value-100000)}</span></div>
+    ${!h || h.loading ? '<p class="empty">Loading…</p>' : fullDetail(id, h)}`;
+}
+
+/* ---------- district admin ---------- */
+let ADM = null;
+async function loadAdmin(){
+  try{ ADM = await call('admin'); SETTINGS = ADM.settings; }catch(e){ UI.err = e.message; }
+  repaint();
+}
+function vAdmin(){
+  if (!ADM) return `<div class="wrap"><div class="head"><h1 class="h1">Admin</h1></div><p class="empty">Loading…</p></div>`;
+  const s = ADM.settings, pv = UI.preview;
+  const chk = (ok, l) => `<span style="display:flex;gap:10px;align-items:center"><b style="color:${ok?'var(--up)':'var(--warn)'}">${ok?'✓':'!'}</b>${l}</span>`;
+  return `<div class="wrap">
+    <div class="head"><h1 class="h1">Admin</h1><span class="small">District 214 Investing Competition</span></div>
+    ${errBox()}
+    <div class="cards">
+      <div class="card"><span class="label">Status</span>
+        <div class="kv"><span><span class="k">Market</span><span class="v" style="font-size:17px">${esc(ADM.market)}</span></span><span><span class="k">Students</span><span class="v">${ADM.counts.students}</span></span>
+          <span><span class="k">Trades</span><span class="v">${ADM.counts.trades}</span></span><span><span class="k">Started</span><span class="v" style="font-size:17px">${s.startDate ? fmtDay(s.startDate) : '—'}</span></span></div>
+        ${chk(ADM.env.massive, 'Massive key')} ${chk(ADM.env.cron, 'End-of-day schedule (CRON_SECRET)')} ${chk(!!ADM.lastEod, 'Last end of day: '+(ADM.lastEod ? fmtDay(ADM.lastEod) : 'not yet'))}
+      </div>
+      <div class="card"><span class="label">Game settings</span>
+        <div class="line"><label for="amm">Money market rate (% a year)</label><input id="amm" type="number" step="0.05" min="0" max="15" value="${s.mmRate}"></div>
+        <div class="line"><label for="amin">No buying stocks under $</label><input id="amin" type="number" step="0.5" min="0" max="100" value="${s.minPrice}"></div>
+        <div class="line"><label for="ashort">No shorting stocks under $</label><input id="ashort" type="number" step="0.5" min="0" max="100" value="${s.minShortPrice}"></div>
+        <div class="btnrow"><button type="button" class="cta" style="min-height:48px" data-act="asave">Save settings</button>
+          <button type="button" class="ghost" style="min-height:48px;${s.trading?'':'color:var(--warn);border-color:var(--warn)'}" data-act="atrading">${s.trading ? 'Pause all trading' : 'Trading is paused · Resume'}</button></div>
+      </div>
+    </div>
+    <section style="padding-top:28px"><div class="card">
+      <div class="spread" style="flex-wrap:wrap"><span class="disp" style="font-size:30px;color:var(--white)">Roster</span><span class="small">Columns: School, Teacher, Period, First Name, Last Name · only first names and last initials are saved</span></div>
+      <p class="small" style="margin:0">Paste rows from the spreadsheet (heading row first) or choose the CSV file. Importing again only adds new students, so it’s safe to re-import an updated sheet. New students and teachers get passwords to print.</p>
+      <label class="chip" style="align-self:flex-start;cursor:pointer">Choose CSV file<input id="afile" type="file" accept=".csv,.tsv,.txt,text/csv" class="sr"></label>
+      <textarea id="acsv" placeholder="School,Teacher,Period,First Name,Last Name&#10;Hersey,Mr. Murphy,P3,Jack,Martin">${esc(UI.csv||'')}</textarea>
+      <div class="btnrow"><button type="button" class="ghost" data-act="apreview">Preview</button>
+        ${pv && pv.totals.newStudents+pv.totals.newTeachers>0 ? `<button type="button" class="cta" data-act="aimport">Import ${pv.totals.newStudents} new students</button>` : ''}
+        ${UI.slips ? `<button type="button" class="cta" data-act="print">Print login slips</button>` : ''}</div>
+      ${pv ? `<div class="okmsg">${pv.totals.classes} ${pv.totals.classes===1?'class':'classes'} · ${pv.totals.teachers} ${pv.totals.teachers===1?'teacher':'teachers'} (${pv.totals.newTeachers} new) · ${pv.totals.students} ${pv.totals.students===1?'student':'students'} (${pv.totals.newStudents} new)</div>
+        ${pv.warnings.length ? `<div class="err">${pv.warnings.map(esc).join('<br>')}</div>` : ''}
+        <div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>School</th><th>Teacher</th><th>Class</th><th class="r">Students</th><th>New</th></tr></thead>
+        <tbody>${pv.classes.map(c=>`<tr><td>${esc(c.school)}</td><td>${esc(c.teacher)}</td><td>${esc(c.period)}</td><td class="r num">${c.students}</td><td class="small" style="white-space:normal">${c.newNames.length ? esc(c.newNames.join(', ')) : '—'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    </div></section>
+    <section style="padding-top:28px"><div class="card"><span class="disp" style="font-size:30px;color:var(--white)">Teachers</span>
+      ${ADM.teachers.length ? `<div class="tscroll"><table class="tbl"><thead><tr><th>Teacher</th><th>School</th><th class="r">Classes</th><th class="r">Students</th><th></th></tr></thead>
+      <tbody>${ADM.teachers.map(t=>`<tr><td style="color:var(--white);font-weight:600">${esc(t.name)}</td><td>${esc(t.school)}</td><td class="r num">${t.classes}</td><td class="r num">${t.students}</td>
+        <td class="r"><span class="btnrow" style="justify-content:flex-end"><button type="button" class="chip" data-act="aview:${t.id}">View classes</button><button type="button" class="chip" data-act="atpw:${t.id}">New password</button></span></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No teachers yet. Import the roster above.</p>'}
+    </div></section>
+    <section style="padding-top:28px"><div class="cards">
+      <div class="card"><span class="label">End of day</span>
+        <p class="small" style="margin:0">Runs automatically each weekday evening: money market interest, dividends, splits, auto-invest, closing values, and awards. Run it by hand only if a day was missed.</p>
+        <button type="button" class="ghost" data-act="aeod">Run end of day now</button>
+        ${UI.eodLog ? `<pre class="num small" style="white-space:pre-wrap;margin:0">${esc(UI.eodLog.join('\n'))}</pre>` : ''}</div>
+      <div class="card" style="border-top:4px solid var(--down)"><span class="label">Start over</span>
+        <p class="small" style="margin:0">Puts every student back to $100,000 cash and clears all trades, history, and awards. Rosters and passwords stay. Use it once after testing, right before students start.</p>
+        <label for="areset" class="small">Type RESET to confirm</label><input id="areset" type="text" autocomplete="off" style="height:50px;font-size:17px">
+        <button type="button" class="ghost" style="color:var(--down)" data-act="aresetall">Start the competition over</button></div>
+    </div></section>
+    <div style="height:64px"></div>
+  </div>`;
+}
+
+/* ---------- password slips and pop-up messages ---------- */
+function vModal(){
+  const m = UI.modal; if (!m) return '';
+  return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>
+    <div class="spread" style="align-items:flex-start"><h2 class="h2" style="font-size:34px">${esc(m.title)}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></div>
+    ${m.html}</div></div>`;
+}
+function printSlips(slips){
+  const site = location.host;
+  const page = g => `<div class="slippage"><h2>D214 Investing Competition · Sign-in slips</h2>
+    <p class="sub">${esc(g.school)} · ${esc(g.teacher)} · ${esc(g.period)} · go to <b>${esc(site)}</b></p>
+    ${g.teacherPw ? `<div class="tslip">Teacher sign-in for <b>${esc(g.teacher)}</b>: ${esc(site)} → ${esc(g.school)} → I’m a teacher → ${esc(g.teacher)}<br>Password: <span class="p">${esc(g.teacherPw)}</span></div>` : ''}
+    <div class="slipgrid">${g.students.map(s=>`<div class="slip"><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: <span class="p">${esc(s.pw)}</span></div>`).join('')}</div></div>`;
+  document.getElementById('print').innerHTML = slips.map(page).join('');
+  window.print();
+}
+
+// Actions for sign-in, teachers, and the admin. Returns true when it has handled rendering itself.
+function moreActs(k, v, el){
+  const L = LOGIN;
+  switch(k){
+    case 'lschool': L.school = v; L.teacher = null; L.err = null; break;
+    case 'lkind': L.kind = v; break;
+    case 'lteacher': L.teacher = +v; L.sec = null; L.student = null; L.err = null; if (L.kind==='student') { loadTeacherDir(+v); return true; } break;
+    case 'lsec': L.sec = +v; L.student = null; break;
+    case 'lstudent': L.student = +v; L.err = null; render(); setTimeout(()=>{ const i = document.getElementById('lpw'); if (i) i.focus(); }, 0); return true;
+    case 'ladmin': L.admin = true; L.err = null; render(); setTimeout(()=>{ const i = document.getElementById('lpw'); if (i) i.focus(); }, 0); return true;
+    case 'lback':
+      L.err = null; L.admin = false;
+      if (v==='all'){ L.school = null; L.teacher = null; L.tdir = null; L.sec = null; L.student = null; }
+      else if (v==='teacher'){ L.teacher = null; L.tdir = null; L.sec = null; L.student = null; }
+      else if (v==='sec'){ L.sec = null; L.student = null; }
+      else L.student = null;
+      break;
+    case 'signout': call('logout', {}).catch(()=>{}).finally(()=>{ location.hash = ''; signedOut(); }); return true;
+    case 'print': if (UI.slips) printSlips(UI.slips); return true;
+    // teacher
+    case 'tstu': UI.drawer = 'tstudent:'+v; break;
+    case 'treset': {
+      if (!confirm('Make a new password? The old one stops working right away.')) return true;
+      call('teacher_act', {a:'reset_pw', studentId:+v}).then(r=>{
+        UI.slips = [{school:'', teacher:'', period:'', students:[{name:r.name, pw:r.pw}]}];
+        const k = CLS && CLS.sections.flatMap(se=>se.students.map(x=>({...x, se}))).find(x=>x.id===+v);
+        if (k) UI.slips = [{school:k.se.school, teacher:k.se.teacher, period:k.se.period, students:[{name:r.name, pw:r.pw}]}];
+        UI.modal = {title:'New password', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(r.name)}’s new password:</p><span class="pw">${esc(r.pw)}</span>
+          <div class="btnrow"><button type="button" class="cta" data-act="print">Print slip</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
+        render();
+      }).catch(e=>{ alert(e.message); });
+      return true;
+    }
+    case 'tremove': {
+      if (!confirm('Remove this student from the class? They won’t be able to sign in or appear in the standings.')) return true;
+      call('teacher_act', {a:'remove', studentId:+v}).then(()=>{ UI.drawer = null; loadClasses(); loadStandings(); }).catch(e=>alert(e.message));
+      return true;
+    }
+    case 'tresetclass': {
+      if (!confirm('Make new passwords for every student in this class? Their old passwords stop working right away.')) return true;
+      call('teacher_act', {a:'reset_class', sectionId:+v}).then(r=>{
+        UI.slips = r.slips;
+        UI.modal = {title:'New passwords ready', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${r.slips[0].students.length} new passwords. Print the slips and hand them out.</p>
+          <div class="btnrow"><button type="button" class="cta" data-act="print">Print slips</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
+        render();
+      }).catch(e=>alert(e.message));
+      return true;
+    }
+    case 'tadd': {
+      UI.modal = {title:'Add a student', html:`<form id="addform" style="display:flex;flex-direction:column;gap:14px" data-sec="${+v}">
+        <label for="afirst" class="label">First name</label><input id="afirst" type="text" autocomplete="off" required>
+        <label for="alast" class="label">Last name</label><input id="alast" type="text" autocomplete="off" required>
+        <span class="small">Only the first name and last initial are saved and shown.</span>
+        <button type="submit" class="go">Add student</button></form>`};
+      render(); setTimeout(()=>{ const i = document.getElementById('afirst'); if (i) i.focus(); }, 0);
+      return true;
+    }
+    // admin
+    case 'aview': UI.adminTeacher = v ? +v : null; CLS = null; loadClasses(); location.hash = '#classes'; return true;
+    case 'apreview': case 'aimport': {
+      const csv = (document.getElementById('acsv')||{}).value || ''; UI.csv = csv;
+      if (!csv.trim()){ UI.err = 'Paste the roster first.'; break; }
+      if (k==='aimport' && !confirm('Import '+UI.preview.totals.newStudents+' new students?')) return true;
+      if (el) el.setAttribute('aria-busy','true');
+      call('admin_act', {a:'import', csv, commit:k==='aimport'}).then(r=>{
+        UI.err = null; UI.preview = r;
+        if (k==='aimport'){ UI.slips = r.slips; UI.preview = null; UI.csv = '';
+          UI.modal = {title:'Roster imported', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${r.totals.newStudents} new students and ${r.totals.newTeachers} new teachers have passwords. Print the slips now: passwords can’t be shown again (but they can be reset).</p>
+            <div class="btnrow"><button type="button" class="cta" data-act="print">Print login slips</button><button type="button" class="ghost" data-act="close">Later</button></div>`};
+          loadAdmin(); loadStandings(); }
+      }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'asave': {
+      const num = id => Number((document.getElementById(id)||{}).value);
+      call('admin_act', {a:'settings', mmRate:num('amm'), minPrice:num('amin'), minShortPrice:num('ashort')})
+        .then(s=>{ ADM.settings = s; SETTINGS = s; UI.err = null; UI.modal = {title:'Saved', html:'<p style="margin:0;color:var(--soft)">Settings saved.</p><button type="button" class="ghost" data-act="close">OK</button>'}; })
+        .catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'atrading': {
+      const on = !ADM.settings.trading;
+      if (!on && !confirm('Pause all trading for every student?')) return true;
+      call('admin_act', {a:'settings', trading:on}).then(s=>{ ADM.settings = s; SETTINGS = s; }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'aeod': {
+      if (el) el.setAttribute('aria-busy','true');
+      call('admin_act', {a:'eod'}).then(r=>{ UI.eodLog = r.log; loadAdmin(); loadStandings(); }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'atpw': {
+      if (!confirm('Make a new password for this teacher? The old one stops working.')) return true;
+      call('admin_act', {a:'teacher_pw', teacherId:+v}).then(r=>{
+        UI.modal = {title:'New teacher password', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(r.name)}’s new password:</p><span class="pw">${esc(r.pw)}</span><button type="button" class="ghost" data-act="close">Done</button>`};
+      }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'aresetall': {
+      const c = (document.getElementById('areset')||{}).value || '';
+      if (c!=='RESET'){ UI.err = 'Type RESET in the box to confirm.'; break; }
+      if (!confirm('Last check: put every student back to $100,000 and erase all trades?')) return true;
+      call('admin_act', {a:'reset_all', confirm:'RESET'}).then(()=>{ UI.err = null; UI.modal = {title:'Fresh start', html:'<p style="margin:0;color:var(--soft)">Every student is back to $100,000. The S&amp;P 500 comparison starts now.</p><button type="button" class="ghost" data-act="close">OK</button>'}; loadAdmin(); loadStandings(); })
+        .catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+  }
+  return false;
+}
+
+/* ---------- loading data ---------- */
+function applyState(r){
+  P = Object.assign(EMPTY(), r.P);
+  HISTORY = r.history || [];
+  SETTINGS = r.settings || SETTINGS;
+  Object.entries(r.meta||{}).forEach(([s, m])=>{ if (!MARKET[s]) MARKET[s] = [m[0]||s, m[1]||'stock', 0, 0]; else if (m[1]) MARKET[s][1] = m[1]; });
+  Object.keys(r.quotes||{}).forEach(s=>{ if (!MARKET[s]) MARKET[s] = [s, 'stock', 0, 0]; });
+  applyQuotes(r.quotes||{});
+  P.pos.forEach(p=>{ if (!(prices[p.sym]>0)){ prices[p.sym] = p.b; prev[p.sym] = p.b; } });
+  Object.keys(MARKET).forEach(s=>{ if (!(prices[s]>0)){ prices[s] = MARKET[s][2]||0; prev[s] = prices[s]; } });
+  SPY_START = P.spyStart || SETTINGS.spyStart || prices.SPY;
+  if (r.market) LIVE.status = Object.assign({}, LIVE.status||{}, {market:r.market});
+  mmSettle();
+  P.pos.filter(p=>MARKET[p.sym][1]==='bond').forEach(p=>loadYield(p.sym));
+  goLive();
+}
+async function loadMe(quiet){
+  try{
+    const r = await call('me');
+    ROLE = r.role; ME_INFO = r.me; BOOTED = true;
+    if (ROLE==='student') applyState(r); else { P = EMPTY(); goLive(); }
+    quiet ? repaint() : render();
+    return true;
+  }catch(e){
+    if (e.status===401){ signedOut(); return false; }
+    BOOTED = true; LOGIN.err = e.message; ROLE = null; render(); return false;
+  }
+}
+let stLoading = false;
+async function loadStandings(){
+  if (stLoading || !ROLE) return;
+  stLoading = true;
+  try{ applyStandings(await call('standings')); repaint(); }catch(e){ /* keep the last standings */ }
+  finally{ stLoading = false; }
+}
+async function boot(){
+  render();
+  if (!(await loadMe())) return;
+  loadStandings(); refreshLive();
+  if (ROLE==='teacher' || ROLE==='admin') loadClasses();
+  if (ROLE==='admin') loadAdmin();
+}
+
+/* ---------- render ---------- */
+const ROUTES = {student:['portfolio','standings','checkup','charts','trade'], teacher:['classes','standings','charts'], admin:['admin','classes','standings','charts']};
+const NAVL = {portfolio:'My Portfolio', standings:'Standings', checkup:'Checkup', charts:'Charts', trade:'Trade', classes:'My Classes', admin:'Admin'};
+const route = () => { const h = (location.hash||'').replace('#',''), ok = ROUTES[ROLE] || []; return ok.includes(h) ? h : (ok[0] || 'login'); };
+function renderNav(){
+  const r = route(), list = ROUTES[ROLE] || [];
+  document.getElementById('nav').innerHTML = list.map(k=>`<a href="#${k}" data-route="${k}" aria-current="${k===r?'page':'false'}">${ROLE==='admin' && k==='classes' ? 'Classes' : NAVL[k]}</a>`).join('');
+  document.getElementById('acct').innerHTML = ROLE ? `<span><b>${esc(ME_INFO.name)}</b>${ROLE==='student' ? ' · '+esc(ME_INFO.school) : ROLE==='teacher' ? ' · Teacher' : ''}</span><button type="button" data-act="signout">Sign out</button>` : '';
+}
+function renderBanner(){
+  const b = document.getElementById('banner'); if (!b) return;
+  const out = [];
+  if (ROLE && SETTINGS.trading===false) out.push('<span class="w">Trading is paused right now.</span>');
+  if (UI.err && !UI.sheet && !['trade','classes','admin'].includes(route())) out.push(`<span class="e" role="alert">${esc(UI.err)}</span><button type="button" data-act="clearerr">Dismiss</button>`);
+  b.innerHTML = out.join('');
 }
 function render(){
   const r = route();
-  const dm = document.getElementById('demoMsg'); if (dm) dm.textContent = (LIVE.on ? 'Demo mode · real market prices · sample classmates · signed in as Jack M.' : 'Demo mode · sample prices · signed in as Jack M.') + (P.demoOffset ? ' · demo date '+fmtDay(todayStr()) : '');
-  renderAttr();
-  document.querySelectorAll('nav a').forEach(a=>a.setAttribute('aria-current', a.dataset.route===r?'page':'false'));
-  const app = document.getElementById('app');
+  renderNav(); renderBanner(); renderAttr();
+  const app = document.getElementById('app'), signed = !!ROLE;
+  document.getElementById('attr').hidden = !signed;
+  document.querySelector('.tape').hidden = !signed;
   if (CH){ CH.chart.remove(); CH = null; }
-  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts() : vTrade();
+  if (!signed){
+    app.innerHTML = BOOTED ? vLogin() : '<div class="wrap"><p class="empty" style="padding-block:64px">Loading…</p></div>';
+    document.getElementById('overlay').innerHTML = '';
+    return;
+  }
+  app.innerHTML = r==='standings'?vStandings() : r==='portfolio'?vPortfolio() : r==='checkup'?vCheckup() : r==='charts'?vCharts()
+    : r==='classes'?vClasses() : r==='admin'?vAdmin() : vTrade();
   if (r==='charts') mountChart();
-  document.getElementById('overlay').innerHTML = vDrawer() + vSheet() + vGuide();
+  const dr = UI.drawer && UI.drawer.startsWith('tstudent:') ? `<div class="scrim" data-act="close"><div class="drawer" role="dialog" aria-modal="true" data-stop><button type="button" class="x" data-act="close" aria-label="Close">×</button>${vTeacherStudent(+UI.drawer.split(':')[1])}</div></div>` : vDrawer();
+  document.getElementById('overlay').innerHTML = dr + vSheet() + vGuide() + vModal();
   renderTape(false);
 }
 document.addEventListener('click', e=>{
@@ -1838,26 +2178,48 @@ document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.
 document.addEventListener('mouseover', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false; });
 document.addEventListener('mousemove', e=>{ const tip = document.getElementById('ftip'); if (!tip || tip.hidden) return; tip.style.left = Math.max(8, Math.min(e.clientX+16, window.innerWidth-tip.offsetWidth-8))+'px'; tip.style.top = Math.max(8, Math.min(e.clientY+16, window.innerHeight-tip.offsetHeight-8))+'px'; });
 document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
-document.addEventListener('keydown', e=>{ if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide)){ UI.drawer=null; UI.sheet=null; UI.guide=false; render(); } });
-window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.wq=''; render(); window.scrollTo(0,0); });
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide||UI.modal)){ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; render(); }
+  if (e.key==='Enter' && e.target.matches && e.target.matches('tr[data-act]')) act(e.target.dataset.act, e.target);
+});
+document.addEventListener('submit', e=>{
+  if (e.target.id==='lform'){ e.preventDefault(); signIn(); }
+  if (e.target.id==='addform'){
+    e.preventDefault();
+    const f = e.target, first = f.querySelector('#afirst').value.trim(), last = f.querySelector('#alast').value.trim();
+    if (!first || !last) return;
+    f.setAttribute('aria-busy','true');
+    call('teacher_act', {a:'add', sectionId:+f.dataset.sec, first, last}).then(r=>{
+      UI.slips = r.slips; const s = r.slips[0].students[0];
+      UI.modal = {title:'Student added', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(s.name)}’s password:</p><span class="pw">${esc(s.pw)}</span>
+        <div class="btnrow"><button type="button" class="cta" data-act="print">Print slip</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
+      loadClasses(); loadStandings(); render();
+    }).catch(err=>{ f.removeAttribute('aria-busy'); alert(err.message); });
+  }
+});
+document.addEventListener('change', e=>{
+  if (e.target.id==='afile' && e.target.files && e.target.files[0]){
+    const rd = new FileReader();
+    rd.onload = () => { UI.csv = String(rd.result||''); UI.preview = null; render(); };
+    rd.readAsText(e.target.files[0]);
+  }
+});
+window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; UI.wq=''; UI.err=null; render(); window.scrollTo(0,0); });
 
 /* redraw prices without interrupting someone who is typing or has a panel open */
 function repaint(){
   renderAttr();
   if (route()==='charts' && !UI.sheet && !UI.drawer){ tickChart(); renderTape(true); return; }
-  if (UI.sheet || UI.drawer || document.activeElement && (document.activeElement.id==='search' || document.activeElement.id==='wsearch')) { renderTape(true); return; }
+  const ae = document.activeElement;
+  if (UI.sheet || UI.modal || (UI.drawer && !UI.drawer.startsWith('tstudent:') && !UI.drawer.startsWith('student:')) || (ae && (ae.id==='search' || ae.id==='wsearch' || ae.tagName==='TEXTAREA' || (ae.tagName==='INPUT' && ae.type!=='button')))) { renderTape(true); return; }
   const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
 }
-/* demo mode: sample prices wiggle every 8 seconds. Live mode: real prices refresh every minute (see goLive). */
-setInterval(()=>{
-  mmSettle(); processIncome(); processDCA();
-  if (LIVE.on || LIVE.cached) return;
-  Object.keys(prices).forEach(s=>{ prices[s] = Math.max(1, prices[s]*(1+(Math.random()-0.48)*0.004)); });
-  repaint();
-}, 8000);
-
-render();
-goLive();
+/* Money market interest ticks up on screen; standings refresh every minute; the portfolio every 5 minutes
+   (to pick up end-of-day payments and notes). Prices refresh every minute (see goLive). */
+setInterval(()=>{ if (ROLE==='student'){ mmSettle(); } }, 60000);
+setInterval(()=>{ if (ROLE && document.visibilityState==='visible'){ loadStandings(); if (route()==='classes') loadClasses(); } }, 60000);
+setInterval(()=>{ if (ROLE==='student' && document.visibilityState==='visible' && !BUSY && !UI.sheet) loadMe(true); }, 300000);
+boot();
 })();
 </script>
 

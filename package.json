@@ -2,8 +2,15 @@
   "name": "d214-stock-sim",
   "private": true,
   "type": "module",
-  "description": "District 214 investing competition. Static page plus Vercel functions in /api for Massive market data.",
+  "description": "District 214 investing competition. Static page plus Vercel functions in /api for accounts, trades, standings, and Massive market data.",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "postgres": "^3.4.5"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "test": "node scripts/test.js"
   }
 }
