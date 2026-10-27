@@ -6,7 +6,7 @@ import { checkPw, hashPw, newPassword, makeSession, setSessionCookie, clearSessi
 import * as P from '../lib/portfolio.js';
 import * as M from '../lib/market.js';
 import { standings, invalidateStandings, activity } from '../lib/standings.js';
-import { importRoster, SCHOOLS } from '../lib/roster.js';
+import { importRoster, SCHOOLS, periodName } from '../lib/roster.js';
 import { runEOD } from '../lib/eod.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
@@ -38,7 +38,7 @@ const ROUTES = {
         select se.id as sec, se.period, st.id, st.display as name from sections se
         join teachers t on t.id = se.teacher_id
         left join students st on st.section_id = se.id and st.active
-        where t.id = ${int(tid)} and t.active order by se.period, st.display`;
+        where t.id = ${int(tid)} and t.active and se.active order by se.period, st.display`;
       const secs = new Map();
       for (const r of rows) { if (!secs.has(r.sec)) secs.set(r.sec, { id: r.sec, period: r.period, students: [] }); if (r.id) secs.get(r.sec).students.push({ id: r.id, name: r.name }); }
       return { sections: [...secs.values()].filter(s => s.students.length) };
@@ -158,7 +158,7 @@ const ROUTES = {
     const secs = await sql`
       select se.id, se.period, t.id as tid, t.name as teacher, sc.name as school from sections se
       join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id
-      where t.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
+      where t.active and se.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
     const st = await standings(sql);
     const roster = await sql`select id, display, section_id, last_login from students where active and section_id = any(${secs.map(s => s.id)}) order by display`;
     const act = await activity(sql, roster.map(r => r.id));
@@ -190,6 +190,18 @@ const ROUTES = {
         const [s] = await sql`update students set pw_hash = ${hashPw(pw)} where id = ${id} returning display`;
         await clearFails(sql, 'stu:' + id);
         return { name: s.display, pw };
+      }
+      // Rename a class (its period label). Students, passwords, and portfolios stay the same.
+      case 'rename_class': {
+        const secId = int(body.sectionId); await mySection(secId);
+        const period = periodName(body.period);
+        if (!period || period.length > 20) throw bad('Enter a class name of 20 characters or fewer, like P7.');
+        const [taken] = await sql`select 1 from sections where period = ${period} and id <> ${secId}
+          and teacher_id = (select teacher_id from sections where id = ${secId})`;
+        if (taken) throw bad('This teacher already has a class called ' + period + '.');
+        await sql`update sections set period = ${period} where id = ${secId}`;
+        invalidateStandings();
+        return { period };
       }
       case 'reset_class': {
         const secId = int(body.sectionId); await mySection(secId);
@@ -226,7 +238,7 @@ const ROUTES = {
     const settings = await P.getSettings(sql);
     const teachers = await sql`
       select t.id, t.name, sc.name as school,
-        (select count(*)::int from sections se where se.teacher_id = t.id) as classes,
+        (select count(*)::int from sections se where se.teacher_id = t.id and se.active) as classes,
         (select count(*)::int from students st join sections se on se.id = st.section_id where se.teacher_id = t.id and st.active) as students
       from teachers t join schools sc on sc.id = t.school_id where t.active order by sc.name, t.name`;
     const [days] = await sql`select max(d) as last, count(*)::int as n from market_days`;
@@ -267,6 +279,16 @@ const ROUTES = {
         if (!t) throw bad('Teacher not found.');
         await clearFails(sql, 'tch:' + id);
         return { name: t.name, pw };
+      }
+      // Remove a whole class (for a wrong or duplicate roster). Its students can no longer sign in
+      // and drop out of the standings. Importing a class with the same name later brings it back.
+      case 'class_remove': {
+        const secId = int(body.sectionId);
+        const [se] = await sql`update sections set active = false where id = ${secId} returning period`;
+        if (!se) throw bad('Class not found.');
+        const gone = await sql`update students set active = false where section_id = ${secId} and active returning id`;
+        invalidateStandings();
+        return { ok: true, removed: gone.length };
       }
       case 'teacher_remove': {
         await sql`update teachers set active = false where id = ${int(body.teacherId)}`;
