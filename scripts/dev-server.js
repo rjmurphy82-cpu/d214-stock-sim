@@ -32,12 +32,22 @@ async function mockMarket(name, url, res) {
   if (name === 'search') { const q = (url.searchParams.get('q') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5); return json({ results: q ? [{ s: q, n: q + ' Test Co.', k: 'stock' }] : [] }); }
   if (name === 'ticker') return json({ s: t, n: t + ' Test Co.', k: M.BOND.has(t) ? 'etf' : 'stock', sector: '', about: '', cap: null, logo: false });
   if (name === 'logo') { res.statusCode = 404; return res.end(); }
+  if (name === 'fin') {
+    if (t === 'NOFIN') return json({ ticker: t, income: [], balance: [], ratios: null });
+    const bank = t === 'JPM', base = 20 + (t.charCodeAt(0) % 9) * 15;
+    const yrs = [2021, 2022, 2023, 2024, 2025];
+    return json({ ticker: t,
+      income: yrs.map((fy, i) => ({ fy, end: fy + '-09-30', rev: base * 1e9 * (1 + i * 0.08), cogs: null, gp: bank ? null : base * 0.4e9 * (1 + i * 0.08),
+        op: base * 0.25e9 * (1 + i * 0.1), ni: (i === 0 ? -0.05 : 0.18) * base * 1e9 * (1 + i * 0.1), eps: i === 0 ? -0.4 : 2 + i * 0.3 })),
+      balance: yrs.slice(1).map(fy => ({ fy, end: fy + '-09-30', assets: base * 3e9, liab: base * 1.8e9, equity: base * 1.2e9, ca: bank ? null : base * 0.9e9, cl: bank ? null : base * 0.7e9, cash: base * 0.3e9, debt: base * 0.6e9 })),
+      ratios: { date: M.today(), pe: 24.3, eps: 3.2, cap: base * 10e9 } });
+  }
 }
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const m = url.pathname.match(/^\/api\/([a-z]+)$/);
-  if (m && process.env.MARKET_MOCK === '1' && ['status', 'quotes', 'bars', 'search', 'ticker', 'logo'].includes(m[1])) return mockMarket(m[1], url, res);
+  if (m && process.env.MARKET_MOCK === '1' && ['status', 'quotes', 'bars', 'search', 'ticker', 'logo', 'fin'].includes(m[1])) return mockMarket(m[1], url, res);
   if (m) {
     const file = path.join(root, 'api', m[1] + '.js');
     if (!fs.existsSync(file)) { res.statusCode = 404; return res.end('not found'); }

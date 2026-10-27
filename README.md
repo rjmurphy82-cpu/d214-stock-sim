@@ -22,14 +22,11 @@ The key stays on the server. The browser only ever talks to this site's own `/ap
 
 ### What's live and what's still sample
 
-| Live from Massive | Still sample |
-| --- | --- |
-| Prices for every trade, portfolio, and standing | P/E and revenue growth |
-| Price charts (5 years of daily bars, split-adjusted) | Financial statements on the Charts page |
-| Search for any U.S. stock or ETF | Earnings dates |
-| Dividends, bond interest, yields, stock splits | |
-| Company logos, market cap, industry, description | |
-| Market open or closed, holidays, official closing prices | |
+Everything shown is real Massive data: prices for every trade, portfolio, and standing; 5-year price charts; search; dividends, bond interest, yields, and splits; logos, market cap, industry, and descriptions; market hours, holidays, and closing prices; and each company's last five annual reports (income statement, balance sheet, ratios, P/E, revenue growth).
+
+Expense ratios and holding counts for about a dozen common ETFs are typed in by hand and approximate. Earnings dates are not shown.
+
+Company financials need Massive's Financials & Ratios data (included in Stocks Advanced, or as an add-on). Without it, the Financials tab says so instead of showing numbers.
 
 ### Server functions (`/api`)
 
@@ -41,6 +38,7 @@ The key stays on the server. The browser only ever talks to this site's own `/ap
 | `/api/search?q=text` | Matching stocks and ETFs | `GET /v3/reference/tickers` |
 | `/api/ticker?ticker=A` | Name, industry, description, market cap | `GET /v3/reference/tickers/{ticker}` |
 | `/api/logo?ticker=A` | Company icon image | branding image from Ticker Overview |
+| `/api/fin?ticker=A` | Last 5 annual income statements and balance sheets, plus ratios | `GET /stocks/financials/v1/income-statements`, `/balance-sheets`, `/ratios` |
 
 Each function caches its answer (20 seconds for prices, up to a day for company info), and Vercel's CDN shares that answer across every visitor. Students don't each make their own Massive calls.
 

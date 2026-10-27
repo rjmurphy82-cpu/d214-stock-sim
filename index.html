@@ -527,19 +527,24 @@ function hashOf(sym){ let h = 2166136261; for (const ch of sym){ h ^= ch.charCod
 /* stocks you can find with search (the live version searches every U.S. ticker through Massive's reference data); prices are samples */
 const REF = [   // the live app searches every U.S. stock and ETF through Massive
 ];
-/* sample fundamentals: [P/E, market cap in $ billions, dividend yield %, revenue growth %] */
-const FUND = {
-  NVDA:[54,2150,0.02,94], AAPL:[31,3450,0.44,5], COST:[52,396,0.52,7], JPM:[12,565,2.3,12], XOM:[14,455,3.4,-3], AMZN:[42,1900,0,11],
-  TSLA:[68,800,0,2], MSFT:[35,3100,0.72,15], GOOGL:[23,2000,0.48,14], META:[26,1270,0.40,22], V:[30,540,0.76,10],
-  SPY:[24,null,1.2,null], VOO:[24,null,1.3,null], VTI:[23,null,1.3,null], QQQ:[32,null,0.6,null], DIA:[22,null,1.6,null], IWM:[17,null,1.2,null],
-  VXUS:[15,null,3.0,null], SCHD:[16,null,3.6,null], XLK:[34,null,0.6,null], XLE:[13,null,3.3,null], XLV:[22,null,1.5,null], ARKK:[null,null,0,null], BND:[null,null,3.7,null], AGG:[null,null,3.6,null], TLT:[null,null,4.4,null], SHY:[null,null,4.0,null], BIL:[null,null,4.1,null], IEF:[null,null,3.9,null],
-  TIP:[null,null,3.0,null], LQD:[null,null,4.6,null], HYG:[null,null,6.3,null], MUB:[null,null,3.1,null], BNDX:[null,null,3.3,null], GBTC:[null,null,0,null], ETHE:[null,null,0,null]
-};
+/* ---------- real fundamentals from Massive: annual reports (10-K) and ratios, loaded per ticker ---------- */
+const FIN = {};   // sym -> undefined (not asked), null (loading), or {income, balance, ratios, unavailable}
+function loadFin(sym){
+  if (FIN[sym] !== undefined) return;
+  FIN[sym] = null;
+  api('/api/fin?ticker='+encodeURIComponent(sym)).then(d=>{ FIN[sym] = d; }).catch(()=>{ FIN[sym] = {income:[], balance:[], ratios:null, failed:true}; })
+    .finally(()=>{ if (route()==='charts') render(); });
+}
+// Trailing 12-month dividend yield in percent, from real payments. null until loaded.
+function realYield(sym){ const y = YLD[sym]; return y && prices[sym] > 0 ? y.ttm/prices[sym]*100 : null; }
+// [P/E, market cap ($B), dividend yield %, revenue growth %] with null for anything not known yet.
 function fundOf(sym){
-  const h = hashOf(sym), f = (FUND[sym] || [12+h%34, 20+h%480, h%3===0 ? 0 : +(0.5+(h%25)/10).toFixed(2), -4+(h%24)]).slice();
-  const y = YLD[sym];
-  if (y && prices[sym] > 0) f[2] = +(y.ttm/prices[sym]*100).toFixed(2);   // real trailing 12-month yield
-  return f;
+  const fin = FIN[sym], inc = fin && fin.income || [];
+  const L = inc.length;
+  const pe = fin && fin.ratios && fin.ratios.pe!==null ? fin.ratios.pe : (L && inc[L-1].eps>0 ? prices[sym]/inc[L-1].eps : null);
+  const growth = L>1 && inc[L-2].rev ? (inc[L-1].rev/inc[L-2].rev-1)*100 : null;
+  const cap = LIVE.info[sym] && LIVE.info[sym].cap ? LIVE.info[sym].cap/1e9 : (fin && fin.ratios && fin.ratios.cap ? fin.ratios.cap/1e9 : null);
+  return [pe, cap, realYield(sym), growth];
 }
 /* real stock splits inside the 5-year window */
 const SPLITS = {NVDA:['2024-06-10','10-for-1'], TSLA:['2022-08-25','3-for-1'], GOOGL:['2022-07-18','20-for-1'], AMZN:['2022-06-06','20-for-1']};
@@ -863,35 +868,36 @@ function vCharts(){
     c.marks ? `<span><b class="up">▲</b>buy</span><span><b class="down">▼</b>sell</span>` : '',
     c.ev ? `<span><b style="color:${EV_COLOR.E}">E</b>earnings</span><span><b style="color:${EV_COLOR.D}">D</b>${m[1]==='bond'?'interest':'dividend'}</span><span><b style="color:${EV_COLOR.S}">S</b>split</span>` : ''
   ].join('');
-  // key numbers
-  const f = fundOf(sym), ty = m[1];
-  const fmtCap = b => b>=1000 ? '$'+(b/1000).toFixed(2)+'T' : '$'+Math.round(b)+'B';
+  // key numbers (all real: Massive ratios, annual reports, and dividend history)
+  const ty = m[1];
+  if (ty==='stock') loadFin(sym);
+  loadYield(sym);
+  const f = fundOf(sym), WAIT = '<span style="color:var(--dim)">…</span>';
+  const fmtCap = b => b>=1000 ? '$'+(b/1000).toFixed(2)+'T' : b>=1 ? '$'+b.toFixed(b>=100?0:1)+'B' : '$'+Math.round(b*1000)+'M';
+  const finState = FIN[sym];
   const pos52 = Math.max(0, Math.min(100, (price-lo52)/(hi52-lo52)*100));
   const row = (label, val, why) => `<details><summary><span>${label}</span><span style="display:flex;align-items:center;gap:10px"><span class="num" style="color:var(--white)">${val}</span><span class="q" aria-hidden="true">?</span></span></summary><p>${why}</p></details>`;
+  const yld = (v, digits) => v===null ? WAIT : v>0.005 ? v.toFixed(digits)+'%' : 'None';
   let kn = '';
   if (ty==='stock'){
-    kn = row('P/E ratio', f[0], 'How many dollars investors pay for $1 of the company’s yearly profit. A high P/E usually means investors expect fast growth.')
-      + row('Market cap', (LIVE.on && LIVE.info[sym] && LIVE.info[sym].cap) ? fmtCap(LIVE.info[sym].cap/1e9) : fmtCap(f[1]*price/m[2]), 'The total value of all the company’s shares: the share price times the number of shares.')
-      + row('Dividend yield', f[2]>0 ? f[2].toFixed(2)+'%' : 'None', 'Cash the company pays shareholders each year, as a percent of the share price. Many fast-growing companies pay none and reinvest instead.')
-      + row('Revenue growth', (f[3]>=0?'+':'')+f[3]+'%', 'How much more the company sold this year than last year.')
-      + (S.nextE ? row('Next earnings', dLabel(S.nextE.date), 'The day the company reports its results. Prices often jump or drop that day, so know it before you buy. That’s in '+S.nextE.days+' trading days.') : '');
+    const peTxt = f[0]===null ? (finState===null || finState===undefined ? WAIT : 'n/a') : f[0] < 0 ? 'n/a' : f[0].toFixed(1);
+    kn = row('P/E ratio', peTxt, 'How many dollars investors pay for $1 of the company’s yearly profit. A high P/E usually means investors expect fast growth. It shows n/a when the company lost money.')
+      + row('Market cap', f[1]===null ? WAIT : fmtCap(f[1]), 'The total value of all the company’s shares: the share price times the number of shares.')
+      + row('Dividend yield', yld(f[2], 2), 'Cash the company paid shareholders over the past year, as a percent of the share price. Many fast-growing companies pay none and reinvest instead.')
+      + (f[3]!==null ? row('Revenue growth', (f[3]>=0?'+':'')+f[3].toFixed(1)+'%', 'How much more the company sold in its latest fiscal year than the year before, from its annual reports.') : '');
   } else if (ty==='etf'){
-    const em = ETFMETA[sym] || [0.10, 100];
-    kn = row('Yearly cost', em[0].toFixed(2)+'%', 'The expense ratio: what the fund charges each year to run it. '+em[0].toFixed(2)+'% means about $'+(em[0]*10).toFixed(2)+' a year on every $1,000 you invest. Lower is better.')
-      + row('Holdings', em[1].toLocaleString('en-US')+' '+(em[1]===1?'stock':'stocks'), 'How many companies one share gives you a piece of. More holdings means more diversified.')
-      + row('Dividend yield', f[2]>0 ? f[2].toFixed(1)+'%' : 'None', 'Cash the fund pays each year from the dividends of the companies it holds, as a percent of its price.')
-      + (f[0] ? row('P/E ratio', f[0], 'The average P/E of the companies in the fund: how many dollars investors pay for $1 of yearly profit.') : '');
+    const em = ETFMETA[sym];
+    kn = (em ? row('Yearly cost', em[0].toFixed(2)+'%', 'The expense ratio: what the fund charges each year to run it. '+em[0].toFixed(2)+'% means about $'+(em[0]*10).toFixed(2)+' a year on every $1,000 you invest. Lower is better.')
+        + row('Holdings', em[1].toLocaleString('en-US')+' '+(em[1]===1?'stock':'stocks'), 'About how many companies one share gives you a piece of. More holdings means more diversified.') : '')
+      + row('Dividend yield', yld(f[2], 1), 'Cash the fund paid over the past year from the dividends of the companies it holds, as a percent of its price.');
   } else if (ty==='crypto'){
     kn = row('Dividend yield', 'None', 'Crypto funds don’t earn profits or pay dividends. The price only moves with the coin it tracks.');
   } else if (ty==='bond'){
-    const bm = BONDMETA[sym] || ['Medium','High'], ex = nextEx(todayStr());
-    kn = row('Yield', f[2].toFixed(1)+'%', 'The interest the fund pays each year, as a percent of its price. It’s paid out a little every month.')
-      + row(rateTip('Rate sensitivity'), bm[0], 'How much the price moves when interest rates change. When rates rise, bond prices fall, and longer-term bonds fall the most.')
-      + row('Credit quality', bm[1], 'How likely the borrowers are to pay you back. Lower quality pays more interest because there’s more risk.')
-      + row('Next payment', fmtDay(payDateFor(ex)), 'Own the fund on the ex-dividend date ('+fmtDay(ex)+') to get this payment. Sell before then and the buyer gets it, but your sale price already includes the interest built up so far.');
-  } else {
-    kn = row(ty==='bond'?'Yield':'Dividend yield', f[2].toFixed(1)+'%', ty==='bond' ? 'The interest the fund pays each year, as a percent of its price. Bond funds pay it out monthly.' : 'Cash the fund pays each year from the companies it holds, as a percent of its price.')
-      + (f[0] ? row('P/E ratio', f[0], 'The average P/E of the companies in the fund: how many dollars investors pay for $1 of yearly profit.') : '');
+    const bm = BONDMETA[sym], ex = nextEx(todayStr());
+    kn = row('Yield', yld(f[2], 1), 'The interest the fund paid over the past year, as a percent of its price. It’s paid out a little every month.')
+      + (bm ? row(rateTip('Rate sensitivity'), bm[0], 'How much the price moves when interest rates change. When rates rise, bond prices fall, and longer-term bonds fall the most.')
+        + row('Credit quality', bm[1], 'How likely the borrowers are to pay you back. Lower quality pays more interest because there’s more risk.') : '')
+      + row('Next payment', 'around '+fmtDay(payDateFor(ex)), 'Own the fund on the ex-dividend date (usually the first trading day of the month, about '+fmtDay(ex)+') to get this payment. Sell before then and the buyer gets it, but your sale price already includes the interest built up so far.');
   }
   return `
   <div class="wrap"><div class="chartgrid">
@@ -957,45 +963,34 @@ function vCharts(){
           <div class="rbar" role="img" aria-label="Today’s price is ${Math.round(pos52)} percent of the way from the 52-week low to the high"><i style="left:calc(${pos52.toFixed(1)}% - 2px)"></i></div>
         </div>
         ${kn}
-        <span style="font-size:13px;color:var(--dim)">${LIVE.on ? 'The 52-week range'+(ty==='stock'?' and market cap are':' is')+' live. The other figures are samples for now.' : 'Sample figures.'} Tap a row to see what it means.</span>
+        <span style="font-size:13px;color:var(--dim)">${ty==='stock' ? 'From Massive: prices, annual reports, and dividend history.' : ty==='etf' && ETFMETA[sym] ? 'Yearly cost and holdings are approximate. Yield is from the past year of payments.' : 'Yield is from the past year of payments.'} Tap a row to see what it means.</span>
       </div>
     </aside>
   </div></div>`;
 }
-/* ---------- financial statements (sample; the live app reads each company's annual 10-K filings from Massive's financials data) ---------- */
+/* ---------- financial statements: each company's annual reports (10-K filings), from Massive ---------- */
 const FIN_C1 = '#5b86c9', FIN_C2 = '#c4793a';   // validated pair on the dark card (blue, orange)
 const FINCACHE = {};
 function finFor(sym){
-  if (FINCACHE[sym]) return FINCACHE[sym];
-  const f = fundOf(sym), price = MARKET[sym][2], sector = (ABOUT[sym]||[''])[0];
-  const bank = sector==='Financials' && !['V','MA'].includes(sym);
-  let s = hashOf(sym+'fin'); const rnd = () => { s = (s*16807) % 2147483647; return s/2147483647; };
-  const cap = f[1], ni5 = cap/f[0];
-  const nm5 = bank ? 0.30 : Math.min(0.55, Math.max(0.04, 0.06 + rnd()*0.22 + (f[3]>40?0.2:0)));
-  const rev5 = ni5/nm5, Y0 = +TDATES[TDATES.length-1].slice(0,4)-5;
-  const years = [0,1,2,3,4].map(i=>Y0+i);
-  const g = [0,1,2,3].map(i=> i===3 ? f[3]/100 : Math.max(-0.08, f[3]/100*0.6 + rnd()*0.17 - 0.05));
-  const rev = new Array(5); rev[4] = rev5; for (let i=3;i>=0;i--) rev[i] = rev[i+1]/(1+g[i]);
-  const nm = rev.map((_,i)=> i===4 ? nm5 : nm5*(0.72+rnd()*0.4));
-  const ni = rev.map((r,i)=>r*nm[i]);
-  const gm0 = bank ? null : Math.min(0.78, Math.max(0.2, 0.22 + rnd()*0.4 + nm5*0.4));
-  const gp = bank ? null : rev.map(r=>r*gm0*(0.95+rnd()*0.08));
-  const op = ni.map(x=>x*1.22);
-  const shares = cap/price;
-  const eps = ni.map((x,i)=>x/(shares*(1+(4-i)*0.012)));
-  const aMult = bank ? 11 : 0.9 + rnd()*1.3, eqr = bank ? 0.09 : 0.3 + rnd()*0.3;
-  const assets = rev.map(r=>rev5*aMult*Math.pow(r/rev5, 0.6));
-  const equity = assets.map((a,i)=>Math.max(a*eqr*(0.92+rnd()*0.13), bank ? 0 : ni[i]*2.6));
-  equity.forEach((e,i)=>{ if (!bank) assets[i] = Math.max(assets[i], e/0.6); });
-  const liab = assets.map((a,i)=>a-equity[i]);
-  const caR = 0.25+rnd()*0.25, clR = 0.26+rnd()*0.15;
-  const ca = bank ? null : assets.map(a=>a*caR*(0.95+rnd()*0.1)), cl = bank ? null : liab.map(l=>l*clR*(0.95+rnd()*0.1));
-  const cash = bank ? assets.map(a=>a*0.08) : ca.map(x=>x*0.3);
-  const debt = liab.map(l=>l*(bank?0.2:0.45));
-  return FINCACHE[sym] = {years, rev, gp, op, ni, eps, assets, liab, equity, ca, cl, cash, debt, bank};
+  const d = FIN[sym]; if (!d || !d.income || !d.income.length) return null;
+  if (FINCACHE[sym] && FINCACHE[sym].src===d) return FINCACHE[sym];
+  const B = v => (v===null || v===undefined) ? null : v/1e9;          // dollars to $ billions
+  const inc = d.income, bal = new Map((d.balance||[]).map(b=>[b.fy, b]));
+  const col = (rows, k, conv) => rows.map(r=>r ? conv(r[k]) : null);
+  const balRows = inc.map(r=>bal.get(r.fy) || null);
+  const allNull = a => a.every(v=>v===null);
+  const F = {src:d, years:inc.map(r=>r.fy),
+    rev:col(inc,'rev',B), gp:col(inc,'gp',B), op:col(inc,'op',B), ni:col(inc,'ni',B), eps:col(inc,'eps',v=>v===undefined?null:v),
+    assets:col(balRows,'assets',B), liab:col(balRows,'liab',B), equity:col(balRows,'equity',B),
+    ca:col(balRows,'ca',B), cl:col(balRows,'cl',B), cash:col(balRows,'cash',B), debt:col(balRows,'debt',B)};
+  // Banks and some others don't report gross profit or current assets; hide those rows instead of showing zeros.
+  ['gp','ca','cl'].forEach(k=>{ if (allNull(F[k])) F[k] = null; });
+  F.bank = !F.gp;
+  return FINCACHE[sym] = F;
 }
-const fmtB = v => { if (Math.abs(v)<1e-9) return '$0'; const a = Math.abs(v), sg = v<0 ? '−' : ''; return sg + (a>=1000 ? '$'+(a/1000).toFixed(2)+'T' : a>=1 ? '$'+a.toFixed(1)+'B' : '$'+Math.round(a*1000)+'M'); };
-const pctS = v => (v*100).toFixed(1)+'%';
+const fmtB = v => { if (v===null || v===undefined || !isFinite(v)) return '—'; if (Math.abs(v)<1e-9) return '$0'; const a = Math.abs(v), sg = v<0 ? '−' : ''; return sg + (a>=1000 ? '$'+(a/1000).toFixed(2)+'T' : a>=1 ? '$'+a.toFixed(1)+'B' : '$'+Math.round(a*1000)+'M'); };
+const pctS = v => (v===null || v===undefined || !isFinite(v)) ? '—' : (v*100).toFixed(1)+'%';
+const nz = f => v => (v===null || v===undefined || !isFinite(v)) ? '—' : f(v);   // show a dash for figures a company didn't report
 function niceStep(x){ const p = Math.pow(10, Math.floor(Math.log10(x))), n = x/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
 function finBars(years, series, stacked, tip, title, W){
   const nar = W<500, H = nar ? 230 : 250, L = nar ? 50 : 62, R = nar ? 6 : 12, T = 26, B = 30, fs = nar ? 11 : 12;
@@ -1039,25 +1034,34 @@ function vFin(sym){
   const m = MARKET[sym];
   if (m[1]!=='stock') return `<div class="side-card"><span class="disp" style="font-size:26px;color:var(--white)">No financial statements for funds</span>
     <p style="margin:0;font-size:16px;line-height:1.5;color:var(--muted)">${sym} is a fund. It holds many ${m[1]==='bond'?'bonds':m[1]==='crypto'?'units of a cryptocurrency':'companies'} instead of running a business, so it doesn’t publish an income statement or balance sheet. Pick a company from the watchlist to see its financials.</p></div>`;
-  const F = finFor(sym), Y = F.years, n = Y.length-1;
-  const revG = (F.rev[n]/F.rev[0]-1)*100, niG = (F.ni[n]/F.ni[0]-1)*100;
+  loadFin(sym);
+  const st = FIN[sym], msg = (t, p) => `<div class="side-card"><span class="disp" style="font-size:26px;color:var(--white)">${t}</span><p style="margin:0;font-size:16px;line-height:1.5;color:var(--muted)">${p}</p></div>`;
+  if (!st) return msg('Loading financials…', 'Reading '+sym+'’s annual reports.');
+  if (st.unavailable==='plan') return msg('Financial statements aren’t available', 'The district’s market data plan doesn’t include company financials yet.');
+  if (st.failed) return msg('Couldn’t load financials', 'Try again in a minute.');
+  const F = finFor(sym);
+  if (!F) return msg('No annual reports found', sym+' doesn’t have annual financial statements on file. This happens with some foreign companies and very new listings.');
+  const Y = F.years, n = Y.length-1;
+  const growth = (a, b) => a && b && a>0 ? (b/a-1)*100 : null;
+  const revG = growth(F.rev[0], F.rev[n]), niG = growth(F.ni[0], F.ni[n]);
+  const span = n===1 ? 'one year' : n+' years';
   const legend = items => `<span class="keys" style="font-size:14px;color:var(--soft)">${items.map(([c,l])=>`<span><i style="width:12px;height:12px;border-radius:3px;background:${c};display:block"></i>${l}</span>`).join('')}</span>`;
   const both = (...a) => `<div class="fwide">${finBars(...a, 640)}</div><div class="fnarrow">${finBars(...a, 360)}</div>`;
   const inc = both(Y, [{name:'Revenue',color:FIN_C1,vals:F.rev},{name:'Net income',color:FIN_C2,vals:F.ni}], false,
     i=>`<b>FY ${Y[i]}</b><br>Revenue ${fmtB(F.rev[i])}<br>Net income ${fmtB(F.ni[i])}<br>Net margin ${pctS(F.ni[i]/F.rev[i])}`, 'Revenue and net income for the last five fiscal years');
   const bal = both(Y, [{name:'Liabilities',color:FIN_C2,vals:F.liab},{name:'Equity',color:FIN_C1,vals:F.equity}], true,
     i=>`<b>FY ${Y[i]}</b><br>Total assets ${fmtB(F.assets[i])}<br>Liabilities ${fmtB(F.liab[i])}<br>Equity ${fmtB(F.equity[i])}`, 'Total assets split into liabilities and equity for the last five fiscal years');
-  const div = (a,b) => a.map((x,i)=> b[i] ? x/b[i] : null);
+  const div = (a,b) => a.map((x,i)=> (b[i] && x!==null) ? x/b[i] : null);
   const R = [
     ['From the income statement', [
       ['Revenue growth', [null].concat(F.rev.slice(1).map((r,i)=>r/F.rev[i]-1)), pctS, 'This year’s revenue ÷ last year’s revenue − 1', 'How fast sales are growing.'],
       ['Gross margin', F.gp && div(F.gp, F.rev), pctS, 'Gross profit ÷ Revenue', 'How much of each sales dollar is left after paying to make the product. Banks don’t report it.'],
       ['Net profit margin', div(F.ni, F.rev), pctS, 'Net income ÷ Revenue', 'How many cents of every sales dollar end up as profit.'],
-      ['Earnings per share', F.eps, v=>'$'+v.toFixed(2), 'Net income ÷ Shares outstanding', 'The profit that belongs to each share. It’s the “E” in the P/E ratio.']
+      ['Earnings per share', F.eps, nz(v=>(v<0?'−$':'$')+Math.abs(v).toFixed(2)), 'Net income ÷ Shares outstanding', 'The profit that belongs to each share. It’s the “E” in the P/E ratio.']
     ]],
     ['From the balance sheet', [
-      ['Current ratio', F.ca && div(F.ca, F.cl), v=>v.toFixed(2), 'Current assets ÷ Current liabilities', 'Can the company pay the bills due this year? Above 1 means it has more short-term assets than short-term debts.'],
-      ['Debt-to-equity', div(F.debt, F.equity), v=>v.toFixed(2), 'Total debt ÷ Shareholders’ equity', 'How much the company relies on borrowed money. Higher means more risk if business slows.']
+      ['Current ratio', F.ca && div(F.ca, F.cl), nz(v=>v.toFixed(2)), 'Current assets ÷ Current liabilities', 'Can the company pay the bills due this year? Above 1 means it has more short-term assets than short-term debts.'],
+      ['Debt-to-equity', div(F.debt, F.equity), nz(v=>v.toFixed(2)), 'Total debt ÷ Shareholders’ equity', 'How much the company relies on borrowed money. Higher means more risk if business slows.']
     ]],
     ['Using both statements', [
       ['Return on equity (ROE)', div(F.ni, F.equity), pctS, 'Net income ÷ Shareholders’ equity', 'How much profit the company makes with the owners’ money.'],
@@ -1067,13 +1071,13 @@ function vFin(sym){
   return `
     <div class="side-card">
       <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Income statement</span>${legend([[FIN_C1,'Revenue'],[FIN_C2,'Net income']])}</div>
-      <p class="fnote">Over five years, revenue ${revG>=0?'grew':'fell'} <b>${Math.abs(revG).toFixed(0)}%</b> and net income ${niG>=0?'grew':'fell'} <b>${Math.abs(niG).toFixed(0)}%</b>.</p>
+      ${n>0 && revG!==null ? `<p class="fnote">Over ${span}, revenue ${revG>=0?'grew':'fell'} <b>${Math.abs(revG).toFixed(0)}%</b>${niG!==null ? ` and net income ${niG>=0?'grew':'fell'} <b>${Math.abs(niG).toFixed(0)}%</b>` : F.ni[0]!==null && F.ni[n]!==null ? (F.ni[n]>0 ? ' and the company went from a loss to a profit' : F.ni[0]>0 ? ' and the company went from a profit to a loss' : ' and the company lost money in both years') : ''}.</p>` : ''}
       <div class="fchart">${inc}</div>
-      ${finTable(Y, [['Revenue',F.rev,null,true],['Cost of revenue',F.gp && F.rev.map((r,i)=>r-F.gp[i])],['Gross profit',F.gp],['Operating income',F.op],['Net income',F.ni,null,true],['Earnings per share',F.eps,v=>'$'+v.toFixed(2)]])}
+      ${finTable(Y, [['Revenue',F.rev,null,true],['Cost of revenue',F.gp && F.rev.map((r,i)=>F.gp[i]===null ? null : r-F.gp[i])],['Gross profit',F.gp],['Operating income',F.op],['Net income',F.ni,null,true],['Earnings per share',F.eps,nz(v=>(v<0?'−$':'$')+Math.abs(v).toFixed(2))]])}
     </div>
     <div class="side-card">
       <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">Balance sheet</span>${legend([[FIN_C2,'Liabilities'],[FIN_C1,'Equity']])}</div>
-      <p class="fnote">Each bar is total assets, split into what the company owes and what the owners own: <b>Assets = Liabilities + Equity</b>. In FY ${Y[n]}: ${fmtB(F.assets[n])} = ${fmtB(F.liab[n])} + ${fmtB(F.equity[n])}.</p>
+      <p class="fnote">Each bar is total assets, split into what the company owes and what the owners own: <b>Assets = Liabilities + Equity</b>. ${F.assets[n]!==null && F.liab[n]!==null && F.equity[n]!==null ? `In FY ${Y[n]}: ${fmtB(F.assets[n])} = ${fmtB(F.liab[n])} + ${fmtB(F.equity[n])}${Math.abs(F.assets[n]-F.liab[n]-F.equity[n]) > F.assets[n]*0.005 ? ' (the gap is shares owned by outside investors in parts of the company)' : ''}.` : ''}</p>
       <div class="fchart">${bal}</div>
       ${finTable(Y, [['Cash',F.cash],['Current assets',F.ca],['Total assets',F.assets,null,true],['Current liabilities',F.cl],['Total liabilities',F.liab,null,true],['Shareholders’ equity',F.equity,null,true]])}
     </div>
@@ -1085,7 +1089,7 @@ function vFin(sym){
           <p><b style="color:var(--white)">Formula:</b> ${formula}. ${why}</p>
           <p class="num" style="font-size:13px">${Y.map((yr,i)=> vals[i]===null ? '' : `FY ${String(yr).slice(2)}: ${fmt(vals[i])}`).filter(Boolean).join(' · ')}</p></details>`; }).join('')).join('')}
     </div>
-    <p style="margin:0;font-size:13px;color:var(--dim)">Sample figures for the demo. The live version pulls each company’s annual reports (10-K filings) through Massive’s financials data and calculates the ratios from them.</p>`;
+    <p style="margin:0;font-size:13px;color:var(--dim)">From ${sym}’s annual reports (10-K filings) through Massive. Fiscal years end on the company’s own schedule, not always in December. Ratios are calculated from these numbers.</p>`;
 }
 
 function wlResults(){
@@ -1503,8 +1507,8 @@ function vTrade(){
       <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white);display:inline-flex;align-items:center;gap:12px">${tico(sym)}${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
       ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
-        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month, about <b style="color:var(--white)">${fundOf(sym)[2].toFixed(1)}%</b> a year. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
-      ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>One share gives you a slice of <b style="color:var(--white)">${(ETFMETA[sym]||[0.1,100])[1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${(ETFMETA[sym]||[0.1,100])[0].toFixed(2)}%</b>.</span></div>` : ''}
+        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month${realYield(sym)!==null ? `, about <b style="color:var(--white)">${realYield(sym).toFixed(1)}%</b> a year` : ''}. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
+      ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>${ETFMETA[sym] ? `One share gives you a slice of about <b style="color:var(--white)">${ETFMETA[sym][1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : 'One share gives you a slice of many companies, and it trades like a stock.'}</span></div>` : ''}
       ${isBuy ? `<div style="display:flex;flex-direction:column;gap:10px"><span class="label">How often</span>
         <div class="pills" role="tablist" aria-label="How often">${[['once','One time'],['week','Every week'],['2week','Every 2 weeks'],['month','Every month']].map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.freq===id}" data-act="freq:${id}">${l}</button>`).join('')}</div></div>` : ''}
       ${isBuy && tr.freq!=='once' ? (()=>{
