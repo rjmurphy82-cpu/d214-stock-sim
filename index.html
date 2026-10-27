@@ -335,6 +335,7 @@ input[type=number]{font-size:19px;height:52px;max-width:180px}
   .slip{border:1px dashed #777;padding:12px 14px;font-size:12.5px;line-height:1.5;break-inside:avoid}
   .slip b{font-size:17px}
   .slip .p,.tslip .p{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600}
+  .slip .site{white-space:nowrap;font-size:13.5px}
   .qrs{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .qrs > div:first-child{min-width:0}
   .qr{flex:none;width:0.95in;height:0.95in}
@@ -2032,7 +2033,7 @@ function printSlips(slips){
     <p class="sub">${esc(g.school)} · ${esc(g.teacher)}${g.period ? ' · '+esc(g.period) : ''} · go to <b>${esc(site)}</b> or scan your code</p>
     ${g.teacherPw ? `<div class="tslip qrs"><div>Teacher sign-in for <b>${esc(g.teacher)}</b>: ${esc(site)} → ${esc(g.school)} → I’m a teacher → ${esc(g.teacher)}<br>Password: <span class="p">${esc(g.teacherPw)}</span></div>
       ${g.teacherId ? `<div class="qr">${qrSvg(base+'#go=t.'+g.teacherId)}</div>` : ''}</div>` : ''}
-    <div class="slipgrid">${g.students.map(s=>`<div class="slip qrs"><div><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: ${s.pw ? `<span class="p">${esc(s.pw)}</span>` : '<i>ask your teacher</i>'}</div>
+    <div class="slipgrid">${g.students.map(s=>`<div class="slip qrs"><div><b>${esc(s.name)}</b><br>Go to <b class="site">${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: ${s.pw ? `<span class="p">${esc(s.pw)}</span>` : '<i>ask your teacher</i>'}</div>
       ${s.id && g.teacherId && g.sectionId ? `<div class="qr">${qrSvg(base+'#go=s.'+g.teacherId+'.'+g.sectionId+'.'+s.id)}</div>` : ''}</div>`).join('')}</div></div>`;
   document.getElementById('print').innerHTML = slips.map(page).join('');
   window.print();
@@ -2085,7 +2086,12 @@ function moreActs(k, v, el){
       return true;
     }
     case 'tprint': {
-      const go = fillMissing => call('teacher_act', {a:'slips', sectionId:+v, fillMissing}).then(r=>{
+      let fillTeacher = false;
+      const go = fillMissing => call('teacher_act', {a:'slips', sectionId:+v, fillMissing, fillTeacher}).then(r=>{
+        if (ROLE==='admin' && r.teacherMissing && !fillTeacher){
+          const t = r.slips[0].teacher;
+          if (confirm(t+'’s own password was made before it could be reprinted, so it can’t go on the sheet.\n\nMake '+t+' a new password and print it at the top? The old one stops working right away.')){ fillTeacher = true; return go(fillMissing); }
+        }
         if (r.missing && !fillMissing){
           const n = r.missing, all = n===r.slips[0].students.length;
           if (confirm((all ? 'This class’s passwords were' : n+(n===1?' student’s password was':' students’ passwords were'))+' made before slips could be reprinted, so they can’t be shown.\n\nMake new passwords for '+(all ? 'the whole class' : 'just '+(n===1?'that student':'those '+n))+'? The old ones stop working right away.')) return go(true);
