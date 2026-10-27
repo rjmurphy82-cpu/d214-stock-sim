@@ -189,7 +189,8 @@ const ROUTES = {
         const pw = newPassword();
         const [s] = await sql`update students set pw_hash = ${hashPw(pw)} where id = ${id} returning display`;
         await clearFails(sql, 'stu:' + id);
-        return { name: s.display, pw };
+        const [info] = await sql`select se.id as "sectionId", se.period, t.id as "teacherId", t.name as teacher, sc.name as school from students st join sections se on se.id = st.section_id join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where st.id = ${id}`;
+        return { name: s.display, pw, slip: { ...info, students: [{ id, name: s.display, pw }] } };
       }
       // Rename a class (its period label). Students, passwords, and portfolios stay the same.
       case 'rename_class': {
@@ -207,8 +208,8 @@ const ROUTES = {
         const secId = int(body.sectionId); await mySection(secId);
         const kids = await sql`select id, display from students where section_id = ${secId} and active order by display`;
         const out = [];
-        for (const k of kids) { const pw = newPassword(); await sql`update students set pw_hash = ${hashPw(pw)} where id = ${k.id}`; await clearFails(sql, 'stu:' + k.id); out.push({ name: k.display, pw }); }
-        const [info] = await sql`select se.period, t.name as teacher, sc.name as school from sections se join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where se.id = ${secId}`;
+        for (const k of kids) { const pw = newPassword(); await sql`update students set pw_hash = ${hashPw(pw)} where id = ${k.id}`; await clearFails(sql, 'stu:' + k.id); out.push({ id: k.id, name: k.display, pw }); }
+        const [info] = await sql`select se.id as "sectionId", se.period, t.id as "teacherId", t.name as teacher, sc.name as school from sections se join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where se.id = ${secId}`;
         return { slips: [{ ...info, students: out }] };
       }
       case 'remove': {
@@ -278,7 +279,8 @@ const ROUTES = {
         const [t] = await sql`update teachers set pw_hash = ${hashPw(pw)} where id = ${id} returning name`;
         if (!t) throw bad('Teacher not found.');
         await clearFails(sql, 'tch:' + id);
-        return { name: t.name, pw };
+        const [ti] = await sql`select sc.name as school from teachers t join schools sc on sc.id = t.school_id where t.id = ${id}`;
+        return { name: t.name, pw, slip: { school: ti.school, teacher: t.name, teacherId: id, teacherPw: pw, period: '', students: [] } };
       }
       // Remove a whole class (for a wrong or duplicate roster). Its students can no longer sign in
       // and drop out of the standings. Importing a class with the same name later brings it back.
