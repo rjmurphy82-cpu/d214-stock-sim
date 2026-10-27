@@ -139,6 +139,16 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   ok('cannot rename another teacher’s class', (await tch('teacher_act', { a: 'rename_class', sectionId: (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0].id, period: 'P1' })).status === 403);
   ok('teacher adds a student', added.slips && added.slips[0].students[0].name === 'New K.', added);
 
+  // Removing a wrong class, then importing the right one.
+  const nv = (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0];
+  const rm = await admin('admin_act', { a: 'class_remove', sectionId: nv.id });
+  ok('admin removes a class', rm.ok && rm.removed === nv.students.length, rm);
+  ok('removed class is gone from sign-in', !(await admin('dir')).schools.find(s => s.name === 'Prospect').teachers.some(t => t.id === novak.id) || (await admin('dir', undefined, '&teacher=' + novak.id)).sections.length === 0);
+  ok('removed students leave the standings', !(await admin('standings')).students.some(x => nv.students.some(k => k.id === x.id)));
+  ok('teachers cannot remove classes', (await tch('admin_act', { a: 'class_remove', sectionId: dirT.sections[0].id })).status === 403);
+  const back = await admin('admin_act', { a: 'import', csv: 'School,Teacher,Period,First Name,Last Name\nProspect,Ms. Novak,P4,Ann,Avery', commit: true });
+  ok('a new class for the same teacher imports cleanly', back.slips.length === 1 && back.slips[0].period === 'P4', back.slips);
+
   // Settings and end of day.
   const set = await admin('admin_act', { a: 'settings', mmRate: 4.25, trading: false });
   ok('admin changes rate and pauses trading', set.mmRate === 4.25 && set.trading === false);

@@ -38,7 +38,7 @@ const ROUTES = {
         select se.id as sec, se.period, st.id, st.display as name from sections se
         join teachers t on t.id = se.teacher_id
         left join students st on st.section_id = se.id and st.active
-        where t.id = ${int(tid)} and t.active order by se.period, st.display`;
+        where t.id = ${int(tid)} and t.active and se.active order by se.period, st.display`;
       const secs = new Map();
       for (const r of rows) { if (!secs.has(r.sec)) secs.set(r.sec, { id: r.sec, period: r.period, students: [] }); if (r.id) secs.get(r.sec).students.push({ id: r.id, name: r.name }); }
       return { sections: [...secs.values()].filter(s => s.students.length) };
@@ -158,7 +158,7 @@ const ROUTES = {
     const secs = await sql`
       select se.id, se.period, t.id as tid, t.name as teacher, sc.name as school from sections se
       join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id
-      where t.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
+      where t.active and se.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
     const st = await standings(sql);
     const roster = await sql`select id, display, section_id, last_login from students where active and section_id = any(${secs.map(s => s.id)}) order by display`;
     const act = await activity(sql, roster.map(r => r.id));
@@ -238,7 +238,7 @@ const ROUTES = {
     const settings = await P.getSettings(sql);
     const teachers = await sql`
       select t.id, t.name, sc.name as school,
-        (select count(*)::int from sections se where se.teacher_id = t.id) as classes,
+        (select count(*)::int from sections se where se.teacher_id = t.id and se.active) as classes,
         (select count(*)::int from students st join sections se on se.id = st.section_id where se.teacher_id = t.id and st.active) as students
       from teachers t join schools sc on sc.id = t.school_id where t.active order by sc.name, t.name`;
     const [days] = await sql`select max(d) as last, count(*)::int as n from market_days`;
@@ -279,6 +279,16 @@ const ROUTES = {
         if (!t) throw bad('Teacher not found.');
         await clearFails(sql, 'tch:' + id);
         return { name: t.name, pw };
+      }
+      // Remove a whole class (for a wrong or duplicate roster). Its students can no longer sign in
+      // and drop out of the standings. Importing a class with the same name later brings it back.
+      case 'class_remove': {
+        const secId = int(body.sectionId);
+        const [se] = await sql`update sections set active = false where id = ${secId} returning period`;
+        if (!se) throw bad('Class not found.');
+        const gone = await sql`update students set active = false where section_id = ${secId} and active returning id`;
+        invalidateStandings();
+        return { ok: true, removed: gone.length };
       }
       case 'teacher_remove': {
         await sql`update teachers set active = false where id = ${int(body.teacherId)}`;

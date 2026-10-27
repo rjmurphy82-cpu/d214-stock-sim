@@ -1870,7 +1870,7 @@ function vClasses(){
           <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
-        <div class="btnrow"><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button></div>
+        <div class="btnrow"><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
         <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
@@ -2081,6 +2081,12 @@ function moreActs(k, v, el){
     case 'aeod': {
       if (el) el.setAttribute('aria-busy','true');
       call('admin_act', {a:'eod'}).then(r=>{ UI.eodLog = r.log; loadAdmin(); loadStandings(); }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
+      return true;
+    }
+    case 'aclassremove': {
+      const se = CLS && CLS.sections.find(s=>s.id===+v); if (!se) return true;
+      if (!confirm('Remove '+se.teacher+' · '+se.period+' and its '+se.students.length+' students? They won’t be able to sign in and will leave the standings. Use this for a wrong or duplicate roster.')) return true;
+      call('admin_act', {a:'class_remove', sectionId:+v}).then(()=>{ loadClasses(); loadStandings(); loadAdmin(); }).catch(e=>alert(e.message));
       return true;
     }
     case 'atpw': {
