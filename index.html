@@ -1511,6 +1511,7 @@ function vTrade(){
       </div>
       <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white);display:inline-flex;align-items:center;gap:12px">${tico(sym)}${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
+      ${ownedHtml(sym)}
       ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
         :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month${realYield(sym)!==null ? `, about <b style="color:var(--white)">${realYield(sym).toFixed(1)}%</b> a year` : ''}. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
       ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>${ETFMETA[sym] ? `One share gives you a slice of about <b style="color:var(--white)">${ETFMETA[sym][1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : 'One share gives you a slice of many companies, and it trades like a stock.'}</span></div>` : ''}
@@ -1544,6 +1545,19 @@ function vTrade(){
     <div class="types" role="tablist" aria-label="Investment type">${types.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.type===id}" data-act="type:${id}">${l}</button>`).join('')}</div>
     ${tr.done ? '' : errBox() + closedBox(tr.type)}
     ${body}</div></div>`;
+}
+// What the student already holds of this ticker, shown under the price on the Trade page.
+function ownedHtml(sym){
+  const held = P.pos.filter(p=>p.sym===sym);
+  if (!held.length) return `<div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--dim)">YOU OWN</span><span>None yet.</span></div>`;
+  return held.map(p=>{
+    const short = p.side==='short', g = posGain(p), gp = g/(p.n*p.b)*100, v = posValue(p);
+    return `<div class="bondnote" style="font-size:16px;justify-content:space-between;flex-wrap:wrap;gap:10px 16px">
+      <span style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="tag" style="color:${short?'var(--warn)':'var(--link)'}">${short?'YOU’RE SHORT':'YOU OWN'}</span>
+        <span><b class="num" style="color:var(--white)">${fmtSh(+p.n.toFixed(4))}</b> ${p.n===1?'share':'shares'} · worth <b class="num" style="color:var(--white)">${money(v)}</b> · ${short?'shorted':'bought'} at ${money(p.b)} avg ·
+        <span class="num ${cls(g)}">${signed2(g)} (${pct(gp)})</span></span></span>
+      <button type="button" class="chip" style="min-height:38px" data-act="sheet:pos:${sym}:${p.side}">${short?'Close short':'Sell'}</button></div>`;
+  }).join('');
 }
 function chipsHtml(){
   const tr = UI.trade, q = tr.q.trim().toLowerCase();
