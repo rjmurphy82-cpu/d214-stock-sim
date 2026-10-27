@@ -137,6 +137,11 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   ok('teacher renames a class (Period 9 becomes P9)', rn.period === 'P9', rn);
   ok('cannot rename to a name the teacher already uses', (await tch('teacher_act', { a: 'rename_class', sectionId: dirT.sections[0].id, period: 'P9' })).status === 400);
   ok('cannot rename another teacher’s class', (await tch('teacher_act', { a: 'rename_class', sectionId: (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0].id, period: 'P1' })).status === 403);
+  const sl = await tch('teacher_act', { a: 'slips', sectionId: dirT.sections[0].id });
+  ok('teacher reprints slips any time with the same passwords', sl.slips[0].students.length > 10 && sl.missing === 0 && sl.slips[0].teacherPw === cal.teacherPw
+    && sl.slips[0].students.find(x => x.name === 'Jack Ma.').pw === cal.students.find(x => x.name === 'Jack Ma.').pw, { missing: sl.missing });
+  ok('reprinted slip after a reset shows the new password', sl.slips[0].students.find(x => x.id === jack.id)?.pw === reset.pw || dirT.sections[0].students.every(x => x.id !== jack.id));
+  ok('cannot print another teacher’s slips', (await tch('teacher_act', { a: 'slips', sectionId: (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0].id })).status === 403);
   ok('teacher adds a student', added.slips && added.slips[0].students[0].name === 'New K.', added);
 
   // Removing a wrong class, then importing the right one.
