@@ -457,7 +457,7 @@ let T = [], D = {sections:[], students:[]}, ME = null, ST = null;
 function applyStandings(st){
   ST = st;
   const tIdx = new Map(), sIdx = new Map();
-  T = st.teachers.map((t,i)=>{ tIdx.set(t.id, i); return [t.name, t.school, t.id]; });
+  T = st.teachers.map((t,i)=>{ tIdx.set(t.id, i); return [t.name, t.school, t.id, t.practice || null]; });
   D.sections = st.sections.map((s,i)=>{ sIdx.set(s.id, i); return {id:i, dbId:s.id, teacher:s.teacher, school:s.school, period:s.period, size:s.size, ti:tIdx.get(s.tid)}; });
   D.students = st.students.filter(s=>sIdx.has(s.sec)).map((s,i)=>({id:i, dbId:s.id, name:s.name, sec:sIdx.get(s.sec), school:s.school, ret:s.ret, value:s.value,
     isMe: ROLE==='student' && !!ME_INFO && s.id===ME_INFO.id}));
@@ -915,7 +915,7 @@ function vCharts(){
             <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
           </div>
         </div>
-        ${ROLE==='student' ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>` : ''}
+        ${canTrade() ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>` : ''}
       </div>
       <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button></div>
       ${c.view==='fin' ? vFin(sym) : `
@@ -935,7 +935,7 @@ function vCharts(){
         <span class="keys">${keys}</span>
         <span>${LIVE.on ? 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>' : 'Sample prices'} · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
       </div>
-      <div class="side-card" style="gap:2px;margin-top:8px;${ROLE==='student'?'':'display:none'}">
+      <div class="side-card" style="gap:2px;margin-top:8px;${canTrade()?'':'display:none'}">
         <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
         ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
           return `<div class="trow"><span class="num" style="color:var(--dim);font-size:14px">${dLabel(logDate(l))}</span><span style="color:var(--white)"><b>${w} ${fmtSh(l.n)}</b> <span style="color:var(--muted)">at ${money(l.price)}</span></span><span class="num ${v.good?'up':'down'}" style="text-align:right">${pct(v.ch)}</span><span class="vd">${v.text}</span></div>`; }).join('')
@@ -1339,7 +1339,7 @@ function vPortfolio(){
     ${P.notes.length ? `<div class="note good" role="status">${P.notes.map(n=>`<span>${esc(n)}</span>`).join('')}<button type="button" class="ghost" style="min-height:40px;margin-left:auto" data-act="dismiss">Dismiss</button></div>` : ''}
     <div class="hero">
       <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-        <div class="who">${logo(mi.school,52)}<span class="n">${esc(mi.name||'')}</span><span style="color:var(--dim);font-size:17px">${esc(mi.teacher+' · '+mi.period)} · ${esc(mi.school)}</span></div>
+        <div class="who">${logo(mi.school,52)}<span class="n">${esc(mi.name||'')}</span><span style="color:var(--dim);font-size:17px">${ROLE==='teacher' ? 'Practice portfolio · '+esc(mi.school) : esc(mi.teacher+' · '+mi.period)+' · '+esc(mi.school)}</span></div>
         <span class="big">${whole(t.total)}</span>
         <div class="gainline"><span class="${cls(t.ret)}">${pct(t.ret)}</span><span class="${cls(t.ret)}">${signed(t.total-100000)}</span>
           <span class="vs">${t.vs>=0?'beating':'trailing'} the S&amp;P by <b style="color:var(--white)">${Math.abs(t.vs).toFixed(2)} pts</b></span></div>
@@ -1349,11 +1349,11 @@ function vPortfolio(){
         <a class="cta" href="#trade">Trade</a>
       </div>
     </div>
-    <div class="ranks">
+    ${ROLE==='teacher' ? `<div class="bondnote"><span class="tag" style="color:var(--cd)">PRACTICE</span><span>Your own $100,000 to try things out. It doesn’t count in any standings, and your students can see your holdings the same way they see a classmate’s.</span></div>` : `<div class="ranks">
       ${(r ? [[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize(mi.school),'At '+mi.school],[r.district,D.students.length,'In the district']]
             : [[null,'…','In class'],[null,'…','At '+mi.school],[null,'…','In the district']]).map(([k,of,l],i)=>`
       <div class="rankc${i===0?' top':''}"><span class="r">${k ? ord(k) : '—'}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
-    </div>
+    </div>`}
     <div class="panels">
       <div class="panel">
         <div class="spread" style="flex-wrap:wrap"><span class="label">You vs. the market</span>
@@ -1562,7 +1562,19 @@ function vDrawer(){
   const d = UI.drawer; if (!d) return '';
   const [kind, id] = [d.split(':')[0], d.split(':').slice(1).join(':')];
   let html='';
-  if (kind==='student'){
+  if (kind==='practice'){
+    const [pid, ti] = id.split(':').map(Number), t = T[ti] || ['Teacher', ''], h = HOLDS[pid];
+    if (!h) loadHolds(pid);
+    const hs = h && h.holds || [], pal=['#ef5b70','#6b8fbf','#c9a34e','#9a86c9','#3fa58a','#e08a4f','#5fb3c9','#d17fb0'];
+    const parts = hs.map((x,i)=>({...x,color:x.ty==='Cash'?'#4a5768':pal[i%pal.length],pct:x.w}));
+    html = `<div class="who">${logo(t[1],64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(t[0])}</span><span style="color:var(--dim)">Practice portfolio · not ranked</span></span></div>
+      ${!h || h.loading ? '<p class="empty">Loading…</p>' : `
+      <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(h.value)}</span><span class="num ${cls(h.ret)}" style="font-size:20px">${pct(h.ret)} · ${signed(h.value-100000)}</span></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
+      <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
+        ${parts.map(x=>`<div><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
+      <p class="empty">Teachers practice with their own $100,000 too. It doesn’t count in the standings.</p>`}`;
+  } else if (kind==='student'){
     const s = D.students[+id], sec = D.sections[s.sec]; liveStudents();
     const value = s.isMe ? totals().total : 100000*(1+s.ret/100);
     const rk = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(s)+1;
@@ -1584,7 +1596,7 @@ function vDrawer(){
       html = `<div style="display:flex;flex-direction:column;gap:4px"><span class="label" style="color:var(--muted)">${a.label}</span><span class="num" style="font-size:44px;color:var(--white)">${a.stock}</span><span style="color:var(--dim);font-size:18px">${esc(a.name)}</span></div>
       <div class="kv"><span><span class="k">Price</span><span class="v">${money(prices[a.stock])}</span></span><span><span class="k">Today</span><span class="v ${cls(a.chg)}">${pct(a.chg)}</span></span><span><span class="k">Students who own it</span><span class="v">${a.owners}</span></span></div>
       <p style="margin:0;padding-top:14px;border-top:1px solid var(--line-2);font-size:18px;color:var(--cream)">${a.lesson}</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="ghost" data-act="chartsym:${a.stock}">See chart</button>${ROLE==='student' ? `<button type="button" class="cta" data-act="go:buy:${a.stock}">Trade ${a.stock}</button>` : ''}</div>`;
+      <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="ghost" data-act="chartsym:${a.stock}">See chart</button>${canTrade() ? `<button type="button" class="cta" data-act="go:buy:${a.stock}">Trade ${a.stock}</button>` : ''}</div>`;
     } else html = `<div class="who">${logo(a.school,60)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${a.label}</span><span style="color:var(--dim)">${a.sub||a.name}</span></span></div>
       <span class="num" style="font-size:40px;color:${a.good===false?'var(--down)':'var(--up)'}">${a.value}</span>
       ${a.stats?`<div class="kv">${a.stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${v}</span></span>`).join('')}</div>`:''}
@@ -1600,8 +1612,10 @@ function vDrawer(){
       stats=[['Classes',secs.map(s=>s.period).join(', ')],['Students',l.length],['Top student',best(l).name],['Beating S&P',l.filter(s=>s.ret>(ST.spyRet||0)).length+' of '+l.length]]; }
     else { const l=D.students.filter(s=>s.school===id), ts=T.map((t,i)=>i).filter(i=>T[i][1]===id).sort((a,b)=>teacherAvg(b)-teacherAvg(a)); title=id; sch=id; sub=ts.length+' teachers';
       stats=[['Average return',pct(schoolAvg(id))],['Top teacher',T[ts[0]][0]],['Top student',best(l).name],['Students',l.length]]; }
+    const pid = kind==='teacher' ? T[+id][3] : null;
     html = `<div class="who">${logo(sch,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:34px;color:var(--white)">${esc(title)}</span><span style="color:var(--dim)">${esc(sub)}</span></span></div>
-      <div class="kv">${stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${esc(v)}</span></span>`).join('')}</div>`;
+      <div class="kv">${stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${esc(v)}</span></span>`).join('')}</div>
+      ${pid ? `<button type="button" class="ghost" data-act="open:practice:${pid}:${id}">See ${esc(title)}’s practice portfolio</button>` : ''}`;
   }
   return `<div class="scrim" data-act="close"><div class="drawer" role="dialog" aria-modal="true" data-stop>
     <button type="button" class="x" data-act="close" aria-label="Close">×</button>${html}</div></div>`;
@@ -1746,8 +1760,8 @@ function act(a, el){
       return;
     }
     case 'csym': ensureSym(v); UI.chart.sym = v; break;
-    case 'wadd': ensureSym(v); if (!watchList().includes(v)){ P.watch.push(v); if (ROLE==='student') call('act', {a:'watch', sym:v, on:true}).catch(()=>{}); } UI.chart.sym = v; UI.wq = ''; break;
-    case 'wtog': { const on = !P.watch.includes(v); if (on) P.watch.push(v); else P.watch = P.watch.filter(x=>x!==v); if (ROLE==='student') call('act', {a:'watch', sym:v, on}).catch(()=>{}); break; }
+    case 'wadd': ensureSym(v); if (!watchList().includes(v)){ P.watch.push(v); if (canTrade()) call('act', {a:'watch', sym:v, on:true}).catch(()=>{}); } UI.chart.sym = v; UI.wq = ''; break;
+    case 'wtog': { const on = !P.watch.includes(v); if (on) P.watch.push(v); else P.watch = P.watch.filter(x=>x!==v); if (canTrade()) call('act', {a:'watch', sym:v, on}).catch(()=>{}); break; }
     case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
     case 'cview': UI.chart.view = v; break;
@@ -2182,7 +2196,7 @@ async function loadMe(quiet){
   try{
     const r = await call('me');
     ROLE = r.role; ME_INFO = r.me; BOOTED = true;
-    if (ROLE==='student') applyState(r); else { P = EMPTY(); goLive(); }
+    if (canTrade()) applyState(r); else { P = EMPTY(); goLive(); }
     quiet ? repaint() : render();
     return true;
   }catch(e){
@@ -2212,8 +2226,9 @@ async function boot(){
 }
 
 /* ---------- render ---------- */
-const ROUTES = {student:['portfolio','standings','checkup','charts','trade'], teacher:['classes','standings','charts'], admin:['admin','classes','standings','charts']};
+const ROUTES = {student:['portfolio','standings','checkup','charts','trade'], teacher:['classes','portfolio','standings','charts','trade'], admin:['admin','classes','standings','charts']};
 const NAVL = {portfolio:'My Portfolio', standings:'Standings', checkup:'Checkup', charts:'Charts', trade:'Trade', classes:'My Classes', admin:'Admin'};
+const canTrade = () => ROLE==='student' || ROLE==='teacher';
 const route = () => { const h = (location.hash||'').replace('#',''), ok = ROUTES[ROLE] || []; return ok.includes(h) ? h : (ok[0] || 'login'); };
 function renderNav(){
   const r = route(), list = ROUTES[ROLE] || [];
@@ -2303,9 +2318,9 @@ function repaint(){
 }
 /* Money market interest ticks up on screen; standings refresh every minute; the portfolio every 5 minutes
    (to pick up end-of-day payments and notes). Prices refresh every minute (see goLive). */
-setInterval(()=>{ if (ROLE==='student'){ mmSettle(); } }, 60000);
+setInterval(()=>{ if (canTrade()){ mmSettle(); } }, 60000);
 setInterval(()=>{ if (ROLE && document.visibilityState==='visible'){ loadStandings(); if (route()==='classes') loadClasses(); } }, 60000);
-setInterval(()=>{ if (ROLE==='student' && document.visibilityState==='visible' && !BUSY && !UI.sheet) loadMe(true); }, 300000);
+setInterval(()=>{ if (canTrade() && document.visibilityState==='visible' && !BUSY && !UI.sheet) loadMe(true); }, 300000);
 boot();
 })();
 </script>

@@ -121,6 +121,21 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   // Teacher view.
   const tch = client();
   ok('teacher signs in', (await tch('login', { kind: 'teacher', id: callahan.id, password: cal.teacherPw })).ok);
+  // Teacher practice portfolio
+  let tme = await tch('me');
+  ok('teacher gets a practice portfolio with $100,000', tme.role === 'teacher' && tme.P && tme.P.cash === 100000 && tme.me.practiceId, tme);
+  const before = (await tch('standings')).students.length;
+  const tt = await tch('act', { a: 'trade', sym: 'MSFT', side: 'buy', n: 20 });
+  ok('teacher can trade in their practice portfolio', tt.result && tt.P.pos.some(p => p.sym === 'MSFT'), tt);
+  const stAfter = await tch('standings');
+  ok('practice portfolio is not in the student standings', stAfter.students.length === before && !stAfter.students.some(x => x.id === tme.me.practiceId));
+  const callT = stAfter.teachers.find(t => t.id === callahan.id);
+  ok('standings tell students where the teacher’s practice portfolio is', callT && callT.practice === tme.me.practiceId, callT);
+  const peek = await stu('student', undefined, '&id=' + tme.me.practiceId);
+  ok('students can see the teacher’s practice holdings as a snapshot', peek.practice && peek.holds.some(h => h.s === 'MSFT') && peek.holds.every(h => h.n === undefined), peek);
+  ok('practice portfolio does not show up as a student in the class list', !(await tch('teacher')).sections.some(se => se.students.some(k => k.id === tme.me.practiceId)));
+  ok('teacher still cannot use admin tools', (await tch('admin')).status === 403);
+
   const tv = await tch('teacher');
   ok('teacher sees only their classes', tv.sections.length === 2 && tv.sections.every(s => s.teacher === 'Mr. Callahan'), tv.sections.map(s => s.teacher));
   const full = await tch('student', undefined, '&id=' + jack.id);
