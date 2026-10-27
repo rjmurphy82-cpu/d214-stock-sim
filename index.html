@@ -283,6 +283,10 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
   .brand{font-size:26px}
 }
 @media (prefers-reduced-motion:reduce){.tape .flash{animation:none}}
+.stepin{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:30px;color:var(--muted)}
+.stepin input{width:150px;height:56px;padding:0 10px;background:var(--bg);border:1px solid var(--line-3);border-radius:6px;font-family:var(--mono);font-size:30px;text-align:center;color:var(--white)}
+.stepin input:focus{border-color:var(--link);outline:none}
+@media (max-width:520px){.stepin input{width:110px;font-size:24px}}
 
 /* account + status banner */
 .acct{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--muted)}
@@ -406,6 +410,7 @@ function logo(school, size){
 
 /* ---------- format ---------- */
 const money = x => '$' + Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dollarTxt = x => Number.isInteger(Math.round(x*100)/100) ? whole(x) : money(x);   // $1,234 or $1,234.50
 const whole = x => (x<0?'−':'') + '$' + Math.round(Math.abs(x)).toLocaleString('en-US');
 const signed = x => (x>=0?'+':'−') + '$' + Math.round(Math.abs(x)).toLocaleString('en-US');
 const signed2 = x => (x>=0?'+':'−') + money(x);
@@ -1481,7 +1486,7 @@ function vTrade(){
         <button type="button" class="buy" aria-pressed="${isIn}" data-act="mmdir:in"><span class="w" style="font-size:26px">Move in</span><span class="d">${money(P.cash)} in cash</span></button>
         <button type="button" class="buy" aria-pressed="${!isIn}" data-act="mmdir:out"><span class="w" style="font-size:26px">Move out</span><span class="d">${money(m.bal)} in money market</span></button>
       </div>
-      <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="mmamt:-" aria-label="Less money">−</button><span class="v" style="min-width:150px">${whole(tr.mmAmt)}</span><button type="button" data-act="mmamt:+" aria-label="More money">+</button><button type="button" data-act="mmamt:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div class="line"><span class="label">Amount</span><div class="stepper"><button type="button" data-act="mmamt:-" aria-label="Less money">−</button>${numIn('mmAmt', tr.mmAmt, true)}<button type="button" data-act="mmamt:+" aria-label="More money">+</button><button type="button" data-act="mmamt:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
       <div class="line"><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:19px;color:var(--muted)">${isIn?'Earns about':'Stops earning about'}</span><span class="num" style="font-size:15px;color:var(--dim)">+${money(amtPerDay)} a day · ${rate.toFixed(2)}% a year</span></span><span class="num ${isIn?'up':''}" style="font-size:36px;${isIn?'':'color:var(--soft)'}">+${money(amtMonth)}<span style="font-size:18px;color:var(--dim)"> /month</span></span></div>
       <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
         <span class="label">How your money moves</span>
@@ -1498,12 +1503,12 @@ function vTrade(){
         <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--cd)">RATE</span><span>Set by the master teacher. Real money market rates rise and fall with the Federal Reserve’s interest rate.</span></div>
       </div>
       ${tooMuch ? `<span class="down" style="font-size:17px">${avail<=0 ? (isIn?'You don’t have any cash to move.':'Your money market balance is empty.') : 'That’s more than you have. Tap All to move everything.'}</span>` : ''}
-      <button type="button" class="go" data-act="mmmove" ${tooMuch||SETTINGS.trading===false?'disabled':''}>Move ${whole(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
+      <button type="button" class="go" data-act="mmmove" ${tooMuch||SETTINGS.trading===false?'disabled':''}>Move ${dollarTxt(tr.mmAmt)} to ${isIn?'money market':'cash'}</button>`;
   } else {
     const sym = tr.pick[tr.type], m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
     if (m && m[1]==='bond') loadYield(sym);
     const canShort = tr.type!=='bond', isBuy = !canShort || tr.side==='buy';
-    const cost = price*tr.n, tooMuch = cost > P.cash;
+    const cost = price*tr.n, tooMuch = cost > P.cash || !(tr.n > 0);
     body = `<div style="display:flex;flex-direction:column;gap:12px">
         <label for="search" class="label">${({stock:'Stock',etf:'ETF',bond:'Bond fund',crypto:'Crypto fund'})[tr.type]}</label>
         <input id="search" type="text" autocomplete="off" placeholder="${tr.type==='stock'?'Search a company or ticker':'Search a fund or ticker'}" value="${esc(tr.q)}">
@@ -1518,9 +1523,9 @@ function vTrade(){
       ${isBuy ? `<div style="display:flex;flex-direction:column;gap:10px"><span class="label">How often</span>
         <div class="pills" role="tablist" aria-label="How often">${[['once','One time'],['week','Every week'],['2week','Every 2 weeks'],['month','Every month']].map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.freq===id}" data-act="freq:${id}">${l}</button>`).join('')}</div></div>` : ''}
       ${isBuy && tr.freq!=='once' ? (()=>{
-        const amt = tr.amt, sh = amt/price, low = amt/(price*0.9), high = amt/(price*1.1), dTooMuch = amt > P.cash + 0.005;
+        const amt = tr.amt, sh = amt/price, low = amt/(price*0.9), high = amt/(price*1.1), dTooMuch = amt > P.cash + 0.005 || !(amt >= 10);
         const dupe = P.dca.some(pl=>pl.sym===sym);
-        return `<div class="line"><span class="label">Amount each time</span><div class="stepper"><button type="button" data-act="amt:-" aria-label="Less money">−</button><span class="v" style="min-width:130px">${whole(amt)}</span><button type="button" data-act="amt:+" aria-label="More money">+</button></div></div>
+        return `<div class="line"><span class="label">Amount each time</span><div class="stepper"><button type="button" data-act="amt:-" aria-label="Less money">−</button>${numIn('amt', amt, true)}<button type="button" data-act="amt:+" aria-label="More money">+</button></div></div>
         <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
           <span class="label">Dollar cost averaging</span>
           <ol class="flow">
@@ -1533,11 +1538,11 @@ function vTrade(){
           <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio.</span></div>
         </div>
         ${dupe ? `<span style="font-size:17px;color:var(--warn)">You already auto-invest in ${sym}. Change it from My Portfolio.</span>` : dTooMuch ? '<span class="down" style="font-size:17px">Not enough cash for the first buy.</span>' : ''}
-        <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${whole(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
-      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button><span class="v">${tr.n}</span><button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
+        <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${dollarTxt(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button>${numIn('n', tr.n)}<button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
       <div class="line" style="padding-top:20px;border-top:1px solid var(--line)"><span style="font-size:19px;color:var(--muted)">${isBuy?'Total':'Set aside to short'}</span><span class="num" style="font-size:40px;color:var(--white)">${money(cost)}</span></div>
       <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-cost)}</span></div>
-      ${tooMuch?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
+      ${tooMuch && tr.n > 0?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
       <button type="button" class="go" data-act="submit" ${tooMuch||!tradingOpen()?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>`}`;
   }
   return `<div class="wrap"><div class="tradebox">
@@ -1558,6 +1563,19 @@ function ownedHtml(sym){
         <span class="num ${cls(g)}">${signed2(g)} (${pct(gp)})</span></span></span>
       <button type="button" class="chip" style="min-height:38px" data-act="sheet:pos:${sym}:${p.side}">${short?'Close short':'Sell'}</button></div>`;
   }).join('');
+}
+// A number box students can type in, between the − and + buttons.
+function numIn(k, v, dollars){
+  const raw = UI.raw && UI.raw[k] !== undefined ? UI.raw[k] : (dollars ? String(Math.round(v*100)/100) : String(+(+v).toFixed(4)));
+  return `<label class="stepin">${dollars ? '<span aria-hidden="true">$</span>' : ''}<input type="text" inputmode="decimal" autocomplete="off" id="num-${k}" data-k="${k}" value="${esc(raw)}" aria-label="${dollars ? 'Dollar amount' : 'Number of shares'}"></label>`;
+}
+function setNum(k, val){
+  const n = Number(String(val).replace(/[$,\s]/g, ''));
+  const v = isFinite(n) && n > 0 ? Math.round(n*10000)/10000 : 0;
+  const tr = UI.trade, sh = UI.sheet;
+  if (k==='n') tr.n = v; else if (k==='amt') tr.amt = v; else if (k==='mmAmt') tr.mmAmt = v;
+  else if (k==='bn' && sh) sh.bn = v;
+  else if (k==='sn' && sh){ const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===sh.key); sh.n = p ? Math.min(v, p.n) : v; }
 }
 function chipsHtml(){
   const tr = UI.trade, q = tr.q.trim().toLowerCase();
@@ -1649,14 +1667,14 @@ function vSheet(){
     const isShort = side==='short', n = Math.min(sh.n, p.n), price = prices[sym];
     const g = isShort ? (p.b-price)*n : (price-p.b)*n;
     const canBuy = !isShort, buying = canBuy && sh.mode==='buy';
-    const bn = sh.bn||1, bCost = price*bn, bTooMuch = bCost > P.cash + 0.005, newAvg = (p.b*p.n + price*bn)/(p.n+bn);
+    const bn = sh.bn ?? 1, bCost = price*bn, bTooMuch = bCost > P.cash + 0.005 || !(bn > 0), newAvg = (p.b*p.n + price*bn)/(p.n+bn);
     const tabs = canBuy ? `<div class="pills" role="tablist" aria-label="Buy or sell"><button type="button" role="tab" class="pill" aria-selected="${!buying}" data-act="smode:sell">Sell</button><button type="button" role="tab" class="pill" aria-selected="${buying}" data-act="smode:buy">Buy More</button></div>` : '';
     const head = `<div><h2 class="h2" style="font-size:40px">${isShort?'Close '+sym+' short':(buying?'Buy more '+sym:'Sell '+sym)}</h2><p style="margin:6px 0 0;color:var(--muted);font-size:18px">${MARKET[sym][0]}</p><button type="button" class="chip" data-act="chartsym:${sym}" style="min-height:38px;margin-top:10px">View chart</button></div>`;
     if (buying){
       html = `${head}${tabs}${errBox()}${closedBox('trade')}
       <div class="kv"><span><span class="k">Bought at</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
         <span><span class="k">You own</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">Cash</span><span class="v">${money(P.cash)}</span></span></div>
-      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="bn:-" aria-label="Fewer shares">−</button><span class="v" style="min-width:80px">${bn}</span><button type="button" data-act="bn:+" aria-label="More shares">+</button><button type="button" data-act="bn:max" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">Max</button></div></div>
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="bn:-" aria-label="Fewer shares">−</button>${numIn('bn', bn)}<button type="button" data-act="bn:+" aria-label="More shares">+</button><button type="button" data-act="bn:max" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">Max</button></div></div>
       <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
         <div class="line"><span style="color:var(--muted);font-size:18px">Total</span><span class="num" style="font-size:28px;color:var(--white)">${money(bCost)}</span></div>
         <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-bCost)}</span></div>
@@ -1671,11 +1689,11 @@ function vSheet(){
         <span><span class="k">Shares</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">${isBond(sym)&&!isShort?'Price change':'Gain so far'}</span><span class="v ${cls(posGain(p))}">${signed2(posGain(p))}</span></span></div>
       ${isBond(sym)&&!isShort ? bondSheetHtml(p) : ''}
       ${WHY[sym]?`<p class="disp" style="margin:0;font-weight:700;font-style:italic;font-size:17px;color:var(--fg)">“${WHY[sym]}” <span style="font-family:var(--body);font-style:normal;font-weight:400;font-size:14px;color:var(--dim)">your reason when you bought</span></p>`:''}
-      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="sn:-" aria-label="Fewer shares">−</button><span class="v" style="min-width:80px">${fmtSh(n)}</span><button type="button" data-act="sn:+" aria-label="More shares">+</button><button type="button" data-act="sn:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
+      <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="sn:-" aria-label="Fewer shares">−</button>${numIn('sn', n)}<button type="button" data-act="sn:+" aria-label="More shares">+</button><button type="button" data-act="sn:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
       <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid var(--line)">
         <div class="line"><span style="color:var(--muted);font-size:18px">${isShort?'It costs to buy back':'You get'}</span><span class="num" style="font-size:28px;color:var(--white)">${money(price*n)}</span></div>
         <div class="line"><span style="color:var(--muted);font-size:18px">Profit</span><span class="num ${cls(g)}" style="font-size:28px">${signed2(g)}</span></div></div>
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="sell" ${!tradingOpen()?'disabled':''}>${isShort?'Close':'Sell'} ${fmtSh(n)} ${n===1?'share':'shares'}</button></div>`;
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px"><button type="button" class="ghost" data-act="close">Cancel</button><button type="button" class="go" style="height:64px;font-size:24px" data-act="sell" ${!tradingOpen() || !(n > 0)?'disabled':''}>${isShort?'Close':'Sell'} ${fmtSh(n)} ${n===1?'share':'shares'}</button></div>`;
   }
   return `<div class="scrim center" data-act="close"><div class="sheet" role="dialog" aria-modal="true" data-stop>${html}</div></div>`;
 }
@@ -1723,6 +1741,7 @@ function act(a, el){
     return;
   }
   if (!['sheet','smode','bn','sn','n','amt','mmamt','pick','side','freq','mmdir'].includes(k)) UI.err = null;
+  UI.raw = {};   // a button press replaces anything typed in the number boxes
   switch(k){
     case 'tab': UI.tab=v; break;
     case 'school': UI.school=v||null; UI.sec=null; break;
@@ -2288,7 +2307,16 @@ document.addEventListener('click', e=>{
   if (el.tagName==='A' && el.getAttribute('href')){ UI.drawer=null; UI.sheet=null; return; }
   e.preventDefault(); act(el.dataset.act, el);
 });
-document.addEventListener('input', e=>{ if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
+document.addEventListener('input', e=>{
+  if (e.target.dataset && e.target.dataset.k && e.target.id.startsWith('num-')){
+    const k = e.target.dataset.k, id = e.target.id, pos = e.target.selectionStart;
+    UI.raw = UI.raw || {}; UI.raw[k] = e.target.value.replace(/[^0-9.,$]/g, '');
+    setNum(k, UI.raw[k]);
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+    const i = document.getElementById(id); if (i){ i.focus(); try{ i.setSelectionRange(pos, pos); }catch(err){} }
+    return;
+  }
+  if (e.target.id==='wsearch'){ UI.wq = e.target.value; const r = document.getElementById('wres'); if (r) r.innerHTML = wlResults(); return; } if (e.target.id==='search'){ UI.trade.q = e.target.value; document.getElementById('chips').innerHTML = chipsHtml(); } });
 document.addEventListener('mouseover', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false; });
 document.addEventListener('mousemove', e=>{ const tip = document.getElementById('ftip'); if (!tip || tip.hidden) return; tip.style.left = Math.max(8, Math.min(e.clientX+16, window.innerWidth-tip.offsetWidth-8))+'px'; tip.style.top = Math.max(8, Math.min(e.clientY+16, window.innerHeight-tip.offsetHeight-8))+'px'; });
 document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
