@@ -1529,7 +1529,7 @@ function vTrade(){
           </ol>
           <div class="line"><span style="color:var(--dim)">Schedule</span><span class="num" style="color:var(--soft)">Today, then ${DCA_FREQ[tr.freq][1]}</span></div>
           <div class="line"><span style="color:var(--dim)">Cash after first buy</span><span class="num" style="color:var(--soft)">${money(P.cash-amt)}</span></div>
-          <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio. Auto-invest buys don’t count toward your trades this week.</span></div>
+          <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio.</span></div>
         </div>
         ${dupe ? `<span style="font-size:17px;color:var(--warn)">You already auto-invest in ${sym}. Change it from My Portfolio.</span>` : dTooMuch ? '<span class="down" style="font-size:17px">Not enough cash for the first buy.</span>' : ''}
         <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${whole(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
