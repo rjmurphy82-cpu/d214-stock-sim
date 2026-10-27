@@ -8,6 +8,7 @@ import * as M from '../lib/market.js';
 import { standings, invalidateStandings, activity } from '../lib/standings.js';
 import { importRoster, SCHOOLS, periodName } from '../lib/roster.js';
 import { runEOD } from '../lib/eod.js';
+import { practiceId } from '../lib/practice.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
 const int = v => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw bad('Bad request.'); return n; };
@@ -80,6 +81,12 @@ const ROUTES = {
   /* ---------- the signed-in person ---------- */
   me: { run: async ({ sql, user }) => {
     if (!user) throw new HttpError(401, 'Please sign in.');
+    if (user.role === 'teacher') {
+      // Teachers get a practice portfolio that never counts in the standings.
+      const pid = await practiceId(sql, user.id);
+      const state = await P.portfolioState(sql, pid);
+      return { role: 'teacher', me: { ...user, practiceId: pid }, ...state };
+    }
     if (user.role !== 'student') return { role: user.role, me: user };
     const state = await P.portfolioState(sql, user.id);
     return { role: 'student', me: { id: user.id, name: user.name, sec: user.sec, period: user.period, teacher: user.teacher, school: user.school }, ...state };
@@ -87,8 +94,8 @@ const ROUTES = {
 
   // Every change a student makes goes through here and returns their updated portfolio.
   act: { post: true, run: async ({ sql, user, body }) => {
-    requireRole(user, 'student');
-    const sid = user.id;
+    requireRole(user, 'student', 'teacher');
+    const sid = user.role === 'teacher' ? await practiceId(sql, user.id) : user.id;
     let result = null;
     switch (body.a) {
       case 'trade': result = await P.trade(sql, sid, body); break;
@@ -119,14 +126,24 @@ const ROUTES = {
     const id = int(q.get('id'));
     const full = user.role === 'admin' || (user.role === 'teacher' && await teachesStudent(sql, user.id, id));
     const st = await standings(sql);
-    const s = st.students.find(x => x.id === id);
-    if (!s) throw new HttpError(404, 'Student not found.');
-    const [acct] = await sql`select cash, mm_bal from accounts where student_id = ${id}`;
+    let s = st.students.find(x => x.id === id);
+    const [acct] = await sql`select a.cash, a.mm_bal, a.mm_last, st.display, st.practice from accounts a join students st on st.id = a.student_id where a.student_id = ${id} and st.active`;
+    if (!acct || (!s && !acct.practice)) throw new HttpError(404, 'Student not found.');
     const pos = await sql`select p.sym, p.side, p.shares, p.basis, y.kind from positions p left join symbols y on y.sym = p.sym where p.student_id = ${id}`;
-    const last = await M.lastPrices(sql, pos.map(p => p.sym).filter(sym => !st.quotes[sym]));
+    let extra = {};
+    try { extra = await M.quotes(pos.map(p => p.sym).filter(sym => !st.quotes[sym])); } catch { /* fall back below */ }
+    const qp = sym => (st.quotes[sym] || extra[sym] || {}).p;
+    const last = await M.lastPrices(sql, pos.map(p => p.sym).filter(sym => !qp(sym)));
+    if (!s) {   // a teacher's practice portfolio: valued here because it isn't in the standings
+      const settings = await P.getSettings(sql);
+      const mm = P.mmValueOn(acct.mm_bal, acct.mm_last, settings.mmRate, M.today());
+      const value = acct.cash + mm + pos.reduce((a, p) => { const px = qp(p.sym) || last[p.sym] || p.basis; return a + (p.side === 'long' ? p.shares * px : p.shares * (2 * p.basis - px)); }, 0);
+      s = { name: acct.display, value: Math.round(value * 100) / 100, ret: Math.round((value / P.START_CASH - 1) * 1e6) / 1e4, practice: true };
+      acct.mm_bal = mm;
+    }
     const TY = { stock: 'Stock', etf: 'ETF', bond: 'Bond', crypto: 'Crypto' };
     const holds = pos.map(p => {
-      const px = st.quotes[p.sym] ? st.quotes[p.sym].p : (last[p.sym] || p.basis);
+      const px = qp(p.sym) || last[p.sym] || p.basis;
       const v = p.side === 'long' ? p.shares * px : p.shares * (2 * p.basis - px);
       const g = (p.side === 'long' ? px / p.basis - 1 : 1 - px / p.basis) * 100;
       return { s: p.sym, ty: p.side === 'short' ? 'Short' : TY[p.kind] || 'Stock', v, g, ...(full ? { n: p.shares, b: p.basis, px } : {}) };
@@ -134,7 +151,7 @@ const ROUTES = {
     if (acct.mm_bal > 0.005) holds.push({ s: 'Money mkt', ty: 'MM', v: acct.mm_bal, g: null });
     holds.push({ s: 'Cash', ty: 'Cash', v: acct.cash, g: null });
     holds.forEach(h => { h.w = h.v / s.value * 100; });
-    const out = { id, name: s.name, value: s.value, ret: s.ret, holds };
+    const out = { id, name: s.name, value: s.value, ret: s.ret, holds, practice: !!s.practice };
     if (full) {
       out.trades = (await sql`select sym, act, shares, price, at, auto, pnl from trades where student_id = ${id} order by at desc limit 100`)
         .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, pnl: t.pnl }));
@@ -261,10 +278,10 @@ const ROUTES = {
     const teachers = await sql`
       select t.id, t.name, sc.name as school,
         (select count(*)::int from sections se where se.teacher_id = t.id and se.active) as classes,
-        (select count(*)::int from students st join sections se on se.id = st.section_id where se.teacher_id = t.id and st.active) as students
+        (select count(*)::int from students st join sections se on se.id = st.section_id where se.teacher_id = t.id and st.active and not st.practice) as students
       from teachers t join schools sc on sc.id = t.school_id where t.active order by sc.name, t.name`;
     const [days] = await sql`select max(d) as last, count(*)::int as n from market_days`;
-    const [counts] = await sql`select (select count(*)::int from students where active) as students, (select count(*)::int from trades) as trades`;
+    const [counts] = await sql`select (select count(*)::int from students where active and not practice) as students, (select count(*)::int from trades) as trades`;
     let market = 'unknown'; try { market = await M.status(); } catch { /* shown as unknown */ }
     return { settings, teachers, lastEod: days.last, eodDays: days.n, counts, market, today: M.today(),
       env: { cron: !!process.env.CRON_SECRET, massive: !!process.env.MASSIVE_API_KEY || process.env.MARKET_MOCK === '1' } };
