@@ -336,6 +336,10 @@ input[type=number]{font-size:19px;height:52px;max-width:180px}
   .slip{border:1px dashed #777;padding:12px 14px;font-size:12.5px;line-height:1.5;break-inside:avoid}
   .slip b{font-size:17px}
   .slip .p,.tslip .p{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600}
+  .qrs{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .qrs > div:first-child{min-width:0}
+  .qr{flex:none;width:0.95in;height:0.95in}
+  .qr svg{width:100%;height:100%;display:block}
 }
 </style>
 
@@ -355,6 +359,7 @@ input[type=number]{font-size:19px;height:52px;max-width:180px}
 <div id="print" aria-hidden="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="vendor/qrcode.js" defer></script>
 <script>
 (function(){
 'use strict';
@@ -1767,14 +1772,39 @@ function renderTape(changed){
 /* ---------- sign in ---------- */
 const LOGIN = {dir:null, school:null, kind:'student', teacher:null, tdir:null, sec:null, student:null, admin:false, err:null};
 (function remember(){ try{ const m = JSON.parse(localStorage.getItem('d214login')||'null'); if (m){ LOGIN.school = m.school||null; LOGIN.kind = m.kind||'student'; } }catch(e){} })();
+// A QR code on a sign-in slip opens the site with the school, teacher, class, and name already picked.
+const GO = (function(){
+  const m = (location.hash||'').match(/^#go=(s)\.(\d+)\.(\d+)\.(\d+)$|^#go=(t)\.(\d+)$/);
+  if (!m) return null;
+  history.replaceState(null, '', location.pathname);
+  return m[1] ? {kind:'student', teacher:+m[2], sec:+m[3], student:+m[4]} : {kind:'teacher', teacher:+m[6]};
+})();
+const focusPw = () => setTimeout(()=>{ const i = document.getElementById('lpw'); if (i) i.focus(); }, 0);
 async function loadDir(){
   try{ LOGIN.dir = await call('dir'); }catch(e){ LOGIN.err = e.message; }
   if (LOGIN.school && !LOGIN.dir?.schools?.some(s=>s.name===LOGIN.school && s.teachers.length)) LOGIN.school = null;
+  if (GO && !GO.done && LOGIN.dir){
+    GO.done = true;
+    const sch = LOGIN.dir.schools.find(s=>s.teachers.some(t=>t.id===GO.teacher));
+    if (sch){
+      Object.assign(LOGIN, {school:sch.name, kind:GO.kind, teacher:GO.teacher, admin:false, err:null});
+      if (GO.kind==='student'){ render(); return loadTeacherDir(GO.teacher); }
+      render(); return focusPw();
+    }
+  }
   render();
 }
 async function loadTeacherDir(id){
   LOGIN.tdir = null; render();
-  try{ LOGIN.tdir = await call('dir', undefined, '&teacher='+id); if (LOGIN.tdir.sections.length===1) LOGIN.sec = LOGIN.tdir.sections[0].id; }catch(e){ LOGIN.err = e.message; }
+  try{
+    LOGIN.tdir = await call('dir', undefined, '&teacher='+id);
+    if (LOGIN.tdir.sections.length===1) LOGIN.sec = LOGIN.tdir.sections[0].id;
+    if (GO && GO.kind==='student' && GO.teacher===id && !GO.picked){
+      GO.picked = true;
+      const sec = LOGIN.tdir.sections.find(s=>s.id===GO.sec);
+      if (sec && sec.students.some(s=>s.id===GO.student)){ LOGIN.sec = sec.id; LOGIN.student = GO.student; render(); return focusPw(); }
+    }
+  }catch(e){ LOGIN.err = e.message; }
   render();
 }
 function vLogin(){
@@ -1973,12 +2003,24 @@ function vModal(){
     <div class="spread" style="align-items:flex-start"><h2 class="h2" style="font-size:34px">${esc(m.title)}</h2><button type="button" class="x" data-act="close" aria-label="Close">×</button></div>
     ${m.html}</div></div>`;
 }
+// The address printed on slips: always the short production address, even when printed from a preview link.
+function siteHost(){
+  const h = location.host;
+  return /\.vercel\.app$/.test(h) && h!=='d214-stock-sim.vercel.app' ? 'd214-stock-sim.vercel.app' : h;
+}
+function qrSvg(text){
+  if (!window.qrcode) return '';
+  try{ const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({cellSize:2, margin:0, scalable:true}); }catch(e){ return ''; }
+}
 function printSlips(slips){
-  const site = location.host;
+  if (!window.qrcode){ setTimeout(()=>printSlips(slips), 300); return; }   // QR library still loading
+  const site = siteHost(), base = location.protocol+'//'+site+'/';
   const page = g => `<div class="slippage"><h2>D214 Investing Competition · Sign-in slips</h2>
-    <p class="sub">${esc(g.school)} · ${esc(g.teacher)} · ${esc(g.period)} · go to <b>${esc(site)}</b></p>
-    ${g.teacherPw ? `<div class="tslip">Teacher sign-in for <b>${esc(g.teacher)}</b>: ${esc(site)} → ${esc(g.school)} → I’m a teacher → ${esc(g.teacher)}<br>Password: <span class="p">${esc(g.teacherPw)}</span></div>` : ''}
-    <div class="slipgrid">${g.students.map(s=>`<div class="slip"><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: <span class="p">${esc(s.pw)}</span></div>`).join('')}</div></div>`;
+    <p class="sub">${esc(g.school)} · ${esc(g.teacher)}${g.period ? ' · '+esc(g.period) : ''} · go to <b>${esc(site)}</b> or scan your code</p>
+    ${g.teacherPw ? `<div class="tslip qrs"><div>Teacher sign-in for <b>${esc(g.teacher)}</b>: ${esc(site)} → ${esc(g.school)} → I’m a teacher → ${esc(g.teacher)}<br>Password: <span class="p">${esc(g.teacherPw)}</span></div>
+      ${g.teacherId ? `<div class="qr">${qrSvg(base+'#go=t.'+g.teacherId)}</div>` : ''}</div>` : ''}
+    <div class="slipgrid">${g.students.map(s=>`<div class="slip qrs"><div><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: <span class="p">${esc(s.pw)}</span></div>
+      ${s.id && g.teacherId && g.sectionId ? `<div class="qr">${qrSvg(base+'#go=s.'+g.teacherId+'.'+g.sectionId+'.'+s.id)}</div>` : ''}</div>`).join('')}</div></div>`;
   document.getElementById('print').innerHTML = slips.map(page).join('');
   window.print();
 }
@@ -2007,9 +2049,7 @@ function moreActs(k, v, el){
     case 'treset': {
       if (!confirm('Make a new password? The old one stops working right away.')) return true;
       call('teacher_act', {a:'reset_pw', studentId:+v}).then(r=>{
-        UI.slips = [{school:'', teacher:'', period:'', students:[{name:r.name, pw:r.pw}]}];
-        const k = CLS && CLS.sections.flatMap(se=>se.students.map(x=>({...x, se}))).find(x=>x.id===+v);
-        if (k) UI.slips = [{school:k.se.school, teacher:k.se.teacher, period:k.se.period, students:[{name:r.name, pw:r.pw}]}];
+        UI.slips = [r.slip];
         UI.modal = {title:'New password', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(r.name)}’s new password:</p><span class="pw">${esc(r.pw)}</span>
           <div class="btnrow"><button type="button" class="cta" data-act="print">Print slip</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
         render();
@@ -2092,7 +2132,9 @@ function moreActs(k, v, el){
     case 'atpw': {
       if (!confirm('Make a new password for this teacher? The old one stops working.')) return true;
       call('admin_act', {a:'teacher_pw', teacherId:+v}).then(r=>{
-        UI.modal = {title:'New teacher password', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(r.name)}’s new password:</p><span class="pw">${esc(r.pw)}</span><button type="button" class="ghost" data-act="close">Done</button>`};
+        UI.slips = [r.slip];
+        UI.modal = {title:'New teacher password', html:`<p style="margin:0;font-size:18px;color:var(--soft)">${esc(r.name)}’s new password:</p><span class="pw">${esc(r.pw)}</span>
+          <div class="btnrow"><button type="button" class="cta" data-act="print">Print slip</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
       }).catch(e=>{ UI.err = e.message; }).finally(()=>render());
       return true;
     }
@@ -2146,6 +2188,12 @@ async function loadStandings(){
 async function boot(){
   render();
   if (!(await loadMe())) return;
+  // Someone else is signed in on this device and a different person scanned their slip: switch to them.
+  if (GO && !GO.done){
+    const same = (GO.kind==='student' && ROLE==='student' && ME_INFO.id===GO.student) || (GO.kind==='teacher' && ROLE==='teacher' && ME_INFO.id===GO.teacher);
+    if (!same){ await call('logout', {}).catch(()=>{}); signedOut(); return; }
+    GO.done = true;
+  }
   loadStandings(); refreshLive();
   if (ROLE==='teacher' || ROLE==='admin') loadClasses();
   if (ROLE==='admin') loadAdmin();
