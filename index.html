@@ -1900,7 +1900,7 @@ function vClasses(){
           <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
-        <div class="btnrow"><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
+        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
         <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
@@ -2019,7 +2019,7 @@ function printSlips(slips){
     <p class="sub">${esc(g.school)} · ${esc(g.teacher)}${g.period ? ' · '+esc(g.period) : ''} · go to <b>${esc(site)}</b> or scan your code</p>
     ${g.teacherPw ? `<div class="tslip qrs"><div>Teacher sign-in for <b>${esc(g.teacher)}</b>: ${esc(site)} → ${esc(g.school)} → I’m a teacher → ${esc(g.teacher)}<br>Password: <span class="p">${esc(g.teacherPw)}</span></div>
       ${g.teacherId ? `<div class="qr">${qrSvg(base+'#go=t.'+g.teacherId)}</div>` : ''}</div>` : ''}
-    <div class="slipgrid">${g.students.map(s=>`<div class="slip qrs"><div><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: <span class="p">${esc(s.pw)}</span></div>
+    <div class="slipgrid">${g.students.map(s=>`<div class="slip qrs"><div><b>${esc(s.name)}</b><br>Go to <b>${esc(site)}</b><br>${esc(g.school)} → ${esc(g.teacher)} → ${esc(g.period)} → ${esc(s.name)}<br>Password: ${s.pw ? `<span class="p">${esc(s.pw)}</span>` : '<i>ask your teacher</i>'}</div>
       ${s.id && g.teacherId && g.sectionId ? `<div class="qr">${qrSvg(base+'#go=s.'+g.teacherId+'.'+g.sectionId+'.'+s.id)}</div>` : ''}</div>`).join('')}</div></div>`;
   document.getElementById('print').innerHTML = slips.map(page).join('');
   window.print();
@@ -2069,6 +2069,19 @@ function moreActs(k, v, el){
           <div class="btnrow"><button type="button" class="cta" data-act="print">Print slips</button><button type="button" class="ghost" data-act="close">Done</button></div>`};
         render();
       }).catch(e=>alert(e.message));
+      return true;
+    }
+    case 'tprint': {
+      const go = fillMissing => call('teacher_act', {a:'slips', sectionId:+v, fillMissing}).then(r=>{
+        if (r.missing && !fillMissing){
+          const n = r.missing, all = n===r.slips[0].students.length;
+          if (confirm((all ? 'This class’s passwords were' : n+(n===1?' student’s password was':' students’ passwords were'))+' made before slips could be reprinted, so they can’t be shown.\n\nMake new passwords for '+(all ? 'the whole class' : 'just '+(n===1?'that student':'those '+n))+'? The old ones stop working right away.')) return go(true);
+        }
+        UI.slips = r.slips; printSlips(r.slips);
+        if (r.renewed) loadClasses();
+      }).catch(e=>alert(e.message));
+      if (el) el.setAttribute('aria-busy','true');
+      go(false).finally(()=>{ if (el) el.removeAttribute('aria-busy'); });
       return true;
     }
     case 'trename': {

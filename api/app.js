@@ -2,7 +2,7 @@
 // One function file keeps the project well under Vercel's limit on the number of functions.
 import { sqlReady } from '../lib/db.js';
 import { HttpError, bad, query, readJson, sendJson, sendError, requireSameSite } from '../lib/http.js';
-import { checkPw, hashPw, newPassword, makeSession, setSessionCookie, clearSessionCookie, currentUser, requireRole, checkRate, noteFail, clearFails } from '../lib/auth.js';
+import { checkPw, hashPw, encPw, decPw, newPassword, makeSession, setSessionCookie, clearSessionCookie, currentUser, requireRole, checkRate, noteFail, clearFails } from '../lib/auth.js';
 import * as P from '../lib/portfolio.js';
 import * as M from '../lib/market.js';
 import { standings, invalidateStandings, activity } from '../lib/standings.js';
@@ -187,7 +187,7 @@ const ROUTES = {
       case 'reset_pw': {
         const id = int(body.studentId); await mine(id);
         const pw = newPassword();
-        const [s] = await sql`update students set pw_hash = ${hashPw(pw)} where id = ${id} returning display`;
+        const [s] = await sql`update students set pw_hash = ${hashPw(pw)}, pw_enc = ${encPw(pw)} where id = ${id} returning display`;
         await clearFails(sql, 'stu:' + id);
         const [info] = await sql`select se.id as "sectionId", se.period, t.id as "teacherId", t.name as teacher, sc.name as school from students st join sections se on se.id = st.section_id join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where st.id = ${id}`;
         return { name: s.display, pw, slip: { ...info, students: [{ id, name: s.display, pw }] } };
@@ -204,11 +204,32 @@ const ROUTES = {
         invalidateStandings();
         return { period };
       }
+      // Sign-in slips for a class, any time. Students whose passwords were made before slips could be
+      // reprinted have none on file; with fillMissing they get new passwords first.
+      case 'slips': {
+        const secId = int(body.sectionId); await mySection(secId);
+        const [info] = await sql`select se.id as "sectionId", se.period, t.id as "teacherId", t.name as teacher, t.pw_enc, sc.name as school
+          from sections se join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where se.id = ${secId}`;
+        const kids = await sql`select id, display, pw_enc from students where section_id = ${secId} and active order by display`;
+        const students = [];
+        let renewed = 0;
+        for (const k of kids) {
+          let pw = decPw(k.pw_enc);
+          if (!pw && body.fillMissing) {
+            pw = newPassword(); renewed++;
+            await sql`update students set pw_hash = ${hashPw(pw)}, pw_enc = ${encPw(pw)} where id = ${k.id}`;
+            await clearFails(sql, 'stu:' + k.id);
+          }
+          students.push({ id: k.id, name: k.display, pw });
+        }
+        const { pw_enc, ...slip } = info;
+        return { slips: [{ ...slip, teacherPw: decPw(pw_enc), students }], missing: students.filter(s => !s.pw).length, renewed };
+      }
       case 'reset_class': {
         const secId = int(body.sectionId); await mySection(secId);
         const kids = await sql`select id, display from students where section_id = ${secId} and active order by display`;
         const out = [];
-        for (const k of kids) { const pw = newPassword(); await sql`update students set pw_hash = ${hashPw(pw)} where id = ${k.id}`; await clearFails(sql, 'stu:' + k.id); out.push({ id: k.id, name: k.display, pw }); }
+        for (const k of kids) { const pw = newPassword(); await sql`update students set pw_hash = ${hashPw(pw)}, pw_enc = ${encPw(pw)} where id = ${k.id}`; await clearFails(sql, 'stu:' + k.id); out.push({ id: k.id, name: k.display, pw }); }
         const [info] = await sql`select se.id as "sectionId", se.period, t.id as "teacherId", t.name as teacher, sc.name as school from sections se join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id where se.id = ${secId}`;
         return { slips: [{ ...info, students: out }] };
       }
@@ -276,7 +297,7 @@ const ROUTES = {
       case 'eod': return { log: await runEOD(sql) };
       case 'teacher_pw': {
         const id = int(body.teacherId), pw = newPassword();
-        const [t] = await sql`update teachers set pw_hash = ${hashPw(pw)} where id = ${id} returning name`;
+        const [t] = await sql`update teachers set pw_hash = ${hashPw(pw)}, pw_enc = ${encPw(pw)} where id = ${id} returning name`;
         if (!t) throw bad('Teacher not found.');
         await clearFails(sql, 'tch:' + id);
         const [ti] = await sql`select sc.name as school from teachers t join schools sc on sc.id = t.school_id where t.id = ${id}`;
