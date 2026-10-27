@@ -240,7 +240,14 @@ const ROUTES = {
           students.push({ id: k.id, name: k.display, pw });
         }
         const { pw_enc, ...slip } = info;
-        return { slips: [{ ...slip, teacherPw: decPw(pw_enc), students }], missing: students.filter(s => !s.pw).length, renewed };
+        let teacherPw = decPw(pw_enc);
+        // The admin can also give the teacher a new password here when the old one can't be shown.
+        if (!teacherPw && body.fillTeacher && user.role === 'admin') {
+          teacherPw = newPassword();
+          await sql`update teachers set pw_hash = ${hashPw(teacherPw)}, pw_enc = ${encPw(teacherPw)} where id = ${info.teacherId}`;
+          await clearFails(sql, 'tch:' + info.teacherId);
+        }
+        return { slips: [{ ...slip, teacherPw, students }], missing: students.filter(s => !s.pw).length, renewed, teacherMissing: !teacherPw };
       }
       case 'reset_class': {
         const secId = int(body.sectionId); await mySection(secId);
