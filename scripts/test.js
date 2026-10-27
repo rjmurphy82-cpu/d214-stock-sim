@@ -133,6 +133,10 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   ok('old session is signed out after reset', (await stu('me')).status === 401);
   ok('new password works', (await stu('login', { kind: 'student', id: jack.id, password: reset.pw })).ok);
   const added = await tch('teacher_act', { a: 'add', sectionId: dirT.sections[0].id, first: 'New', last: 'Kid' });
+  const rn = await tch('teacher_act', { a: 'rename_class', sectionId: dirT.sections[1].id, period: 'Period 9' });
+  ok('teacher renames a class (Period 9 becomes P9)', rn.period === 'P9', rn);
+  ok('cannot rename to a name the teacher already uses', (await tch('teacher_act', { a: 'rename_class', sectionId: dirT.sections[0].id, period: 'P9' })).status === 400);
+  ok('cannot rename another teacher’s class', (await tch('teacher_act', { a: 'rename_class', sectionId: (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0].id, period: 'P1' })).status === 403);
   ok('teacher adds a student', added.slips && added.slips[0].students[0].name === 'New K.', added);
 
   // Settings and end of day.

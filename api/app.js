@@ -6,7 +6,7 @@ import { checkPw, hashPw, newPassword, makeSession, setSessionCookie, clearSessi
 import * as P from '../lib/portfolio.js';
 import * as M from '../lib/market.js';
 import { standings, invalidateStandings, activity } from '../lib/standings.js';
-import { importRoster, SCHOOLS } from '../lib/roster.js';
+import { importRoster, SCHOOLS, periodName } from '../lib/roster.js';
 import { runEOD } from '../lib/eod.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
@@ -190,6 +190,18 @@ const ROUTES = {
         const [s] = await sql`update students set pw_hash = ${hashPw(pw)} where id = ${id} returning display`;
         await clearFails(sql, 'stu:' + id);
         return { name: s.display, pw };
+      }
+      // Rename a class (its period label). Students, passwords, and portfolios stay the same.
+      case 'rename_class': {
+        const secId = int(body.sectionId); await mySection(secId);
+        const period = periodName(body.period);
+        if (!period || period.length > 20) throw bad('Enter a class name of 20 characters or fewer, like P7.');
+        const [taken] = await sql`select 1 from sections where period = ${period} and id <> ${secId}
+          and teacher_id = (select teacher_id from sections where id = ${secId})`;
+        if (taken) throw bad('This teacher already has a class called ' + period + '.');
+        await sql`update sections set period = ${period} where id = ${secId}`;
+        invalidateStandings();
+        return { period };
       }
       case 'reset_class': {
         const secId = int(body.sectionId); await mySection(secId);
