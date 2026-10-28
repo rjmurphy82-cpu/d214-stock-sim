@@ -1290,7 +1290,7 @@ function vStandings(){
       return `<div class="head" style="align-items:center;gap:16px;flex-wrap:wrap"><h2 class="h2">Today &amp; This Week</h2>
       <span class="awscope">${sc.school?logo(sc.school,40):''}<span><span class="label" style="color:var(--muted)">Awards for</span><span class="t">${esc(sc.title)}</span></span></span></div>
       <div class="frow" style="padding-top:18px"><span class="label">Show</span>${opts.map(o=>chip(o.key===sc.key, esc(o.label), 'aw:'+o.key, o.school?logo(o.school,30):'')).join('')}</div>
-      ${list.length ? '' : `<p class="empty" style="padding-top:12px">${ST.awards && ST.awards.length ? 'No awards for '+esc(sc.title)+' yet. They’re picked after each market day closes.' : 'Awards are picked after each market day closes. The first ones show up after the first full trading day.'}</p>`}
+      ${list.length && !list.every(a=>a.stock) ? '' : `<p class="empty" style="padding-top:12px">${ST.awards && ST.awards.length ? 'No student awards for '+esc(sc.title)+' yet. They’re picked after each market day closes.' : 'Awards are picked after each market day closes. The first ones show up after the first full trading day.'}</p>`}
     <div class="awards">${list.map((a,i)=>`
       <button type="button" class="award" data-act="open:award:${i}">
         <span class="label" style="color:var(--muted)">${a.label}</span>
