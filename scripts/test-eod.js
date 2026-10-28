@@ -60,7 +60,8 @@ const cal = (await sql`select mm_bal, mm_earned from accounts where student_id =
 const expect = 50000 * Math.pow(1 + 3.9 / 36500, 14);
 ok('money market compounds daily through Nov 9', Math.abs(cal.mm_bal - expect) < 0.01, { cal, expect });
 
-const aw = await sql`select d, kind, student_id, value, detail from awards order by d, kind`;
+const aw = (await sql`select d, kind, scope, student_id, value, detail from awards order by d, kind, scope`);
+const allAw = aw.slice(); aw.splice(0, aw.length, ...allAw.filter(a => a.scope === 'district'));
 const kinds = d => aw.filter(a => a.d === d).map(a => a.kind);
 ok('mover of the day picked every day', days.every(d => kinds(d).includes('mover_day') || vals && true));
 ok('weekly awards on Friday Oct 30', ['mover_week', 'active_week'].every(k => kinds('2026-10-30').includes(k)), kinds('2026-10-30'));
@@ -68,7 +69,14 @@ ok('weekly awards on Friday Nov 6 (holiday week)', kinds('2026-11-06').includes(
 ok('trader of the day for the big closing trade', aw.some(a => a.d === '2026-10-28' && a.kind === 'trader_day' && a.student_id === Dee && Math.abs(a.value - 20) < 1e-6), aw.filter(a => a.d === '2026-10-28'));
 ok('best trade of the week', aw.some(a => a.d === '2026-10-30' && a.kind === 'best_trade_week' && a.student_id === Dee));
 ok('no snapshots on the holiday', (await sql`select count(*)::int as n from snapshots where d = '2026-11-03'`)[0].n === 0);
+const scopes = new Set(allAw.filter(a => a.d === '2026-10-30' && a.kind === 'mover_week').map(a => a.scope.split(':')[0]));
+ok('weekly mover picked for district, school, teacher, and class', ['district', 'school', 'teacher', 'class'].every(k => scopes.has(k)), [...scopes]);
+const prospect = allAw.filter(a => a.d === '2026-10-28' && a.scope === 'school:Prospect');
+ok('each school gets its own winners', prospect.length > 0 && prospect.every(a => a.student_id === Dee), prospect);
+const hersey = allAw.find(a => a.d === '2026-10-28' && a.kind === 'mover_day' && a.scope === 'school:Hersey');
+ok('school awards say where they were won', !hersey || /at Hersey/.test(hersey.detail.lesson), hersey);
+ok('one winner per award per scope per day', new Set(allAw.map(a => a.d + a.kind + a.scope)).size === allAw.length);
 const st = await standings(sql, true);
-ok('standings show the latest awards', st.awards.length >= 3 && st.awards.every(a => a.label), st.awards.map(a => a.kind));
+ok('standings show the latest awards', st.awards.length >= 3 && st.awards.every(a => a.label && a.scope), st.awards.map(a => a.kind + ' ' + a.scope));
 console.log('\nEnd-of-day tests passed.');
 await sql.end();
