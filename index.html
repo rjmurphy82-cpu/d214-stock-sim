@@ -96,6 +96,8 @@ section{padding-block:12px}
 .award.lesson{border-top-color:var(--warn)}
 .award .v{font-family:var(--mono);font-size:40px;font-weight:500}
 .award .who{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:700;font-size:21px;line-height:1.2;color:var(--white)}
+.award .aw-sub{font-family:var(--body);font-weight:500;font-size:14px;color:var(--dim)}
+.awscope{display:flex;align-items:center;gap:12px}.awscope>span{display:flex;flex-direction:column;gap:2px}.awscope .t{font-family:var(--display);font-weight:700;font-size:22px;color:var(--white)}
 .award .ls{padding-top:10px;border-top:1px solid var(--line-2);font-size:15px;color:var(--cream)}
 
 /* portfolio */
@@ -1217,7 +1219,7 @@ function tickChart(){
 }
 
 /* ---------- ui state ---------- */
-const UI = { tab:'students', school:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
+const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
   chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
 
@@ -1230,11 +1232,13 @@ function vStandings(){
   if (UI.tab==='students'){
     let l = liveStudents();
     if (UI.school) l = l.filter(s=>s.school===UI.school);
+    if (UI.ti!==null) l = l.filter(s=>D.sections[s.sec].ti===UI.ti);
     if (UI.sec!==null) l = l.filter(s=>s.sec===UI.sec);
     const total = l.length;
     l = l.slice().sort((a,b)=>b.ret-a.ret);
     let top = l.slice(0,12); if (!top.includes(ME) && l.includes(ME)) top = top.concat([ME]);
     if (UI.sec!==null){ const sec=D.sections[UI.sec]; title=secLabel(sec); cap=sec.school+' · '+sec.size+' students'; }
+    else if (UI.ti!==null){ title=T[UI.ti][0]+' Leaderboard'; cap='All classes · Top 12 of '+total+' students'; }
     else if (UI.school){ title=UI.school+' Leaderboard'; cap='Top 12 of '+total+' students'; }
     else { title='District Leaderboard'; cap='Top 12 of '+total+' students'; }
     items = top.map(s=>({rank:l.indexOf(s)+1, name:s.name, school:s.school, sub:secLabel(D.sections[s.sec]), avg:s.ret, open:'student:'+s.id, me:s.isMe}));
@@ -1262,7 +1266,8 @@ function vStandings(){
     </div>
     ${UI.tab==='students' ? `<div class="filters">
       <div class="frow"><span class="label">School</span>${chip(!UI.school,'All schools','school:')}${activeSchools().map(s=>chip(UI.school===s,s,'school:'+s,logo(s,30))).join('')}</div>
-      ${UI.school ? `<div class="frow"><span class="label">Class</span>${chip(UI.sec===null,'All classes','sec:')}${D.sections.filter(s=>s.school===UI.school).map(s=>chip(UI.sec===s.id,secLabel(s),'sec:'+s.id)).join('')}</div>`:''}
+      ${UI.school ? `<div class="frow"><span class="label">Teacher</span>${chip(UI.ti===null,'All teachers','ti:')}${T.map((t,i)=>i).filter(i=>T[i][1]===UI.school && D.sections.some(s=>s.ti===i)).map(i=>chip(UI.ti===i,esc(T[i][0]),'ti:'+i)).join('')}</div>`:''}
+      ${UI.school ? `<div class="frow"><span class="label">Class</span>${chip(UI.sec===null,'All classes','sec:')}${D.sections.filter(s=>s.school===UI.school && (UI.ti===null || s.ti===UI.ti)).map(s=>chip(UI.sec===s.id,UI.ti===null?secLabel(s):s.period,'sec:'+s.id)).join('')}</div>`:''}
     </div>`:''}
     <div class="viewbar"><span class="t">${title}</span><span class="c">${cap}</span></div>
     <div class="podium">${podium.map(x=>`
@@ -1281,36 +1286,60 @@ function vStandings(){
       </button>`).join('')}</div>
   </div>
   <section class="wrap" style="padding-block:56px 72px">
-    <h2 class="h2">Today &amp; This Week</h2>
-    ${awardsList().length ? '' : '<p class="empty" style="padding-top:12px">Awards are picked after each market day closes. The first ones show up after the first full trading day.</p>'}
-    <div class="awards">${awardsList().map((a,i)=>`
+    ${(()=>{ const sc = awardScope(), opts = awardScopeOptions(), list = awardsList();
+      return `<div class="head" style="align-items:center;gap:16px;flex-wrap:wrap"><h2 class="h2">Today &amp; This Week</h2>
+      <span class="awscope">${sc.school?logo(sc.school,40):''}<span><span class="label" style="color:var(--muted)">Awards for</span><span class="t">${esc(sc.title)}</span></span></span></div>
+      <div class="frow" style="padding-top:18px"><span class="label">Show</span>${opts.map(o=>chip(o.key===sc.key, esc(o.label), 'aw:'+o.key, o.school?logo(o.school,30):'')).join('')}</div>
+      ${list.length ? '' : `<p class="empty" style="padding-top:12px">${ST.awards && ST.awards.length ? 'No awards for '+esc(sc.title)+' yet. They’re picked after each market day closes.' : 'Awards are picked after each market day closes. The first ones show up after the first full trading day.'}</p>`}
+    <div class="awards">${list.map((a,i)=>`
       <button type="button" class="award" data-act="open:award:${i}">
         <span class="label" style="color:var(--muted)">${a.label}</span>
         <span class="v" style="color:${a.stock?(a.chg>=0?'var(--up)':'var(--down)'):a.good===null?'var(--white)':'var(--up)'}">${a.value}</span>
-        ${a.stock ? `<span class="who"><span class="num" style="font-size:22px">${a.stock}</span><span style="font-size:17px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>` : `<span class="who">${logo(a.school,40)}<span>${esc(a.name)}</span></span>`}
-        ${a.lesson?`<span class="ls">${a.lesson}</span>`:''}
-      </button>`).join('')}</div>
+        ${a.stock ? `<span class="who"><span class="num" style="font-size:22px">${a.stock}</span><span style="font-size:17px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>` : `<span class="who">${logo(a.school,40)}<span style="display:flex;flex-direction:column;gap:2px"><span>${esc(a.name)}</span>${sc.kind==='class'?'':`<span class="aw-sub">${esc(sc.kind==='teacher'?D.sections[a.stu.sec].period:secLabel(D.sections[a.stu.sec]))}</span>`}</span></span>`}
+        ${a.lesson?`<span class="ls">${a.lesson}</span>`:''}      </button>`).join('')}</div>`; })()}
   </section>`;
 }
 // Awards are picked by the server after each market day (see lib/eod.js).
 function awardsList(){
   if (!ST) return [];
   const byDb = new Map(D.students.map(s=>[s.dbId, s]));
-  const out = (ST.awards||[]).map(a=>{
+  const key = awardScope().key;
+  const out = (ST.awards||[]).filter(a=>(a.scope||'district')===key).map(a=>{
     const s = byDb.get(a.student); if (!s) return null;
     return {label:a.label, value:a.text, name:s.name, school:s.school, good:a.neutral ? null : true, stu:s,
       sub:secLabel(D.sections[s.sec])+' · '+s.school, stats:a.stats, lesson:a.lesson};
   }).filter(Boolean);
-  const pd = popularDown(); if (pd) out.push(pd);
+  const pd = popularDown(key); if (pd) out.push(pd);
   return out;
 }
+/* Awards follow the leaderboard filters: a class, else a teacher, else a school, else the district. */
+function awardScope(){
+  if (UI.sec!==null && D.sections[UI.sec]){ const sec = D.sections[UI.sec]; return {key:'class:'+sec.dbId, kind:'class', title:secLabel(sec), school:sec.school}; }
+  if (UI.ti!==null && T[UI.ti]) return {key:'teacher:'+T[UI.ti][2], kind:'teacher', title:T[UI.ti][0]+' · all classes', school:T[UI.ti][1]};
+  if (UI.school) return {key:'school:'+UI.school, kind:'school', title:UI.school, school:UI.school};
+  return {key:'district', kind:'district', title:'District 214', school:null};
+}
+/* The quick picks above the awards: District, then the school, teacher, and class being looked at,
+   or a student's own when nothing is picked. */
+function awardScopeOptions(){
+  const sec = UI.sec!==null ? D.sections[UI.sec] : null;
+  const ti = sec ? sec.ti : UI.ti!==null ? UI.ti : null;
+  const school = sec ? sec.school : ti!==null ? T[ti][1] : UI.school;
+  const mine = ME ? D.sections[ME.sec] : null;
+  const o = [{key:'district', label:'District'}];
+  const sch = school || (mine && mine.school), t = ti!==null ? ti : (!school && mine ? mine.ti : null), c = sec || (!school && mine) || null;
+  if (sch) o.push({key:'school:'+sch, label:sch, school:sch, set:{school:sch, ti:null, sec:null}});
+  if (t!==null && t!==undefined) o.push({key:'teacher:'+T[t][2], label:T[t][0], set:{school:T[t][1], ti:t, sec:null}});
+  if (c) o.push({key:'class:'+c.dbId, label:c.period+(c.ti===t?'':' · '+c.teacher), set:{school:c.school, ti:c.ti, sec:c.id}});
+  return o;
+}
 /* district-wide, never about one student: the stock the most students own that is down today */
-function popularDown(){
-  const p = ST && ST.popular; if (!p) return null;
+function popularDown(key){
+  const p = ST && ((ST.popularBy && ST.popularBy[key||'district']) || (!ST.popularBy && (key||'district')==='district' && ST.popular)); if (!p) return null;
   if (!MARKET[p.sym]){ const q = ST.quotes[p.sym] || {p:0, pc:0}; MARKET[p.sym] = [p.name, 'stock', q.p, q.pc]; prices[p.sym] = q.p; prev[p.sym] = q.pc || q.p; }
   const down = p.chg<0;
   return {stock:p.sym, label: down?'Most Owned · Down Today':'Most Owned Stock', value:pct(p.chg), name:p.name, owners:p.owners, good:null, chg:p.chg,
-    lesson: down ? p.owners+' students own it. On sale, or slipping? Check the chart before you decide.' : p.owners+' students own it. No popular stock is down right now.'};
+    lesson: (p.owners===1 ? '1 student owns it. ' : p.owners+' students own it. ') + (down ? 'On sale, or slipping? Check the chart before you decide.' : 'No popular stock is down right now.')};
 }
 
 function vPortfolio(){
@@ -1744,8 +1773,10 @@ function act(a, el){
   UI.raw = {};   // a button press replaces anything typed in the number boxes
   switch(k){
     case 'tab': UI.tab=v; break;
-    case 'school': UI.school=v||null; UI.sec=null; break;
-    case 'sec': UI.sec = v===''?null:+v; break;
+    case 'school': UI.school=v||null; UI.ti=null; UI.sec=null; break;
+    case 'ti': UI.ti = v===''?null:+v; UI.sec=null; break;
+    case 'sec': UI.sec = v===''?null:+v; if (UI.sec!==null) UI.ti = D.sections[UI.sec].ti; break;
+    case 'aw': { const o = awardScopeOptions().find(x=>x.key===v); if (v==='district'){ UI.school=null; UI.ti=null; UI.sec=null; } else if (o){ Object.assign(UI, o.set); } break; }
     case 'open': UI.drawer=v; break;
     case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
     case 'clearerr': UI.err = null; break;
