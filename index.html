@@ -1295,7 +1295,7 @@ function vStandings(){
       <button type="button" class="award" data-act="open:award:${i}">
         <span class="label" style="color:var(--muted)">${a.label}</span>
         <span class="v" style="color:${a.stock?(a.chg>=0?'var(--up)':'var(--down)'):a.good===null?'var(--white)':'var(--up)'}">${a.value}</span>
-        ${a.stock ? `<span class="who"><span class="num" style="font-size:22px">${a.stock}</span><span style="font-size:17px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>` : `<span class="who">${logo(a.school,40)}<span style="display:flex;flex-direction:column;gap:2px"><span>${esc(a.name)}</span>${sc.kind==='class'?'':`<span class="aw-sub">${esc(sc.kind==='teacher'?D.sections[a.stu.sec].period:secLabel(D.sections[a.stu.sec]))}</span>`}</span></span>`}
+        ${a.stock ? `<span class="who"><span class="num" style="font-size:22px">${a.stock}</span><span style="font-size:17px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>` : `<span class="who">${logo(a.school,40)}<span style="display:flex;flex-direction:column;gap:2px"><span>${esc(a.name)}</span>${sc.kind==='class'?'':`<span class="aw-sub">${esc(sc.kind==='teacher'?D.sections[a.stu.sec].period:secLabel(D.sections[a.stu.sec])+(sc.kind==='district'?' · '+a.school:''))}</span>`}</span></span>`}
         ${a.lesson?`<span class="ls">${a.lesson}</span>`:''}      </button>`).join('')}</div>`; })()}
   </section>`;
 }
@@ -1326,8 +1326,10 @@ function awardScopeOptions(){
   const ti = sec ? sec.ti : UI.ti!==null ? UI.ti : null;
   const school = sec ? sec.school : ti!==null ? T[ti][1] : UI.school;
   const mine = ME ? D.sections[ME.sec] : null;
+  /* the viewer's own school (a student's, or a teacher's) stays a pick even when District is chosen up top */
+  const home = mine ? mine.school : (ME_INFO && ME_INFO.school) || null;
   const o = [{key:'district', label:'District'}];
-  const sch = school || (mine && mine.school), t = ti!==null ? ti : (!school && mine ? mine.ti : null), c = sec || (!school && mine) || null;
+  const sch = school || home, t = ti!==null ? ti : (!school && mine ? mine.ti : null), c = sec || (!school && mine) || null;
   if (sch) o.push({key:'school:'+sch, label:sch, school:sch, set:{school:sch, ti:null, sec:null}});
   if (t!==null && t!==undefined) o.push({key:'teacher:'+T[t][2], label:T[t][0], set:{school:T[t][1], ti:t, sec:null}});
   if (c) o.push({key:'class:'+c.dbId, label:c.period+(c.ti===t?'':' · '+c.teacher), set:{school:c.school, ti:c.ti, sec:c.id}});
