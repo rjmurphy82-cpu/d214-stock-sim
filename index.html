@@ -402,7 +402,7 @@ let P = EMPTY();
 function save(){}   // nothing is stored in the browser: every change goes to the server
 
 /* ---------- logos (filled in after publish) ---------- */
-const LOGOS = {'Hersey':'logos/hersey.png','Prospect':'logos/prospect.png','Buffalo Grove':'logos/buffalo-grove.png','Rolling Meadows':'logos/rolling-meadows.png','Elk Grove':'logos/elk-grove.png','Wheeling':'logos/wheeling.png'};
+const LOGOS = {'Hersey':'logos/hersey.png','Prospect':'logos/prospect.png','Buffalo Grove':'logos/buffalo-grove.png','Rolling Meadows':'logos/rolling-meadows.png','Elk Grove':'logos/elk-grove.png','Wheeling':'logos/wheeling.png','District 214':'logos/district-214.png'};
 function logo(school, size){
   const src = LOGOS[school];
   if (src) return `<img class="logo" src="${src}" alt="${school} logo" width="${size}" height="${size}" style="width:${size}px;height:${size}px" onerror="this.outerHTML='<span class=&quot;badge&quot; style=&quot;width:${size}px;height:${size}px;font-size:${Math.round(size*0.36)}px&quot;>${school.split(' ').map(w=>w[0]).join('')}</span>'">`;
@@ -460,7 +460,7 @@ function mixOf(){
 function conic(parts, bg){ let a=0; return 'conic-gradient(' + parts.map(p=>{ const s=a; a+=p.pct; return `${p.color} ${s.toFixed(2)}% ${(a-0.5).toFixed(2)}%, ${bg} ${(a-0.5).toFixed(2)}% ${a.toFixed(2)}%`; }).join(', ') + ')'; }
 
 /* ---------- district standings (from the server, refreshed every minute) ---------- */
-const SCHOOLS = ['Hersey','Prospect','Buffalo Grove','Rolling Meadows','Elk Grove','Wheeling'];
+const SCHOOLS = ['Hersey','Prospect','Buffalo Grove','Rolling Meadows','Elk Grove','Wheeling','District 214'];
 let T = [], D = {sections:[], students:[]}, ME = null, ST = null;
 function applyStandings(st){
   ST = st;
