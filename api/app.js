@@ -119,8 +119,9 @@ const ROUTES = {
     return standings(sql);
   } },
 
-  // One student's portfolio as a snapshot: what they hold and how it's doing, not share counts or trades.
-  // Their teacher and the admin also get the full detail.
+  // One student's portfolio, open to everyone in the game: holdings with shares and cost, and every trade
+  // with its gain or loss, so classmates can learn from each other's wins and losses.
+  // Their teacher and the admin also get account activity (trade counts, last sign-in).
   student: { run: async ({ sql, user, q }) => {
     requireRole(user, 'student', 'teacher', 'admin');
     const id = int(q.get('id'));
@@ -146,17 +147,15 @@ const ROUTES = {
       const px = qp(p.sym) || last[p.sym] || p.basis;
       const v = p.side === 'long' ? p.shares * px : p.shares * (2 * p.basis - px);
       const g = (p.side === 'long' ? px / p.basis - 1 : 1 - px / p.basis) * 100;
-      return { s: p.sym, ty: p.side === 'short' ? 'Short' : TY[p.kind] || 'Stock', v, g, ...(full ? { n: p.shares, b: p.basis, px } : {}) };
+      return { s: p.sym, ty: p.side === 'short' ? 'Short' : TY[p.kind] || 'Stock', v, g, n: p.shares, b: p.basis, px };
     }).sort((a, b) => b.v - a.v);
     if (acct.mm_bal > 0.005) holds.push({ s: 'Money mkt', ty: 'MM', v: acct.mm_bal, g: null });
     holds.push({ s: 'Cash', ty: 'Cash', v: acct.cash, g: null });
     holds.forEach(h => { h.w = h.v / s.value * 100; });
     const out = { id, name: s.name, value: s.value, ret: s.ret, holds, practice: !!s.practice };
-    if (full) {
-      out.trades = (await sql`select sym, act, shares, price, at, auto, pnl from trades where student_id = ${id} order by at desc limit 100`)
-        .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, pnl: t.pnl }));
-      out.activity = (await activity(sql, [id]))[id];
-    }
+    out.trades = (await sql`select sym, act, shares, price, at, auto, basis, pnl from trades where student_id = ${id} order by at desc limit 100`)
+      .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, b: t.basis, pnl: t.pnl }));
+    if (full) out.activity = (await activity(sql, [id]))[id];
     return out;
   } },
 

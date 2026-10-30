@@ -535,7 +535,7 @@ function myRanks(){
   const rankIn = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(ME)+1;
   return { class: rankIn(D.students.filter(s=>s.sec===ME.sec)), school: rankIn(D.students.filter(s=>s.school===ME.school)), district: all.indexOf(ME)+1 };
 }
-// Another student's holdings come from the server as a snapshot (their teacher sees full detail).
+// Another student's holdings and trades come from the server (their teacher also gets account activity).
 const HOLDS = {};
 function loadHolds(id){
   HOLDS[id] = {loading:true};
@@ -1436,7 +1436,7 @@ function vPortfolio(){
         <a class="cta" href="#trade">Trade</a>
       </div>
     </div>
-    ${ROLE==='teacher' ? `<div class="bondnote"><span class="tag" style="color:var(--cd)">PRACTICE</span><span>Your own $100,000 to try things out. It doesn’t count in any standings, and your students can see your holdings the same way they see a classmate’s.</span></div>` : `<div class="ranks">
+    ${ROLE==='teacher' ? `<div class="bondnote"><span class="tag" style="color:var(--cd)">PRACTICE</span><span>Your own $100,000 to try things out. It doesn’t count in any standings, and your students can see your holdings and trades the same way they see a classmate’s.</span></div>` : `<div class="ranks">
       ${(r ? [[r.class,sec.size,'In class · '+secLabel(sec)],[r.school,schoolSize(mi.school),'At '+mi.school],[r.district,D.students.length,'In the district']]
             : [[null,'…','In class'],[null,'…','At '+mi.school],[null,'…','In the district']]).map(([k,of,l],i)=>`
       <div class="rankc${i===0?' top':''}"><span class="r">${k ? ord(k) : '—'}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:19px;color:var(--white)">of ${of}</span><span class="label" style="font-size:12px;color:var(--dim)">${l}</span></span></div>`).join('')}
@@ -1686,6 +1686,7 @@ function vDrawer(){
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(x=>({...x,label:x.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
         ${parts.map((x,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${x.color}"><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
+      ${h.trades ? publicDetail(h) : ''}
       <p class="empty">Teachers practice with their own $100,000 too. It doesn’t count in the standings.</p>`}`;
   } else if (kind==='student'){
     const s = D.students[+id], sec = D.sections[s.sec]; liveStudents();
@@ -1700,7 +1701,7 @@ function vDrawer(){
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
         ${parts.map((h,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${h.color}"><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
       ${!s.isMe && (!hd || hd.loading) ? '<p class="empty">Loading…</p>' : ''}
-      ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>' : hd && hd.trades ? teacherDetail(s, hd) : '<p class="empty">Students see other portfolios as a snapshot only. Teachers see full detail.</p>'}`;
+      ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>' : hd && hd.trades ? (hd.activity ? teacherDetail(s, hd) : publicDetail(hd)) : ''}`;
   } else if (kind==='award'){
     const a = awardsList()[+id]; if (!a){ UI.drawer = null; return ''; } const stu = a.stock ? null : a.stu;
     if (stu && !a.stats){ UI.drawer = 'student:'+stu.id; return vDrawer(); }
@@ -2039,20 +2040,43 @@ function vClasses(){
   </div>`;
 }
 // Full detail of one student, for their teacher and the admin.
-function fullDetail(id, h){
+/* Everyone can see a classmate's trades: what they bought, what they sold, and what it made or lost. */
+function closedHtml(h){
+  const done = (h.trades||[]).filter(t=>t.pnl!==null && t.pnl!==undefined && (t.act==='sell'||t.act==='cover'));
+  if (!done.length) return '';
+  const wins = done.filter(t=>t.pnl>=0), losses = done.filter(t=>t.pnl<0), sum = l => l.reduce((a,t)=>a+t.pnl,0);
+  const row = t => { const p = t.b ? (t.act==='cover' ? (t.b-t.price)/t.b : (t.price-t.b)/t.b)*100 : null;
+    return `<div class="ctr"><span style="display:flex;flex-direction:column;gap:3px"><span class="num" style="font-size:17px;color:var(--white)">${esc(t.sym)}${t.act==='cover'?' <span class="small">short</span>':''}</span>
+      <span style="font-size:13px;color:var(--dim)">${fmtSh(+(+t.n).toFixed(4))} sh · ${t.b?money(t.b)+' → ':''}${money(t.price)} · ${new Date(t.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></span>
+      <span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap" class="num ${cls(t.pnl)}"><span style="font-size:17px">${signed2(t.pnl)}</span>${p===null?'':`<span style="font-size:13px">${pct(p)}</span>`}</span></div>`; };
+  return `<div class="spread" style="flex-wrap:wrap"><span class="label">Closed trades</span><span style="color:var(--muted);font-size:14px">Wins <span class="num up">${signed2(sum(wins))}</span> · Losses <span class="num down">${signed2(sum(losses))}</span></span></div>
+    <div class="closed" style="padding-top:0;grid-template-columns:1fr;gap:12px">
+      <div class="ct" style="padding:14px 16px 4px"><span class="disp" style="font-size:20px;color:var(--white)">Wins</span>${wins.map(row).join('')||'<p class="empty">None yet.</p>'}</div>
+      <div class="ct loss" style="padding:14px 16px 4px"><span class="disp" style="font-size:20px;color:var(--white)">Losses</span>${losses.map(row).join('')||'<p class="empty">None yet.</p>'}</div>
+    </div>`;
+}
+function holdTableHtml(h){
   const TYC = {Stock:'#8a97a8',ETF:'#9a86c9',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e',Cash:'#6b7c91'};
-  const act = h.activity || {};
-  const W = {buy:'Bought', sell:'Sold', short:'Shorted', cover:'Closed short'};
-  return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
-      <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
-    <div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Gain</th></tr></thead>
+  return `<div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Gain</th></tr></thead>
       <tbody>${h.holds.map(x=>`<tr><td><span class="num" style="color:var(--white)">${esc(x.s)}</span> <span class="tag" style="color:${TYC[x.ty]||'#8a97a8'}">${esc(x.ty).toUpperCase()}</span></td>
         <td class="r num">${x.n!==undefined ? fmtSh(+x.n.toFixed(4)) : ''}</td><td class="r num">${x.b!==undefined ? money(x.b) : ''}</td><td class="r num">${whole(x.v)}</td>
-        <td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td></tr>`).join('')}</tbody></table></div>
-    <span class="label">Recent trades</span>
+        <td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function tradeLogHtml(h){
+  const W = {buy:'Bought', sell:'Sold', short:'Shorted', cover:'Closed short'};
+  return `<span class="label">All trades</span>
     ${h.trades.length ? `<div class="tscroll"><table class="tbl" style="font-size:14px"><tbody>${h.trades.slice(0,40).map(t=>`<tr><td class="small">${new Date(t.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
       <td style="color:var(--white)">${W[t.act]} ${fmtSh(+t.n.toFixed(4))} ${esc(t.sym)}${t.auto?' <span class="small">(auto)</span>':''}</td><td class="r num">${money(t.price)}</td>
-      <td class="r num ${t.pnl===null?'':cls(t.pnl)}">${t.pnl===null?'':signed2(t.pnl)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No trades yet.</p>'}
+      <td class="r num ${t.pnl===null?'':cls(t.pnl)}">${t.pnl===null?'':signed2(t.pnl)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No trades yet.</p>'}`;
+}
+function publicDetail(h){ return `${closedHtml(h)}${tradeLogHtml(h)}`; }
+function fullDetail(id, h){
+  const act = h.activity || {};
+  return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
+      <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
+    ${holdTableHtml(h)}
+    ${closedHtml(h)}
+    ${tradeLogHtml(h)}
     <div class="btnrow"><button type="button" class="ghost" data-act="treset:${id}">Reset password</button><button type="button" class="ghost" style="color:var(--down)" data-act="tremove:${id}">Remove from class</button></div>`;
 }
 function teacherDetail(s, h){ return fullDetail(s.dbId, h); }

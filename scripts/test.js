@@ -116,7 +116,7 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   const meRow = st.students.find(s => s.id === jack.id);
   ok('my standing is live-valued', meRow && Math.abs(meRow.value - 100000) < 5000, meRow);
   const snap = await stu('student', undefined, '&id=' + dirT.sections.flatMap(s => s.students).find(s => s.name === others[0].name).id);
-  ok('students see another portfolio as a snapshot only', snap.holds && !snap.trades && snap.holds.every(h => h.n === undefined), snap);
+  ok('students see another portfolio in full: holdings with shares and every trade', snap.holds && Array.isArray(snap.trades) && snap.holds.filter(h => h.ty !== 'Cash' && h.ty !== 'MM').every(h => h.n !== undefined) && !snap.activity, snap);
 
   // Teacher view.
   const tch = client();
@@ -132,14 +132,14 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   const callT = stAfter.teachers.find(t => t.id === callahan.id);
   ok('standings tell students where the teacher’s practice portfolio is', callT && callT.practice === tme.me.practiceId, callT);
   const peek = await stu('student', undefined, '&id=' + tme.me.practiceId);
-  ok('students can see the teacher’s practice holdings as a snapshot', peek.practice && peek.holds.some(h => h.s === 'MSFT') && peek.holds.every(h => h.n === undefined), peek);
+  ok('students can see the teacher’s practice holdings and trades', peek.practice && peek.holds.some(h => h.s === 'MSFT') && Array.isArray(peek.trades) && !peek.activity, peek);
   ok('practice portfolio does not show up as a student in the class list', !(await tch('teacher')).sections.some(se => se.students.some(k => k.id === tme.me.practiceId)));
   ok('teacher still cannot use admin tools', (await tch('admin')).status === 403);
 
   const tv = await tch('teacher');
   ok('teacher sees only their classes', tv.sections.length === 2 && tv.sections.every(s => s.teacher === 'Mr. Callahan'), tv.sections.map(s => s.teacher));
   const full = await tch('student', undefined, '&id=' + jack.id);
-  ok('teacher sees full detail for their student', full.trades && full.trades.length >= 5 && full.holds[0].n !== undefined);
+  ok('teacher sees full detail for their student', full.trades && full.trades.length >= 5 && full.holds[0].n !== undefined && full.activity);
   const novak = dir.schools.find(s => s.name === 'Prospect').teachers.find(t => t.name === 'Ms. Novak');
   const novakKid = (await admin('dir', undefined, '&teacher=' + novak.id)).sections[0].students[0];
   ok('teacher cannot reset another teacher’s student', (await tch('teacher_act', { a: 'reset_pw', studentId: novakKid.id })).status === 403);
