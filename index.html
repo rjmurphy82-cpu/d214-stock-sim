@@ -198,6 +198,17 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .kv span{display:block}
 .kv .k{font-size:12px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
 .kv .v{font-family:var(--mono);font-size:20px;color:var(--white)}
+.roster{display:flex;flex-direction:column}
+.roster button{display:grid;grid-template-columns:30px minmax(0,1fr) 92px 78px;gap:10px;align-items:center;min-height:46px;padding:0 8px;border-top:1px solid var(--line);text-align:left;color:var(--fg);width:100%}
+.roster button:hover,.roster button:focus-visible{background:var(--card-hi)}
+.roster button.me{background:var(--card-hi);box-shadow:inset 3px 0 0 var(--red)}
+.roster .rk{font-family:var(--mono);font-size:14px;color:var(--dim)}
+.roster .nm{display:flex;flex-direction:column;gap:5px;min-width:0}
+.roster .nm>span:first-child{color:var(--white);font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster .bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.roster .bar i{display:block;height:100%;border-radius:2px}
+.roster .r{text-align:right;font-family:var(--mono);font-size:14px}
+.backlink{align-self:flex-start;color:var(--link);font-weight:600;font-size:15px;padding:4px 0}
 .mini{display:flex;flex-direction:column}
 .mini div{display:grid;grid-template-columns:14px minmax(0,1fr) 60px 90px 84px;gap:10px;align-items:center;min-height:34px;border-top:1px solid var(--line);font-family:var(--mono);font-size:14px}
 .empty{color:var(--dim);font-size:15px}
@@ -1694,7 +1705,7 @@ function vDrawer(){
     const rk = l => l.slice().sort((a,b)=>b.ret-a.ret).indexOf(s)+1;
     const hs = holdsOf(s) || [], pal=['#ef5b70','#6b8fbf','#c9a34e','#9a86c9','#3fa58a','#e08a4f','#5fb3c9','#d17fb0'], hd = HOLDS[s.dbId];
     const parts = hs.map((h,i)=>({...h,color:h.ty==='Cash'?'#4a5768':pal[i%pal.length],pct:h.w}));
-    html = `<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
+    html = `${UI.back ? `<button type="button" class="backlink" data-act="open:${UI.back}">← Back to ${esc(secLabel(D.sections[+UI.back.split(':')[1]]))}</button>` : ''}<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(value)}</span><span class="num ${cls(s.ret)}" style="font-size:20px">${pct(s.ret)} · ${signed(value-100000)}</span></div>
       <div class="kv">${[[rk(D.students.filter(x=>x.sec===s.sec)),'of '+sec.size+' in class'],[rk(D.students.filter(x=>x.school===s.school)),'of '+schoolSize(s.school)+' at '+s.school],[rk(D.students),'of '+D.students.length+' in district']].map(([r,l])=>`<span><span class="disp" style="font-size:30px;color:${r<=3?'var(--red)':'var(--white)'}">${ord(r)}</span> <span style="color:var(--muted);font-size:14px">${l}</span></span>`).join('')}</div>
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(h=>({...h,label:h.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
@@ -1729,10 +1740,25 @@ function vDrawer(){
     const pid = kind==='teacher' ? T[+id][3] : null;
     html = `<div class="who">${logo(sch,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:34px;color:var(--white)">${esc(title)}</span><span style="color:var(--dim)">${esc(sub)}</span></span></div>
       <div class="kv">${stats.map(([k,v])=>`<span><span class="k">${k}</span><span class="v">${esc(v)}</span></span>`).join('')}</div>
+      ${kind==='class' ? classRoster(+id) : ''}
       ${pid ? `<button type="button" class="ghost" data-act="open:practice:${pid}:${id}">See ${esc(title)}’s practice portfolio</button>` : ''}`;
   }
   return `<div class="scrim" data-act="close"><div class="drawer" role="dialog" aria-modal="true" data-stop>
     <button type="button" class="x" data-act="close" aria-label="Close">×</button>${html}</div></div>`;
+}
+
+/* Everyone in one class, best return first. Tapping a name opens that student's portfolio. */
+function classRoster(secId){
+  const l = D.students.filter(s=>s.sec===secId).sort((a,b)=>b.ret-a.ret);
+  if (!l.length) return '<p class="empty">No students in this class yet.</p>';
+  const top = Math.max(0.01, ...l.map(s=>Math.abs(s.ret)));
+  return `<div class="spread"><span class="label">Everyone in this class</span><span style="color:var(--dim);font-size:13px">Tap a name to see their portfolio</span></div>
+    <div class="roster">${l.map((s,i)=>{ const value = s.isMe ? totals().total : 100000*(1+s.ret/100);
+      return `<button type="button" class="${s.isMe?'me':''}" data-act="open:student:${s.id}">
+        <span class="rk">${i+1}</span>
+        <span class="nm"><span>${esc(s.name)}${s.isMe?' <span class="small">(you)</span>':''}</span><span class="bar"><i style="width:${Math.max(2,Math.abs(s.ret)/top*100).toFixed(1)}%;background:${s.ret>=0?'var(--up)':'var(--down)'}"></i></span></span>
+        <span class="r" style="color:var(--soft)">${whole(value)}</span>
+        <span class="r ${cls(s.ret)}">${pct(s.ret)}</span></button>`; }).join('')}</div>`;
 }
 
 /* ---------- sheet (holding details + sell) ---------- */
@@ -1829,8 +1855,8 @@ function act(a, el){
     case 'ti': UI.ti = v===''?null:+v; UI.sec=null; break;
     case 'sec': UI.sec = v===''?null:+v; if (UI.sec!==null) UI.ti = D.sections[UI.sec].ti; break;
     case 'aw': { const o = awardScopeOptions().find(x=>x.key===v); if (v==='district'){ UI.school=null; UI.ti=null; UI.sec=null; } else if (o){ Object.assign(UI, o.set); } break; }
-    case 'open': UI.drawer=v; break;
-    case 'close': UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
+    case 'open': UI.back = v.startsWith('student:') && UI.drawer && UI.drawer.startsWith('class:') ? UI.drawer : null; UI.drawer=v; break;
+    case 'close': UI.back=null; UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
     case 'clearerr': UI.err = null; break;
     case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.mmAmt=1000; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0,mode:'sell',bn:1}; break; }
     case 'smode': UI.sheet.mode = v; UI.sheet.done = null; break;
@@ -2473,7 +2499,7 @@ document.addEventListener('change', e=>{
     rd.readAsText(e.target.files[0]);
   }
 });
-window.addEventListener('hashchange', ()=>{ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; UI.wq=''; UI.err=null; render(); window.scrollTo(0,0); });
+window.addEventListener('hashchange', ()=>{ UI.back=null; UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; UI.wq=''; UI.err=null; render(); window.scrollTo(0,0); });
 
 /* redraw prices without interrupting someone who is typing or has a panel open */
 function repaint(){
