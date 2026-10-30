@@ -124,6 +124,21 @@ section{padding-block:12px}
 .donut .hole{position:absolute;inset:34px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .mix{display:flex;flex-direction:column;gap:9px;flex:1;min-width:180px}
 .mix div{display:flex;align-items:center;gap:10px;font-size:16px}
+.dnut{position:relative;flex-shrink:0}
+.dnut svg{display:block;width:100%;height:100%;overflow:visible}
+.dnut path{cursor:pointer;transition:transform .18s ease,opacity .18s ease;transform-box:view-box;transform-origin:center}
+.dnut.hot path{opacity:.35}
+.dnut path.on{opacity:1;transform:translate(var(--dx),var(--dy)) scale(1.035)}
+.dhole{position:absolute;inset:28%;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.dhole>div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.15;position:absolute;inset:0;transition:opacity .15s}
+.dh-hov{opacity:0}
+.dnut.hot .dh-def{opacity:0}
+.dnut.hot .dh-hov{opacity:1}
+.dh-n{flex-shrink:0;font-size:15px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mix div[data-dk],.mini div[data-dk]{cursor:default;transition:background .15s,box-shadow .15s}
+.mix div.on,.mini div.on{background:var(--card-hi);box-shadow:inset 3px 0 0 var(--hl,#ef5b70)}
+.mix div.on{margin-inline:-8px;padding-inline:8px}
+@media (prefers-reduced-motion:reduce){.dnut path,.dhole>div,.mix div,.mini div{transition:none}}
 .sw{width:13px;height:13px;border-radius:3px;flex-shrink:0}
 .note{display:flex;align-items:center;gap:14px;margin-top:18px;padding:16px 22px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:6px;font-size:18px;color:var(--cream)}
 .hold{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding-top:18px}
@@ -458,6 +473,41 @@ function mixOf(){
   return Object.keys(m).filter(k=>m[k]>0.5).map(k=>({name:k,v:m[k],pct:m[k]/t*100,color:colors[k]}));
 }
 function conic(parts, bg){ let a=0; return 'conic-gradient(' + parts.map(p=>{ const s=a; a+=p.pct; return `${p.color} ${s.toFixed(2)}% ${(a-0.5).toFixed(2)}%, ${bg} ${(a-0.5).toFixed(2)}% ${a.toFixed(2)}%`; }).join(', ') + ')'; }
+
+/* Interactive donut: hovering (or tapping) a slice pops it out, shows what it is in the hole,
+   and highlights the matching row in the list next to it (rows carry the same data-dk / data-di). */
+function donutSvg(key, parts, o){
+  const R = 88, r = 55, C = 100, tot = parts.reduce((s,p)=>s+Math.max(0,p.pct),0) || 1;
+  const pt = (rad, a) => (C + rad*Math.sin(a)).toFixed(2) + ' ' + (C - rad*Math.cos(a)).toFixed(2);
+  let a0 = 0;
+  const slices = parts.map((p,i)=>{
+    const sweep = Math.max(0,p.pct)/tot*Math.PI*2, s = a0, e = a0 + sweep; a0 = e;
+    if (sweep <= 0) return '';
+    const gap = parts.length > 1 ? Math.min(0.012, sweep/4) : 0;
+    const s1 = s + gap, e1 = Math.min(e - gap, s + Math.PI*2 - 0.0001), big = (e1 - s1) > Math.PI ? 1 : 0, mid = (s + e)/2;
+    const d = `M${pt(R,s1)} A${R} ${R} 0 ${big} 1 ${pt(R,e1)} L${pt(r,e1)} A${r} ${r} 0 ${big} 0 ${pt(r,s1)}Z`;
+    return `<path d="${d}" fill="${p.color}" data-dk="${key}" data-di="${i}" style="--dx:${(Math.sin(mid)*7).toFixed(2)}px;--dy:${(-Math.cos(mid)*7).toFixed(2)}px"
+      data-dn="${esc(p.label)}" data-dt="${esc(p.sub||'')}" data-dp="${p.pct.toFixed(1)}%" data-dv="${whole(p.v)}"${p.g===null||p.g===undefined?'':` data-dg="${p.g}"`}></path>`;
+  }).join('');
+  return `<div class="dnut" data-dnut="${key}" style="width:${o.size}px;height:${o.size}px">
+    <svg viewBox="0 0 200 200" role="img" aria-label="${esc(parts.map(p=>p.label+' '+p.pct.toFixed(1)+' percent').join(', '))}">${slices}</svg>
+    <div class="dhole"><div class="dh-def">${o.center}</div><div class="dh-hov" aria-live="polite"></div></div></div>`;
+}
+let DONUT_ON = null;
+function donutSet(key, i){
+  document.querySelectorAll('[data-dk].on').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.dnut.hot').forEach(el=>el.classList.remove('hot'));
+  DONUT_ON = key===null ? null : {key, i};
+  if (key===null) return;
+  const wrap = document.querySelector(`.dnut[data-dnut="${key}"]`), sl = wrap && wrap.querySelector(`path[data-di="${i}"]`);
+  if (!wrap || !sl){ DONUT_ON = null; return; }
+  document.querySelectorAll(`[data-dk="${key}"][data-di="${i}"]`).forEach(el=>el.classList.add('on'));
+  wrap.classList.add('hot');
+  const g = sl.dataset.dg, gp = g===undefined || g==='' ? '' : `<span class="num ${cls(+g)}" style="font-size:12px">${pct(+g)}</span>`;
+  wrap.querySelector('.dh-hov').innerHTML = `<span class="num dh-n" style="color:${sl.getAttribute('fill')}">${sl.dataset.dn}</span>
+    <span class="num" style="font-size:18px;color:var(--white)">${sl.dataset.dp}</span>
+    <span class="num" style="font-size:12px;color:var(--dim)">${sl.dataset.dv}</span>${gp}`;
+}
 
 /* ---------- district standings (from the server, refreshed every minute) ---------- */
 const SCHOOLS = ['Hersey','Prospect','Buffalo Grove','Rolling Meadows','Elk Grove','Wheeling','District 214'];
@@ -1410,9 +1460,8 @@ function vPortfolio(){
       <div class="panel">
         <span class="label">Where your money is</span>
         <div class="donutwrap">
-          <div class="donut" style="background:${conic(mix,'#141e29')}" role="img" aria-label="${mix.map(m=>m.name+' '+m.pct.toFixed(1)+' percent').join(', ')}">
-            <div class="hole"><span class="num" style="font-size:24px;color:var(--white)">${Math.round(stocksPct)}%</span><span class="label" style="font-size:11px;color:var(--dim)">Stocks</span></div></div>
-          <div class="mix">${mix.map(m=>`<div><span class="sw" style="background:${m.color}"></span><span style="flex:1;color:var(--soft)">${m.name}</span><span class="num" style="font-size:14px;color:var(--dim)">${whole(m.v)}</span><span class="num" style="width:54px;text-align:right;color:var(--white)">${m.pct.toFixed(1)}%</span></div>`).join('')}</div>
+          ${donutSvg('mine', mix.map(m=>({...m,label:m.name})), {size:180, center:`<span class="num" style="font-size:24px;color:var(--white)">${Math.round(stocksPct)}%</span><span class="label" style="font-size:11px;color:var(--dim)">Stocks</span>`})}
+          <div class="mix">${mix.map((m,i)=>`<div data-dk="mine" data-di="${i}" style="--hl:${m.color}"><span class="sw" style="background:${m.color}"></span><span style="flex:1;color:var(--soft)">${m.name}</span><span class="num" style="font-size:14px;color:var(--dim)">${whole(m.v)}</span><span class="num" style="width:54px;text-align:right;color:var(--white)">${m.pct.toFixed(1)}%</span></div>`).join('')}</div>
         </div>
       </div>
     </div>
@@ -1634,9 +1683,9 @@ function vDrawer(){
     html = `<div class="who">${logo(t[1],64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(t[0])}</span><span style="color:var(--dim)">Practice portfolio · not ranked</span></span></div>
       ${!h || h.loading ? '<p class="empty">Loading…</p>' : `
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(h.value)}</span><span class="num ${cls(h.ret)}" style="font-size:20px">${pct(h.ret)} · ${signed(h.value-100000)}</span></div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(x=>({...x,label:x.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
-        ${parts.map(x=>`<div><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
+        ${parts.map((x,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${x.color}"><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
       <p class="empty">Teachers practice with their own $100,000 too. It doesn’t count in the standings.</p>`}`;
   } else if (kind==='student'){
     const s = D.students[+id], sec = D.sections[s.sec]; liveStudents();
@@ -1647,9 +1696,9 @@ function vDrawer(){
     html = `<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(value)}</span><span class="num ${cls(s.ret)}" style="font-size:20px">${pct(s.ret)} · ${signed(value-100000)}</span></div>
       <div class="kv">${[[rk(D.students.filter(x=>x.sec===s.sec)),'of '+sec.size+' in class'],[rk(D.students.filter(x=>x.school===s.school)),'of '+schoolSize(s.school)+' at '+s.school],[rk(D.students),'of '+D.students.length+' in district']].map(([r,l])=>`<span><span class="disp" style="font-size:30px;color:${r<=3?'var(--red)':'var(--white)'}">${ord(r)}</span> <span style="color:var(--muted);font-size:14px">${l}</span></span>`).join('')}</div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap"><div class="donut" style="width:150px;height:150px;background:${conic(parts,'#16212d')}"><div class="hole" style="inset:28px;background:var(--pop)"><span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span></div></div></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(h=>({...h,label:h.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
-        ${parts.map(h=>`<div><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
+        ${parts.map((h,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${h.color}"><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
       ${!s.isMe && (!hd || hd.loading) ? '<p class="empty">Loading…</p>' : ''}
       ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>' : hd && hd.trades ? teacherDetail(s, hd) : '<p class="empty">Students see other portfolios as a snapshot only. Teachers see full detail.</p>'}`;
   } else if (kind==='award'){
@@ -2332,7 +2381,20 @@ function render(){
   const dr = UI.drawer && UI.drawer.startsWith('tstudent:') ? `<div class="scrim" data-act="close"><div class="drawer" role="dialog" aria-modal="true" data-stop><button type="button" class="x" data-act="close" aria-label="Close">×</button>${vTeacherStudent(+UI.drawer.split(':')[1])}</div></div>` : vDrawer();
   document.getElementById('overlay').innerHTML = dr + vSheet() + vGuide() + vModal();
   renderTape(false);
+  if (DONUT_ON) donutSet(DONUT_ON.key, DONUT_ON.i);
 }
+/* donut hover: slices and their list rows light each other up */
+document.addEventListener('mouseover', e=>{ const t = e.target.closest && e.target.closest('[data-dk][data-di]'); if (t) donutSet(t.dataset.dk, t.dataset.di); });
+document.addEventListener('mouseout', e=>{
+  const t = e.target.closest && e.target.closest('[data-dk][data-di]'); if (!t || !DONUT_ON) return;
+  const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-dk][data-di]');
+  if (!to) donutSet(null);
+});
+document.addEventListener('click', e=>{
+  const t = e.target.closest && e.target.closest('[data-dk][data-di]');
+  if (t){ const same = DONUT_ON && DONUT_ON.key===t.dataset.dk && DONUT_ON.i===t.dataset.di; donutSet(same && e.pointerType!=='mouse' ? null : t.dataset.dk, t.dataset.di); }
+  else if (DONUT_ON && !(e.target.closest && e.target.closest('.dnut'))) donutSet(null);
+});
 document.addEventListener('click', e=>{
   const el = e.target.closest('[data-act]');
   if (!el) return;
