@@ -99,17 +99,6 @@ section{padding-block:12px}
 .award .aw-sub{font-family:var(--body);font-weight:500;font-size:14px;color:var(--dim)}
 .awscope{display:flex;align-items:center;gap:12px}.awscope>span{display:flex;flex-direction:column;gap:2px}.awscope .t{font-family:var(--display);font-weight:700;font-size:22px;color:var(--white)}
 .award .ls{padding-top:10px;border-top:1px solid var(--line-2);font-size:15px;color:var(--cream)}
-.award.tiers{gap:0;padding-bottom:8px}
-.aw-tier{display:flex;flex-direction:column;gap:8px;width:100%;padding:16px 0;border-top:1px solid var(--line-2);text-align:left;color:var(--fg)}
-.award .label+.aw-tier{margin-top:14px}
-.aw-tier:hover .aw-nm{text-decoration:underline;text-decoration-color:var(--line-3);text-underline-offset:4px}
-.aw-scope{display:flex;align-items:center;gap:8px;font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-.aw-main{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
-.aw-main .v{font-size:26px;min-width:108px}
-.aw-main .who{font-size:18px;gap:10px}
-.aw-main .aw-sub{font-size:13px}
-.aw-ls{font-size:14px;line-height:1.4;color:var(--cream)}
-.aw-none{font-size:15px;color:var(--dim)}
 
 /* portfolio */
 .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;padding-block:36px 24px}
@@ -1358,25 +1347,17 @@ function vStandings(){
       </button>`).join('')}</div>
   </div>
   <section class="wrap" style="padding-block:56px 72px">
-    ${(()=>{ const tiers = awardTiers(), cards = awardCards(tiers);
-      const any = tiers.some(t=>t.list.some(a=>!a.stock));
+    ${(()=>{ const tiers = awardTiers(), sc = tiers.find(t=>t.kind===UI.awKind) || tiers[0], list = sc.list;
       return `<div class="head" style="align-items:center;gap:16px;flex-wrap:wrap"><h2 class="h2">Today &amp; This Week</h2>
-      <span class="awscope"><span><span class="label" style="color:var(--muted)">Awards for</span><span class="t">${tiers.map(t=>esc(t.title)).join(' · ')}</span></span></span></div>
-      ${any ? '' : `<p class="empty" style="padding-top:12px">${ST && ST.awards && ST.awards.length ? 'No student awards here yet. They’re picked after each market day closes.' : 'Awards are picked after each market day closes. The first ones show up after the first full trading day.'}</p>`}
-    <div class="awards">${cards.map(c=>`
-      <div class="award tiers">
-        <span class="label" style="color:var(--muted)">${c.label}</span>
-        ${tiers.map(t=>{ const a = t.list.find(x=>x.kind===c.kind);
-          const tag = `<span class="aw-scope">${t.lg}<span>${esc(t.tag)}</span></span>`;
-          if (!a) return `<div class="aw-tier">${tag}<span class="aw-none">${c.kind==='popular'?'No popular stock yet.':'No winner yet.'}</span></div>`;
-          const col = a.stock ? (a.chg>=0?'var(--up)':'var(--down)') : a.good===null ? 'var(--white)' : 'var(--up)';
-          const who = a.stock
-            ? `<span class="who"><span class="num" style="font-size:20px">${a.stock}</span><span style="font-size:15px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>`
-            : `<span class="who">${logo(a.school,32)}<span style="display:flex;flex-direction:column;gap:2px"><span class="aw-nm">${esc(a.name)}</span>${t.kind==='class'?'':`<span class="aw-sub">${esc(t.kind==='school'?D.sections[a.stu.sec].teacher+' · '+D.sections[a.stu.sec].period:secLabel(D.sections[a.stu.sec])+' · '+a.school)}</span>`}</span></span>`;
-          return `<button type="button" class="aw-tier" data-act="open:award:${c.kind}|${t.key}">${tag}
-            <span class="aw-main"><span class="v num" style="color:${col}">${a.value}</span>${who}</span>
-            ${a.lesson?`<span class="aw-ls">${a.lesson}</span>`:''}</button>`; }).join('')}
-      </div>`).join('')}</div>`; })()}
+      <span class="awscope">${sc.kind==='class'?'':logo(sc.kind==='district'?'District 214':sc.title,40)}<span><span class="label" style="color:var(--muted)">Awards for</span><span class="t">${esc(sc.title)}</span></span></span></div>
+      <div class="frow" style="padding-top:18px"><span class="label">Show</span>${tiers.map(t=>chip(t.key===sc.key, esc(t.chip), 'awt:'+t.kind, t.kind==='class'?'':logo(t.kind==='district'?'District 214':t.title,30))).join('')}</div>
+      ${list.length && !list.every(a=>a.stock) ? '' : `<p class="empty" style="padding-top:12px">${ST && ST.awards && ST.awards.length ? 'No student awards for '+esc(sc.title)+' yet. They’re picked after each market day closes.' : 'Awards are picked after each market day closes. The first ones show up after the first full trading day.'}</p>`}
+    <div class="awards">${list.map(a=>`
+      <button type="button" class="award" data-act="open:award:${a.kind}|${sc.key}">
+        <span class="label" style="color:var(--muted)">${a.label}</span>
+        <span class="v" style="color:${a.stock?(a.chg>=0?'var(--up)':'var(--down)'):a.good===null?'var(--white)':'var(--up)'}">${a.value}</span>
+        ${a.stock ? `<span class="who"><span class="num" style="font-size:22px">${a.stock}</span><span style="font-size:17px;font-weight:400;color:var(--soft)">${esc(a.name)}</span></span>` : `<span class="who">${logo(a.school,40)}<span style="display:flex;flex-direction:column;gap:2px"><span>${esc(a.name)}</span>${sc.kind==='class'?'':`<span class="aw-sub">${esc(sc.kind==='school'?D.sections[a.stu.sec].teacher+' · '+D.sections[a.stu.sec].period:secLabel(D.sections[a.stu.sec])+' · '+a.school)}</span>`}</span></span>`}
+        ${a.lesson?`<span class="ls">${a.lesson}</span>`:''}      </button>`).join('')}</div>`; })()}
   </section>`;
 }
 // Awards are picked by the server after each market day (see lib/eod.js).
@@ -1393,7 +1374,7 @@ function awardsList(key){
   return out;
 }
 const perNum = p => { const m = String(p||'').match(/\d+/); return m ? +m[0] : 99; };
-/* Every award card shows three levels at once: the district, a school, and a class.
+/* The three award levels the Show toggle switches between: the district, a school, and a class.
    The school and class follow the leaderboard filter when one is picked, else the viewer's own,
    else Hersey and its first class. */
 function awardTiers(){
@@ -1409,22 +1390,11 @@ function awardTiers(){
     || (mine && mine.school===sch ? mine : null)
     || (myT>=0 ? inSch.find(s=>s.ti===myT) : null)
     || inSch[0] || null;
-  const tiers = [{key:'district', kind:'district', tag:'District', title:'District 214', lg:logo('District 214',22)},
-    {key:'school:'+sch, kind:'school', tag:sch, title:sch, lg:logo(sch,22)}];
-  if (c) tiers.push({key:'class:'+c.dbId, kind:'class', tag:c.period+' · '+c.teacher, title:c.period+' · '+c.teacher, lg:''});
+  const tiers = [{key:'district', kind:'district', tag:'District', chip:'District', title:'District 214', lg:logo('District 214',22)},
+    {key:'school:'+sch, kind:'school', tag:sch, chip:sch, title:sch, lg:logo(sch,22)}];
+  if (c) tiers.push({key:'class:'+c.dbId, kind:'class', tag:c.period+' · '+c.teacher, chip:'Class · '+c.period+' '+c.teacher, title:c.period+' · '+c.teacher, lg:''});
   tiers.forEach(t=>{ t.list = awardsList(t.key); });
   return tiers;
-}
-/* One card per award, in the order the district shows them; the most-owned stock comes last. */
-function awardCards(tiers){
-  const seen = new Map();
-  for (const t of tiers) for (const a of t.list){ const k = a.stock ? 'popular' : a.kind; if (!seen.has(k)) seen.set(k, a.stock ? 'Most Owned Stock' : a.label); }
-  const out = [...seen].filter(([k])=>k!=='popular').map(([kind,label])=>({kind,label}));
-  if (seen.has('popular')){
-    const d = tiers[0].list.find(a=>a.stock);
-    out.push({kind:'popular', label: d ? d.label : 'Most Owned Stock'});
-  }
-  return out;
 }
 /* kept for older links: the leaderboard scope chips set filters */
 function awardScopeOptions(){ return []; }
@@ -1886,6 +1856,7 @@ function act(a, el){
     case 'school': UI.school=v||null; UI.ti=null; UI.sec=null; break;
     case 'ti': UI.ti = v===''?null:+v; UI.sec=null; break;
     case 'sec': UI.sec = v===''?null:+v; if (UI.sec!==null) UI.ti = D.sections[UI.sec].ti; break;
+    case 'awt': UI.awKind = v; break;
     case 'aw': { const o = awardScopeOptions().find(x=>x.key===v); if (v==='district'){ UI.school=null; UI.ti=null; UI.sec=null; } else if (o){ Object.assign(UI, o.set); } break; }
     case 'open': UI.back = v.startsWith('student:') && UI.drawer && UI.drawer.startsWith('class:') ? UI.drawer : null; UI.drawer=v; break;
     case 'close': UI.back=null; UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
