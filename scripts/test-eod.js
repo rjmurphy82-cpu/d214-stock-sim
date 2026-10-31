@@ -64,7 +64,8 @@ const aw = (await sql`select d, kind, scope, student_id, value, detail from awar
 const allAw = aw.slice(); aw.splice(0, aw.length, ...allAw.filter(a => a.scope === 'district'));
 const kinds = d => aw.filter(a => a.d === d).map(a => a.kind);
 ok('mover of the day picked every day', days.every(d => kinds(d).includes('mover_day') || vals && true));
-ok('weekly awards on Friday Oct 30', ['mover_week', 'active_week'].every(k => kinds('2026-10-30').includes(k)), kinds('2026-10-30'));
+ok('weekly awards on Friday Oct 30', kinds('2026-10-30').includes('mover_week'), kinds('2026-10-30'));
+ok('no most-active award', !aw.some(a => a.kind === 'active_week'), aw.filter(a => a.kind === 'active_week'));
 ok('weekly awards on Friday Nov 6 (holiday week)', kinds('2026-11-06').includes('mover_week'), kinds('2026-11-06'));
 ok('trader of the day for the big closing trade', aw.some(a => a.d === '2026-10-28' && a.kind === 'trader_day' && a.student_id === Dee && Math.abs(a.value - 20) < 1e-6), aw.filter(a => a.d === '2026-10-28'));
 ok('best trade of the week', aw.some(a => a.d === '2026-10-30' && a.kind === 'best_trade_week' && a.student_id === Dee));

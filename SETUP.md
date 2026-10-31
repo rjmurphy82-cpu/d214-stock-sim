@@ -43,7 +43,7 @@ Only first names and the shortest last-name piece that keeps classmates apart ar
 
 - **Trades** go through only while the market is open (8:30 AM to 3:00 PM Central), at the live Massive price, checked on the server.
 - **End of day** runs automatically each weekday around 6:30 PM Central: money market interest, dividends and bond interest (real amounts from Massive), stock splits, auto-invest buys at the closing price, each student's closing value, and the awards. If a day is missed it catches up on the next run, or use **Run end of day now** on the Admin page.
-- **Awards** reward results and patience: Trader of the Day and Best Trade of the Week (closing trades of $1,000 or more), Mover of the Day/Week, Biggest Climber, Steady Hands (no trades all week and still up), Most Active.
+- **Awards** reward results and patience: Trader of the Day and Best Trade of the Week (closing trades of $1,000 or more), Mover of the Day/Week, Biggest Climber, Steady Hands (no trades all week and still up). There is no award for trading the most.
 - **Rules you can change** on the Admin page: money market rate, minimum price to buy ($1) and to short ($5), and a switch to pause all trading.
 
 ## Privacy notes
