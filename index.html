@@ -2622,7 +2622,7 @@ async function boot(){
 
 /* ---------- render ---------- */
 const ROUTES = {student:['portfolio','standings','checkup','charts','trade'], teacher:['classes','portfolio','standings','charts','trade'], admin:['admin','classes','standings','charts']};
-const NAVL = {portfolio:'My Portfolio', standings:'Standings', checkup:'Checkup', charts:'Charts', trade:'Trade', classes:'My Classes', admin:'Admin'};
+const NAVL = {portfolio:'My Portfolio', standings:'Standings', checkup:'Checkup', charts:'Charts + News', trade:'Trade', classes:'My Classes', admin:'Admin'};
 const canTrade = () => ROLE==='student' || ROLE==='teacher';
 const route = () => { const h = (location.hash||'').replace('#',''), ok = ROUTES[ROLE] || []; return ok.includes(h) ? h : (ok[0] || 'login'); };
 function renderNav(){
