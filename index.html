@@ -29,10 +29,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 /* header */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--bg);border-bottom:1px solid var(--rule)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px;flex-wrap:wrap}
-.brand{display:inline-flex;align-items:center;gap:12px;font-family:var(--display);font-weight:900;font-size:30px;color:var(--white);white-space:nowrap}
-.brand .bmark{width:.62em;height:.62em;flex:none;border-radius:1px}
-.brand b{color:var(--red)}
-.brand small{font-family:var(--body);font-size:13px;letter-spacing:.3em;font-weight:700;color:var(--muted)}
+.brand{display:inline-flex;align-items:center;font-family:var(--display);font-weight:900;font-size:30px;line-height:1;color:var(--white);white-space:nowrap}
+.brand .bmark{width:.68em;height:.68em;flex:none;margin-right:12px;border-radius:1px;transform:translateY(-.025em)}
+.brand .bword{display:block}
+.brand b{display:block;margin:0 10px;color:var(--red)}
+.brand small{display:block;font-family:var(--body);font-size:13px;line-height:1;letter-spacing:.3em;margin-right:-.3em;font-weight:700;color:var(--muted)}
 nav{display:flex;gap:4px;overflow-x:auto;max-width:100%}
 nav a{padding:14px 16px;color:var(--muted);font-weight:500;font-size:17px;white-space:nowrap;border-bottom:3px solid transparent}
 nav a[aria-current="page"]{color:var(--white);border-bottom-color:var(--red)}
@@ -393,7 +394,7 @@ input[type=number]{font-size:19px;height:52px;max-width:180px}
 
 <header class="top">
   <div class="wrap">
-    <span class="brand"><span>D214</span><svg class="bmark" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><rect width="100" height="100" fill="#c10e30"/><path d="M0 1A61 49 0 0 1 0 99Z" fill="#fff"/><path d="M0 2.5A50 39.5 0 0 1 0 81.5Z" fill="#c10e30"/></svg><small>INVESTING</small></span>
+    <span class="brand"><svg class="bmark" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><rect width="100" height="100" fill="#c10e30"/><path d="M0 1A61 49 0 0 1 0 99Z" fill="#fff"/><path d="M0 2.5A50 39.5 0 0 1 0 81.5Z" fill="#c10e30"/></svg><span class="bword">D214</span><b aria-hidden="true">·</b><small>INVESTING</small></span>
     <nav aria-label="Main" id="nav"></nav>
     <div class="acct" id="acct"></div>
   </div>
