@@ -32,6 +32,17 @@ async function mockMarket(name, url, res) {
   if (name === 'search') { const q = (url.searchParams.get('q') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5); return json({ results: q ? [{ s: q, n: q + ' Test Co.', k: 'stock' }] : [] }); }
   if (name === 'ticker') return json({ s: t, n: t + ' Test Co.', k: M.BOND.has(t) ? 'etf' : 'stock', sector: '', about: '', cap: null, logo: false });
   if (name === 'logo') { res.statusCode = 404; return res.end(); }
+  if (name === 'news') {
+    if (t === 'NONEWS') return json({ ticker: t, items: [] });
+    const ago = h => new Date(Date.now() - h * 3600000).toISOString();
+    return json({ ticker: t, items: [
+      { title: t + ' Beats Quarterly Earnings Estimates as Revenue Jumps 18%', summary: '', source: 'Test Wire', url: 'https://example.com/a', at: ago(2), mood: 'good', why: t + ' reported revenue and profit above what analysts expected and raised its outlook for next year.', others: 0 },
+      { title: 'Analyst Downgrades ' + t + ', Cuts Price Target on Valuation Worries', summary: '', source: 'Test Markets', url: 'https://example.com/b', at: ago(20), mood: 'bad', why: 'An analyst lowered the rating because the stock already trades at a high valuation.', others: 0 },
+      { title: 'Stocks Rally as the Fed Holds Interest Rates Steady', summary: 'Major indexes climbed after the Federal Reserve left rates unchanged.', source: 'Test Daily', url: 'https://example.com/c', at: ago(30), mood: 'neutral', why: t + ' is mentioned as one of many large companies that rose with the market.', others: 9 },
+      { title: t + ' Announces $10 Billion Share Buyback and Raises Dividend', summary: '', source: 'Test Wire', url: 'https://example.com/d', at: ago(96), mood: 'good', why: 'Returning cash to shareholders signals the company is confident about its future.', others: 0 },
+      { title: 'Tariffs Could Squeeze ' + t + ' Margins, Report Says', summary: 'A new report looks at how import taxes may affect costs.', source: 'Test Journal', url: 'https://example.com/e', at: ago(200), mood: null, why: '', others: 1 }
+    ] });
+  }
   if (name === 'fin') {
     if (t === 'NOFIN') return json({ ticker: t, income: [], balance: [], ratios: null });
     const bank = t === 'JPM', base = 20 + (t.charCodeAt(0) % 9) * 15;
@@ -47,7 +58,7 @@ async function mockMarket(name, url, res) {
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const m = url.pathname.match(/^\/api\/([a-z]+)$/);
-  if (m && process.env.MARKET_MOCK === '1' && ['status', 'quotes', 'bars', 'search', 'ticker', 'logo', 'fin'].includes(m[1])) return mockMarket(m[1], url, res);
+  if (m && process.env.MARKET_MOCK === '1' && ['status', 'quotes', 'bars', 'search', 'ticker', 'logo', 'fin', 'news'].includes(m[1])) return mockMarket(m[1], url, res);
   if (m) {
     const file = path.join(root, 'api', m[1] + '.js');
     if (!fs.existsSync(file)) { res.statusCode = 404; return res.end('not found'); }
