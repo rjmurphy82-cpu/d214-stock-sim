@@ -34,7 +34,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .brand .bword{display:block;font-variant-numeric:lining-nums;font-feature-settings:"lnum" 1}
 .brand .bdot{display:block;width:6px;height:6px;margin:0 14px;border-radius:50%;background:var(--red);transform:translateY(.025em)}
 nav{display:flex;gap:4px;overflow-x:auto;max-width:100%}
-nav a{padding:14px 11px;color:var(--muted);font-weight:600;font-size:18px;white-space:nowrap;border-bottom:3px solid transparent}
+nav a{padding:14px 10px;color:var(--muted);font-weight:600;font-size:19px;white-space:nowrap;border-bottom:3px solid transparent}
 nav a[aria-current="page"]{color:var(--white);border-bottom-color:var(--red)}
 nav a:hover{color:var(--white)}
 .tape{background:var(--tape);border-bottom:1px solid var(--rule);overflow:hidden}
@@ -333,9 +333,10 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 @media (max-width:520px){.stepin input{width:110px;font-size:24px}}
 
 /* account + status banner */
-.acct{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:600;color:var(--muted)}
+.acct{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:600;color:var(--muted)}
 .acct b{color:var(--white);font-weight:600}
-.acct button{min-height:42px;padding:0 14px;border:1px solid var(--line-3);border-radius:6px;font-size:16px;font-weight:600;color:var(--soft)}
+@media (max-width:1360px) and (min-width:521px){.acct .arole{display:none}}
+.acct button{min-height:44px;padding:0 14px;border:1px solid var(--line-3);border-radius:6px;font-size:17px;font-weight:600;color:var(--soft)}
 .acct button:hover{color:var(--white)}
 .banner{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;padding-block:10px;font-size:15px;color:var(--dim)}
 .banner:empty{display:none}
@@ -2629,7 +2630,7 @@ const route = () => { const h = (location.hash||'').replace('#',''), ok = ROUTES
 function renderNav(){
   const r = route(), list = ROUTES[ROLE] || [];
   document.getElementById('nav').innerHTML = list.map(k=>`<a href="#${k}" data-route="${k}" aria-current="${k===r?'page':'false'}">${ROLE==='admin' && k==='classes' ? 'Classes' : NAVL[k]}</a>`).join('');
-  document.getElementById('acct').innerHTML = ROLE ? `<span><b>${esc(ME_INFO.name)}</b>${ROLE==='student' ? ' · '+esc(ME_INFO.school) : ROLE==='teacher' ? ' · Teacher' : ''}</span><button type="button" data-act="signout">Sign out</button>` : '';
+  document.getElementById('acct').innerHTML = ROLE ? `<span><b>${esc(ME_INFO.name)}</b>${ROLE==='student' ? '<span class="arole"> · '+esc(ME_INFO.school)+'</span>' : ROLE==='teacher' ? '<span class="arole"> · Teacher</span>' : ''}</span><button type="button" data-act="signout">Sign out</button>` : '';
 }
 function renderBanner(){
   const b = document.getElementById('banner'); if (!b) return;
