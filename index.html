@@ -264,7 +264,22 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .tf button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
 .chip:disabled{opacity:.4;cursor:not-allowed}
 .ohlc{display:flex;gap:16px;flex-wrap:wrap;min-height:22px;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.momread{margin:0;min-height:48px;font-size:16px;line-height:1.5;color:var(--soft)}
+.ntally{display:flex;flex-direction:column;gap:8px;font-size:15px}
+.nbar{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--line)}
+.nbar i{display:block}.n-good{background:#45c08a}.n-neutral{background:#5b6b80}.n-bad{background:#f0606f}
+.nhow{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.5;color:var(--soft)}
+.nhow b{color:var(--white)}
+.nlist{display:flex;flex-direction:column}
+.nitem{display:flex;flex-direction:column;gap:8px;padding:16px 0;border-top:1px solid var(--line)}
+.nmeta{display:flex;gap:8px;flex-wrap:wrap}.nmeta:empty{display:none}
+.ntitle{margin:0;font-family:var(--body);font-size:18px;font-weight:600;line-height:1.4;color:var(--white)}
+.nwhy{margin:0;font-size:16px;line-height:1.55;color:var(--soft)}
+.nwhy b{color:var(--white)}
+.nfoot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px;color:var(--dim)}
+.nfoot a{color:var(--link);font-weight:600}
 .chartbox{position:relative;height:470px;max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.chartbox.mombox{height:150px}
 .keys{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .keys span{display:flex;align-items:center;gap:7px}
 .side-card{display:flex;flex-direction:column;gap:12px;padding:20px 22px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
@@ -608,6 +623,82 @@ function loadFin(sym){
   api('/api/fin?ticker='+encodeURIComponent(sym)).then(d=>{ FIN[sym] = d; }).catch(()=>{ FIN[sym] = {income:[], balance:[], ratios:null, failed:true}; })
     .finally(()=>{ if (route()==='charts') render(); });
 }
+/* ---------- company news from Massive, loaded only when a student opens the News tab ---------- */
+const NEWS = {};   // sym -> undefined (not asked), null (loading), or {items, unavailable, failed}
+function loadNews(sym){
+  if (NEWS[sym] !== undefined) return;
+  NEWS[sym] = null;
+  api('/api/news?ticker='+encodeURIComponent(sym)).then(d=>{ NEWS[sym] = d; }).catch(()=>{ NEWS[sym] = {items:[], failed:true}; })
+    .finally(()=>{ if (route()==='charts' && UI.chart.view==='news' && UI.chart.sym===sym) render(); });
+}
+// Investing words that show up in headlines, with a tap-to-read meaning in plain English.
+const JARGON = [
+  ['earnings reports?|earnings', 'A company’s report card. Every three months it tells investors how much it sold and how much profit it made.'],
+  ['revenue|sales', 'All the money a company brought in from selling things, before paying any costs.'],
+  ['net income|profits?', 'The money left over after a company pays all of its costs.'],
+  ['EPS', 'Earnings per share: the company’s profit divided by its number of shares.'],
+  ['estimates|expectations|consensus', 'What Wall Street experts predicted the company would report. Stocks often jump when a company does better than this and drop when it does worse.'],
+  ['guidance|outlook|forecasts?', 'What the company says it expects to sell or earn in the next few months.'],
+  ['analysts?', 'A Wall Street expert who studies companies and tells investors whether to buy, hold, or sell.'],
+  ['upgrade[sd]?', 'An analyst now likes the stock more than before.'],
+  ['downgrade[sd]?', 'An analyst now likes the stock less than before.'],
+  ['price targets?', 'Where an analyst thinks the stock price will be in about a year.'],
+  ['outperform|overweight', 'An analyst rating that means they expect the stock to do better than most. Basically, “consider buying.”'],
+  ['underperform|underweight', 'An analyst rating that means they expect the stock to do worse than most. Basically, “consider selling.”'],
+  ['bullish', 'Expecting the price to go up.'],
+  ['bearish', 'Expecting the price to go down.'],
+  ['rall(?:y|ies|ied)', 'A stretch where prices rise quickly.'],
+  ['sell-?offs?', 'A stretch where lots of people sell at once and prices drop fast.'],
+  ['buybacks?|repurchases?', 'The company buys back its own shares. Fewer shares means each remaining share owns a bigger piece.'],
+  ['dividends?', 'Cash a company pays to its shareholders, usually every three months.'],
+  ['acquisitions?|acquires?|acquired', 'One company buying another company.'],
+  ['mergers?', 'Two companies combining into one.'],
+  ['IPOs?', 'Initial public offering: the first time a company sells shares to the public.'],
+  ['market cap', 'The total value of all of a company’s shares: share price times number of shares.'],
+  ['valuation', 'How much investors think a company is worth.'],
+  ['short sellers?', 'Investors who bet that a stock’s price will fall.'],
+  ['shareholders|stockholders','People who own shares of the company’s stock.'],
+  ['stake', 'A piece of ownership in a company.'],
+  ['SEC', 'The Securities and Exchange Commission: the government agency that makes and enforces rules for the stock market.'],
+  ['Federal Reserve|the Fed', 'The U.S. central bank. It sets interest rates, which affect almost every stock.'],
+  ['interest rates?', 'The cost of borrowing money. When rates go up, borrowing gets more expensive and stock prices often dip.'],
+  ['inflation', 'Prices for everyday things rising over time.'],
+  ['recession', 'A period when the economy shrinks and many businesses sell less.'],
+  ['tariffs?', 'A tax on goods brought in from other countries.'],
+  ['layoffs?', 'A company cutting jobs, usually to save money.'],
+  ['antitrust', 'Laws that stop one company from getting so big it crushes its competition.'],
+  ['quarterly|quarter|Q[1-4]', 'Three months. Companies report their results four times a year.'],
+  ['fiscal', 'The company’s own business year, which doesn’t always match the calendar year.'],
+  ['year-over-year|YoY', 'Compared with the same time last year.'],
+  ['margins?', 'The share of each sales dollar the company keeps as profit.'],
+  ['volatility|volatile', 'How much and how fast a price swings up and down.'],
+  ['all-time highs?|record highs?', 'The highest price the stock has ever reached.'],
+  ['hedge funds?', 'A private investment fund for wealthy investors that often makes big, risky bets.'],
+  ['Nasdaq', 'A U.S. stock exchange. People also use the name for a list of mostly tech companies that tracks how they’re doing.'],
+  ['Dow Jones|the Dow', 'A list of 30 big U.S. companies that people use to track how the market is doing.'],
+  ['Treasur(?:y|ies)', 'A loan to the U.S. government. Its interest rate affects stock prices.'],
+  ['ETFs?', 'Exchange-traded fund: one share that holds a basket of many stocks or bonds.']
+];
+const JARGON_RE = new RegExp('\\b('+JARGON.map(j=>j[0]).join('|')+')\\b', 'gi');
+const JARGON_MATCH = JARGON.map(([p,def])=>[new RegExp('^(?:'+p+')$', /[A-Z]{2}/.test(p.replace(/\[[^\]]*\]/g,''))?'':'i'), def]);
+// Escape text and underline the first use of up to 3 investing words per story, with their meaning on tap.
+function plainify(text, used){
+  return esc(text).replace(JARGON_RE, w => {
+    const hit = JARGON_MATCH.findIndex(([re])=>re.test(w));
+    if (hit<0 || used.has(hit) || used.size>=3) return w;
+    used.add(hit);
+    return `<span class="tip" tabindex="0">${w}<span class="tipbox" role="tooltip">${esc(JARGON_MATCH[hit][1])}</span></span>`;
+  });
+}
+function agoLabel(iso){
+  const t = Date.parse(iso); if (!t) return '';
+  const m = Math.round((Date.now()-t)/60000);
+  if (m < 60) return m<=1 ? 'Just now' : m+' minutes ago';
+  const h = Math.round(m/60); if (h < 24) return h===1 ? '1 hour ago' : h+' hours ago';
+  const d = Math.round(h/24); if (d===1) return 'Yesterday';
+  if (d < 7) return d+' days ago';
+  return new Date(t).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
 // Trailing 12-month dividend yield in percent, from real payments. null until loaded.
 function realYield(sym){ const y = YLD[sym]; return y && prices[sym] > 0 ? y.ttm/prices[sym]*100 : null; }
 // [P/E, market cap ($B), dividend yield %, revenue growth %] with null for anything not known yet.
@@ -892,6 +983,29 @@ function weekly(d){
   return out;
 }
 function sma(bars,n){ const out=[]; let sum=0; bars.forEach((b,i)=>{ sum+=b.close; if(i>=n) sum-=bars[i-n].close; if(i>=n-1) out.push({time:b.time, value:sum/n}); }); return out; }
+/* momentum indicators, computed from the chart's own bars (no extra data calls). Each returns one value per bar, null while warming up. */
+function emaArr(vals,n){ const k=2/(n+1), out=[]; let e=null, cnt=0, sum=0;
+  vals.forEach(v=>{ if (v===null){ out.push(null); return; } if (e===null){ sum+=v; cnt++; if (cnt===n){ e=sum/n; out.push(e); } else out.push(null); } else { e=v*k+e*(1-k); out.push(e); } }); return out; }
+function rsiArr(bars,n=14){ const out=bars.map(()=>null); let g=0, l=0;
+  for (let i=1;i<bars.length;i++){ const ch=bars[i].close-bars[i-1].close, up=Math.max(ch,0), dn=Math.max(-ch,0);
+    if (i<=n){ g+=up; l+=dn; if (i===n){ g/=n; l/=n; out[i]= l===0?100:100-100/(1+g/l); } }
+    else { g=(g*(n-1)+up)/n; l=(l*(n-1)+dn)/n; out[i]= l===0?100:100-100/(1+g/l); } }
+  return out; }
+function macdArr(bars){ const c=bars.map(b=>b.close), f=emaArr(c,12), s=emaArr(c,26);
+  const m=c.map((_,i)=> f[i]===null||s[i]===null ? null : f[i]-s[i]), sig=emaArr(m,9);
+  return {macd:m, signal:sig, hist:m.map((v,i)=> v===null||sig[i]===null ? null : v-sig[i])}; }
+// Plain-English reading of the indicator at bar i, for the line above the momentum chart.
+function momRead(kind, d, i, sym){
+  if (kind==='rsi'){ const v=d[i]; if (v===null||v===undefined) return 'Not enough price history yet.';
+    const n=Math.round(v);
+    if (v>=70) return `<b style="color:var(--warn)">RSI ${n}: Running hot.</b> ${sym} has climbed fast lately. Some traders see that as a sign it could cool off.`;
+    if (v<=30) return `<b style="color:var(--link)">RSI ${n}: Running cold.</b> ${sym} has dropped fast lately. Some traders see that as a sign it could bounce back.`;
+    return `<b style="color:var(--white)">RSI ${n}: Normal.</b> ${sym} isn’t moving unusually fast in either direction.`; }
+  const m=d.macd[i], s=d.signal[i]; if (m===null||s===null||m===undefined) return 'Not enough price history yet.';
+  let crossed=0; for (let j=i; j>Math.max(0,i-5); j--){ if (d.hist[j-1]===null) break; if ((d.hist[j]>0)!==(d.hist[j-1]>0)){ crossed = d.hist[j]>0 ? 1 : -1; break; } }
+  const up = m>s;
+  return `<b class="${up?'up':'down'}">Momentum is pointing ${up?'up':'down'}.</b> The gold line is ${up?'above':'below'} the blue line, so ${sym} has been ${up?'rising faster (or falling slower)':'falling faster (or rising slower)'} lately than before.`
+    + (crossed ? ` It just crossed ${crossed>0?'above':'below'}, which some traders watch as a ${crossed>0?'buy':'sell'} signal.` : ''); }
 const EV_COLOR = {E:'#a594d9', D:'#c9a34e', S:'#5fb3c9'};
 function makeToT(times){ return date => { let lo=0, hi=times.length-1, ans=times[0]; while(lo<=hi){ const mid=(lo+hi)>>1; if (times[mid]<=date){ ans=times[mid]; lo=mid+1; } else hi=mid-1; } return ans; }; }
 function markersFor(sym, times, opt){
@@ -932,7 +1046,7 @@ function vCharts(){
   const wl = watchList(), owned = P.pos.map(p=>p.sym);
   const mine = P.pos.filter(p=>p.sym===sym);
   const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
-  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${k==='ma'&&c.cmp?'disabled':''}>${l}</button>`;
+  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${(k==='ma'||k==='mom')&&c.cmp?'disabled':''}>${l}</button>`;
   const wk = c.tf==='5Y';
   const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
   const keys = [
@@ -986,14 +1100,14 @@ function vCharts(){
         </div>
         ${canTrade() ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>` : ''}
       </div>
-      <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button></div>
-      ${c.view==='fin' ? vFin(sym) : `
+      <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" aria-selected="${c.view!=='fin'&&c.view!=='news'}" data-act="cview:price">Price chart</button><button type="button" role="tab" aria-selected="${c.view==='fin'}" data-act="cview:fin">Financials</button><button type="button" role="tab" aria-selected="${c.view==='news'}" data-act="cview:news">News</button></div>
+      ${c.view==='fin' ? vFin(sym) : c.view==='news' ? vNews(sym) : `
       <div class="spread" style="flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
           <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} over ${c.tf}</span>
         </div>
-        <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}</div>
+        <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
       </div>
       <div class="spread" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
         <div class="ohlc" id="ohlc"></div>
@@ -1004,6 +1118,7 @@ function vCharts(){
         <span class="keys">${keys}</span>
         <span>${LIVE.on ? 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>' : 'Sample prices'} · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
       </div>
+      ${c.mom && !c.cmp ? vMomentum(sym) : ''}
       <div class="side-card" style="gap:2px;margin-top:8px;${canTrade()?'':'display:none'}">
         <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
         ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
@@ -1165,6 +1280,65 @@ function vFin(sym){
     <p style="margin:0;font-size:13px;color:var(--dim)">From ${sym}’s annual reports (10-K filings) through Massive. Fiscal years end on the company’s own schedule, not always in December. Ratios are calculated from these numbers.</p>`;
 }
 
+/* Momentum panel under the price chart: one small chart that switches between RSI and MACD */
+function vMomentum(sym){
+  const k = UI.chart.ind==='macd' ? 'macd' : 'rsi';
+  const key = k==='rsi'
+    ? `<span><i style="width:18px;height:3px;background:#6b8fbf;display:block"></i>RSI</span><span><i style="width:18px;border-top:2px dashed #e0a43a;display:block"></i>70+ hot</span><span><i style="width:18px;border-top:2px dashed #45c08a;display:block"></i>30 or less cold</span>`
+    : `<span><i style="width:18px;height:3px;background:#c9a34e;display:block"></i>MACD</span><span><i style="width:18px;height:3px;background:#6b8fbf;display:block"></i>signal</span><span><i style="width:10px;height:12px;background:rgba(69,192,138,.55);display:block"></i>gap between them</span>`;
+  const what = k==='rsi'
+    ? `<p><b style="color:var(--white)">RSI (Relative Strength Index)</b> is a score from 0 to 100 that shows how fast the price has been moving over the last 14 days.</p>
+       <p>Above 70 means it’s been rising unusually fast (“running hot”). Below 30 means it’s been falling unusually fast (“running cold”). Some traders think a hot stock is due to cool off and a cold one is due to bounce.</p>`
+    : `<p><b style="color:var(--white)">MACD</b> compares a short-term average of the price with a longer-term one to show whether momentum is speeding up or slowing down.</p>
+       <p>When the gold line crosses above the blue line, momentum is turning up. When it crosses below, momentum is turning down. The bars show the gap between the two lines.</p>`;
+  return `<div class="side-card mom" style="gap:12px">
+    <div class="spread" style="flex-wrap:wrap;gap:10px">
+      <span class="disp" style="font-size:24px;color:var(--white)">Momentum</span>
+      <div class="seg" role="tablist" aria-label="Momentum tool"><button type="button" role="tab" aria-selected="${k==='rsi'}" data-act="ind:rsi">RSI</button><button type="button" role="tab" aria-selected="${k==='macd'}" data-act="ind:macd">MACD</button></div>
+    </div>
+    <p id="momRead" class="momread">&nbsp;</p>
+    <div class="chartbox mombox" id="chart2" role="img" aria-label="${sym} ${k==='rsi'?'RSI':'MACD'} chart"></div>
+    <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)"><span class="keys">${key}</span></div>
+    <details class="ftable"><summary>What is ${k==='rsi'?'RSI':'MACD'}?</summary><div style="font-size:15px;line-height:1.55;color:var(--soft)">${what}
+      <p style="color:var(--dim)">Momentum tools only describe what already happened. They can’t predict the future, so use them alongside the company’s news and numbers, not instead of them.</p></div></details>
+  </div>`;
+}
+/* News tab: recent stories about this company, with plain-English labels */
+function vNews(sym){
+  if (!LIVE.on) return `<div class="side-card"><p class="empty" style="margin:0">News shows up when live market data is on.</p></div>`;
+  loadNews(sym);
+  const d = NEWS[sym];
+  if (!d) return `<div class="side-card"><p class="empty" style="margin:0">Loading the latest ${sym} news…</p></div>`;
+  if (d.unavailable==='plan') return `<div class="side-card"><p class="empty" style="margin:0">News isn’t included in the current market data plan.</p></div>`;
+  if (d.failed) return `<div class="side-card"><p class="empty" style="margin:0">News couldn’t load right now. Try again in a minute.</p></div>`;
+  const items = d.items || [];
+  if (!items.length) return `<div class="side-card"><p class="empty" style="margin:0">No news about ${sym} in the past 30 days. Smaller companies and funds often go weeks without a story.</p></div>`;
+  const n = {good:0, bad:0, neutral:0}; items.forEach(a=>{ if (a.mood) n[a.mood]++; });
+  const rated = n.good+n.bad+n.neutral;
+  const MOOD = {good:['Good news for '+sym,'up'], bad:['Bad news for '+sym,'down'], neutral:['Neutral for '+sym,'']};
+  const tally = rated ? `<div class="ntally">
+      <div class="nbar" aria-hidden="true">${['good','neutral','bad'].map(m=>n[m]?`<i class="n-${m}" style="flex:${n[m]}"></i>`:'').join('')}</div>
+      <span><b class="up">${n.good} good</b> · <b style="color:var(--soft)">${n.neutral} neutral</b> · <b class="down">${n.bad} bad</b> <span style="color:var(--dim)">in the last ${items.length} ${items.length===1?'story':'stories'}</span></span>
+    </div>` : '';
+  return `<div class="side-card" style="gap:14px">
+    <div class="spread" style="flex-wrap:wrap;gap:10px"><span class="disp" style="font-size:26px;color:var(--white)">${sym} in the news</span><span style="font-size:14px;color:var(--dim)">Tap a dotted word to see what it means</span></div>
+    ${tally}
+    <details class="ftable"><summary>How to use the news</summary><ul class="nhow">
+      <li><b>Prices move fast.</b> By the time you read a story, the price has usually already reacted.</li>
+      <li><b>Check what the story is really about.</b> Some stories mention ${sym} in passing while covering lots of other companies.</li>
+      <li><b>One story isn’t the whole picture.</b> Look for a pattern over several days, and compare it with the chart and the company’s numbers.</li>
+      <li><b>“Good” and “bad” labels are computer-generated</b> from the story’s wording. They aren’t advice and can be wrong.</li>
+    </ul></details>
+    <div class="nlist">${items.map(a=>{ const used = new Set(), mood = a.mood && MOOD[a.mood];
+      return `<article class="nitem">
+        <div class="nmeta">${mood?`<span class="tag ${mood[1]}">${mood[0].toUpperCase()}</span>`:''}${a.others>=4?`<span class="tag" style="color:var(--dim)">ALSO COVERS ${a.others} OTHER COMPANIES</span>`:''}</div>
+        <h3 class="ntitle">${plainify(a.title, used)}</h3>
+        ${a.why ? `<p class="nwhy"><b>Why:</b> ${plainify(a.why, used)}</p>` : a.summary ? `<p class="nwhy">${plainify(a.summary, used)}</p>` : ''}
+        <div class="nfoot"><span>${esc(a.source||'News')} · ${agoLabel(a.at)}</span>${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">Read the full story ↗</a>`:''}</div>
+      </article>`; }).join('')}</div>
+    <p style="margin:0;font-size:13px;color:var(--dim)">Stories from the past 30 days through Massive’s news feed. Story links open the publisher’s site, which may have ads or a paywall.</p>
+  </div>`;
+}
 function wlResults(){
   const q = (UI.wq||'').trim().toLowerCase(); if (!q) return '';
   const pool = Object.keys(MARKET).map(s=>[s,MARKET[s][0]]).concat(REF.filter(r=>!MARKET[r[0]]).map(r=>[r[0],r[1]]));
@@ -1201,6 +1375,7 @@ function vGuide(){
       ${item('<i style="width:22px;height:3px;background:#c9a34e;display:block"></i>','Averages','Gold is the average price over the last 50 days, blue over 200 days. Price above the lines means the trend has been up.')}
       ${item('<b class="up" style="font-size:18px">▲</b>','Your trades','Green arrows are your buys, red are your sells, yellow are your shorts.')}
       ${item(`<b style="color:${EV_COLOR.E};font-family:var(--mono)">E</b>`,'Events','E is an earnings report, D a dividend payment, S a stock split. Big jumps often happen on E days.')}
+      ${item('<i style="width:22px;height:3px;background:#6b8fbf;display:block"></i>','Momentum','Turn on Momentum to see RSI or MACD under the chart. They show how fast the price has been moving, in plain words above the little chart.')}
     </div>
     <p style="margin:0;font-size:15px;color:var(--dim)">Hover over any candle (or tap on a phone) to see its exact numbers above the chart.</p>
     <button type="button" class="cta" data-act="close">Got it</button>
@@ -1261,9 +1436,53 @@ function mountChart(){
     else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
   };
   out.hover = false;
-  chart.subscribeCrosshairMove(p => { const has = p && p.logical!==undefined && p.logical!==null && p.point; out.hover = !!has; out.showAt(has ? Math.round(p.logical) : bars.length-1); });
+  mountMomentum(out, el);
+  chart.subscribeCrosshairMove(p => { const has = p && p.logical!==undefined && p.logical!==null && p.point; out.hover = !!has; out.showAt(has ? Math.round(p.logical) : bars.length-1); if (out.momAt) out.momAt(has ? Math.round(p.logical) : bars.length-1); });
   out.showAt(bars.length-1);
   CH = out;
+}
+// Small RSI or MACD chart under the price chart. It shares the price chart's bars and stays scrolled and zoomed in step with it.
+function mountMomentum(out, mainEl){
+  const el = document.getElementById('chart2'), c = UI.chart;
+  if (!el || !c.mom || out.cmp) return;
+  const kind = c.ind==='macd' ? 'macd' : 'rsi', bars = out.bars, sym = out.sym;
+  const ch = LightweightCharts.createChart(el, {autoSize:true,
+    layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:false},
+    grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
+    rightPriceScale:{borderColor:'#2a3847', minimumWidth:out.chart.priceScale('right').width()}, timeScale:{borderColor:'#2a3847', rightOffset:3, visible:false}, crosshair:{mode:0},
+    handleScroll:false, handleScale:false});
+  const line = (col,w) => ({color:col, lineWidth:w||2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false});
+  const toData = (vals, extra) => bars.map((b,i)=> vals[i]===null ? {time:b.time} : {time:b.time, value:vals[i], ...(extra?extra(vals[i]):{})});
+  const S = {kind};
+  if (kind==='rsi'){
+    S.d = rsiArr(bars);
+    S.rsi = ch.addLineSeries({...line('#6b8fbf'), autoscaleInfoProvider:()=>({priceRange:{minValue:0, maxValue:100}})});
+    S.rsi.setData(toData(S.d));
+    S.rsi.createPriceLine({price:70, color:'#e0a43a', lineWidth:1, lineStyle:2, axisLabelVisible:false});
+    S.rsi.createPriceLine({price:30, color:'#45c08a', lineWidth:1, lineStyle:2, axisLabelVisible:false});
+  } else {
+    S.d = macdArr(bars);
+    const hc = v => ({color: v>=0 ? 'rgba(69,192,138,.55)' : 'rgba(240,96,111,.55)'});
+    S.hist = ch.addHistogramSeries({priceLineVisible:false, lastValueVisible:false, priceFormat:{type:'price', precision:2, minMove:0.01}});
+    S.hist.setData(toData(S.d.hist, hc));
+    S.macd = ch.addLineSeries(line('#c9a34e')); S.macd.setData(toData(S.d.macd));
+    S.sig = ch.addLineSeries(line('#6b8fbf')); S.sig.setData(toData(S.d.signal));
+  }
+  // keep both charts showing the same days
+  const tsMain = out.chart.timeScale(), tsMom = ch.timeScale();
+  const sync = r => { if (r) tsMom.setVisibleLogicalRange(r); };
+  tsMain.subscribeVisibleLogicalRangeChange(sync); sync(tsMain.getVisibleLogicalRange());
+  const read = document.getElementById('momRead');
+  out.momAt = i => { if (read) read.innerHTML = momRead(kind, S.d, Math.max(0, Math.min(bars.length-1, i)), sym); };
+  out.momAt(bars.length-1);
+  // recompute the last point as live prices tick in
+  out.momTick = () => {
+    const i = bars.length-1, b = bars[i];
+    if (kind==='rsi'){ S.d = rsiArr(bars); if (S.d[i]!==null) S.rsi.update({time:b.time, value:S.d[i]}); }
+    else { S.d = macdArr(bars); if (S.d.hist[i]!==null){ S.hist.update({time:b.time, value:S.d.hist[i], color:S.d.hist[i]>=0?'rgba(69,192,138,.55)':'rgba(240,96,111,.55)'}); S.macd.update({time:b.time, value:S.d.macd[i]}); S.sig.update({time:b.time, value:S.d.signal[i]}); } }
+    if (!out.hover) out.momAt(i);
+  };
+  out.chart2 = ch;
 }
 function tickChart(){
   if (!CH) return;
@@ -1272,6 +1491,7 @@ function tickChart(){
   if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
   else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
   if (!CH.hover) CH.showAt(i);
+  if (CH.momTick) CH.momTick();
   const chg = (p/prev[sym]-1)*100, pe = document.getElementById('cPrice'), ce = document.getElementById('cChg');
   if (pe) pe.textContent = money(p);
   if (ce){ ce.textContent = pct(chg)+' today'; ce.className = 'num '+cls(chg); }
@@ -1281,7 +1501,7 @@ function tickChart(){
 
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
-  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, view:'price'}, wq:'', guide:false,
+  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
 
 /* ---------- views ---------- */
@@ -1911,6 +2131,7 @@ function act(a, el){
     case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
     case 'cview': UI.chart.view = v; break;
+    case 'ind': UI.chart.ind = v==='macd' ? 'macd' : 'rsi'; break;
     case 'ctog': UI.chart[v] = !UI.chart[v]; break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
@@ -1920,7 +2141,7 @@ function act(a, el){
   }
   const y = window.scrollY;
   render();
-  if (k==='tf' || k==='ctog' || k==='cview') window.scrollTo(0, y);
+  if (k==='tf' || k==='ctog' || k==='cview' || k==='ind') window.scrollTo(0, y);
 }
 
 /* ---------- render ---------- */
@@ -2422,7 +2643,7 @@ function render(){
   const app = document.getElementById('app'), signed = !!ROLE;
   document.getElementById('attr').hidden = !signed;
   document.querySelector('.tape').hidden = !signed;
-  if (CH){ CH.chart.remove(); CH = null; }
+  if (CH){ if (CH.chart2) CH.chart2.remove(); CH.chart.remove(); CH = null; }
   if (!signed){
     app.innerHTML = BOOTED ? vLogin() : '<div class="wrap"><p class="empty" style="padding-block:64px">Loading…</p></div>';
     document.getElementById('overlay').innerHTML = '';
