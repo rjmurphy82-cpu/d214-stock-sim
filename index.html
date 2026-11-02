@@ -232,6 +232,8 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .seg{display:inline-flex;align-self:flex-start;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:999px}
 .seg button{min-height:40px;padding:0 18px;border-radius:999px;font-size:15px;font-weight:600;color:var(--soft)}
 .seg button[aria-selected="true"]{background:var(--red);color:var(--white)}
+.seg.ctype button[aria-pressed="true"]{background:var(--red);color:var(--white)}
+.seg.ctype button:disabled{opacity:.45;cursor:not-allowed}
 .fnote{margin:0;font-size:15px;line-height:1.5;color:var(--muted)}
 .fnote b{color:var(--white);font-weight:600}
 .fchart{max-width:100%;overflow-x:auto}
@@ -1165,6 +1167,7 @@ function vCharts(){
           <div class="tf" role="group" aria-label="Time range">${TF_LIST.map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
           <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} ${rngText}</span>
         </div>
+        <div class="seg ctype" role="group" aria-label="Chart type">${[['line','Line'],['candle','Candle'],['bar','Bar']].map(([k,l])=>`<button type="button" aria-pressed="${(c.type||'line')===k && !c.cmp}" data-act="ctype:${k}" ${c.cmp?'disabled title="vs S&amp;P 500 always shows lines"':''}>${l}</button>`).join('')}</div>
         <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
         ${intra ? `<p style="margin:0;font-size:14px;color:var(--dim)">${c.tf==='1D'?'5-minute':'15-minute'} candles, regular market hours in Central time. Averages, trades, events, and momentum are on 1M and longer.</p>` : ''}
       </div>
@@ -1431,7 +1434,9 @@ function vGuide(){
       ${t(320,214,'Down day','middle')}
     </svg>
     <div class="gls">
+      ${item('<i style="width:22px;height:3px;background:#45c08a;display:block"></i>','Line, Candle, or Bar','Pick how the price is drawn. Line connects each closing price and is the easiest way to see the trend. Candle and Bar show the same four prices for each period (open, high, low, close), just drawn differently.')}
       ${item('<i style="width:10px;height:22px;background:#45c08a;border-radius:2px;display:block"></i>','Candles','Each candle is one day. The thick body runs from the opening price to the closing price. The thin wicks show the highest and lowest price that day.')}
+      ${item('<i style="width:12px;height:22px;display:block;background:linear-gradient(#45c08a,#45c08a) center/2px 100% no-repeat,linear-gradient(#45c08a,#45c08a) left 30%/6px 2px no-repeat,linear-gradient(#45c08a,#45c08a) right 70%/6px 2px no-repeat"></i>','Bars','A bar shows the same prices as a candle. The line runs from the low to the high. The tick on the left is the opening price, and the tick on the right is the closing price.')}
       ${item('<i style="width:22px;height:12px;background:rgba(69,192,138,.5);display:block;align-self:flex-end"></i>','Volume','The bars along the bottom show how many shares traded. A tall bar means lots of buying and selling, usually because of news.')}
       ${item('<i style="width:22px;height:3px;background:#c9a34e;display:block"></i>','Averages','Gold is the average price over the last 50 days, blue over 200 days. Price above the lines means the trend has been up.')}
       ${item('<b class="up" style="font-size:18px">▲</b>','Your trades','Green arrows are your buys, red are your sells, yellow are your shorts.')}
@@ -1476,9 +1481,22 @@ function mountChart(){
     if (marks.length) me.setMarkers(marks);
     out.main = me;
   } else {
-    const candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f'});
+    // Line (default), Candle, or Bar. Line is green or red by whether the price is up or down over the range shown.
+    const type = ['candle','bar'].includes(c.type) ? c.type : 'line'; out.type = type;
+    let candle;
+    if (type==='line'){
+      const base = c.tf==='1D' ? prev[sym] : bars[fromIdx].close, up = bars[bars.length-1].close >= base;
+      const col = up ? '#45c08a' : '#f0606f';
+      candle = chart.addAreaSeries({lineColor:col, lineWidth:2, topColor:up?'rgba(69,192,138,.28)':'rgba(240,96,111,.28)', bottomColor:'rgba(20,30,41,0)', priceLineVisible:true});
+      candle.setData(bars.map(b=>({time:b.time, value:b.close})));
+    } else if (type==='bar'){
+      candle = chart.addBarSeries({upColor:'#45c08a', downColor:'#f0606f', thinBars:false, openVisible:true});
+      candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+    } else {
+      candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f'});
+      candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+    }
     candle.priceScale().applyOptions({scaleMargins:{top:0.08, bottom:0.24}});
-    candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
     const volS = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:'', lastValueVisible:false, priceLineVisible:false});
     volS.priceScale().applyOptions({scaleMargins:{top:0.8, bottom:0}});
     volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,.32)':'rgba(240,96,111,.32)'})));
@@ -1560,6 +1578,7 @@ function tickChart(){
   const i = CH.bars.length-1;
   CH.bars[i] = liveBar(CH.bars[i], p); const b = CH.bars[i];
   if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
+  else if (CH.type==='line') CH.main.update({time:b.time, value:b.close});
   else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
   if (!CH.hover) CH.showAt(i);
   if (CH.momTick) CH.momTick();
@@ -1572,7 +1591,7 @@ function tickChart(){
 
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
-  chart:{sym:'NVDA', tf:'6M', ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
+  chart:{sym:'NVDA', tf:'6M', type:(()=>{ try{ const t = localStorage.getItem('d214chartType'); return ['line','candle','bar'].includes(t) ? t : 'line'; }catch(e){ return 'line'; } })(), ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
 
 /* ---------- views ---------- */
@@ -2205,6 +2224,7 @@ function act(a, el){
     case 'cview': UI.chart.view = v; break;
     case 'ind': UI.chart.ind = v==='macd' ? 'macd' : 'rsi'; break;
     case 'ctog': UI.chart[v] = !UI.chart[v]; break;
+    case 'ctype': UI.chart.type = v; try{ localStorage.setItem('d214chartType', v); }catch(e){} break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
@@ -2213,7 +2233,7 @@ function act(a, el){
   }
   const y = window.scrollY;
   render();
-  if (k==='tf' || k==='ctog' || k==='cview' || k==='ind' || k==='wrm') window.scrollTo(0, y);
+  if (k==='tf' || k==='ctog' || k==='cview' || k==='ind' || k==='wrm' || k==='ctype') window.scrollTo(0, y);
 }
 
 /* ---------- render ---------- */
