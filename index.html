@@ -978,6 +978,22 @@ function sampleSeriesFor(sym){
   return CACHE[sym] = {daily, events, nextE: nextIn===null ? null : {date:addBiz(TDATES[N-1], nextIn), days:nextIn}};
 }
 const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
+// Chart time ranges. Short ones count trading days; 5Y and 10Y count calendar years back from the last bar.
+const TF_LIST = ['1M','3M','6M','1Y','5Y','10Y','Max'], TF_DAYS = {'1M':21,'3M':63,'6M':126,'1Y':252}, TF_YRS = {'5Y':5,'10Y':10};
+function tfStart(d, tf){
+  if (TF_DAYS[tf]) return Math.max(0, d.length-1-TF_DAYS[tf]);
+  if (!TF_YRS[tf]) return 0;
+  const t = new Date(d[d.length-1].time+'T00:00:00Z'); t.setUTCFullYear(t.getUTCFullYear()-TF_YRS[tf]);
+  const cut = t.toISOString().slice(0,10), i = d.findIndex(b=>b.time>=cut); return i<0 ? 0 : i;
+}
+// Daily candles up to a year, weekly for 5Y and 10Y, monthly for Max when there are 15+ years of history.
+const tfUnit = (d, tf) => TF_DAYS[tf] ? '' : (tf==='Max' && d.length>252*15) ? 'month' : 'week';
+function monthly(d){
+  const out=[]; let cur=null, key=null;
+  d.forEach(b=>{ const m = b.time.slice(0,7);
+    if (m!==key){ key=m; cur={...b}; out.push(cur); } else { cur.high=Math.max(cur.high,b.high); cur.low=Math.min(cur.low,b.low); cur.close=b.close; cur.vol+=b.vol; } });
+  return out;
+}
 function weekly(d){
   const out=[]; let cur=null, key=null;
   d.forEach(b=>{ const dt = new Date(b.time+'T00:00:00Z'); const mon = new Date(dt - ((dt.getUTCDay()+6)%7)*86400000).toISOString().slice(0,10);
@@ -1040,20 +1056,22 @@ function vCharts(){
       ${missing ? '' : `<button type="button" class="chip" data-act="csym:SPY">See SPY instead</button>`}</div></div>`;
   }
   const S = seriesFor(sym), d = S.daily, N = d.length;
-  const span = Math.min(N-1, {'1M':21,'3M':63,'6M':126,'1Y':252,'5Y':N-1}[c.tf]);
-  const rng = (price/d[N-1-span].close-1)*100;
-  const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years'}[c.tf];
+  const d0 = d[tfStart(d, c.tf)];
+  const rng = (price/d0.close-1)*100;
+  const since = 'since '+d0.time.slice(0,4);
+  const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
+  const rngText = c.tf==='Max' ? since : 'over '+c.tf;
   const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
   const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
   const wl = watchList(), owned = P.pos.map(p=>p.sym);
   const mine = P.pos.filter(p=>p.sym===sym);
   const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
   const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${(k==='ma'||k==='mom')&&c.cmp?'disabled':''}>${l}</button>`;
-  const wk = c.tf==='5Y';
+  const unit = tfUnit(d, c.tf), wk = !!unit, ab = unit==='month' ? 'mo' : 'wk';
   const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
   const keys = [
     c.cmp ? `<span>${sw('#ef5b70')}${sym}</span><span>${sw('#8a97a8',1)}S&amp;P 500</span>` : '',
-    !c.cmp && c.ma ? `<span>${sw('#c9a34e')}${wk?'10-wk':'50-day'}</span><span>${sw('#6b8fbf')}${wk?'40-wk':'200-day'}</span>` : '',
+    !c.cmp && c.ma ? `<span>${sw('#c9a34e')}${wk?'10-'+ab:'50-day'}</span><span>${sw('#6b8fbf')}${wk?'40-'+ab:'200-day'}</span>` : '',
     c.marks ? `<span><b class="up">▲</b>buy</span><span><b class="down">▼</b>sell</span>` : '',
     c.ev ? `<span><b style="color:${EV_COLOR.E}">E</b>earnings</span><span><b style="color:${EV_COLOR.D}">D</b>${m[1]==='bond'?'interest':'dividend'}</span><span><b style="color:${EV_COLOR.S}">S</b>split</span>` : ''
   ].join('');
@@ -1106,8 +1124,8 @@ function vCharts(){
       ${c.view==='fin' ? vFin(sym) : c.view==='news' ? vNews(sym) : `
       <div class="spread" style="flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-          <div class="tf" role="group" aria-label="Time range">${['1M','3M','6M','1Y','5Y'].map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
-          <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} over ${c.tf}</span>
+          <div class="tf" role="group" aria-label="Time range">${TF_LIST.map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
+          <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} ${rngText}</span>
         </div>
         <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
       </div>
@@ -1387,11 +1405,12 @@ let CH = null;
 function mountChart(){
   const el = document.getElementById('chart'); if (!el) return;
   if (!window.LightweightCharts){ el.innerHTML = '<p class="empty" style="padding:24px">The chart didn’t load. Check your connection and refresh the page.</p>'; return; }
-  const c = UI.chart, sym = c.sym, wk = c.tf==='5Y';
+  const c = UI.chart, sym = c.sym;
   if (LIVE.on && (!liveSeries(sym) || (c.cmp && !liveSeries('SPY')))) return;
   const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], prices[sym]);
-  const bars = wk ? weekly(daily) : daily;
-  const fromIdx = wk ? 0 : Math.max(0, bars.length-1-({'1M':21,'3M':63,'6M':126,'1Y':252})[c.tf]);
+  const unit = tfUnit(daily, c.tf), wk = !!unit, agg = unit==='month' ? monthly : weekly;
+  const bars = wk ? agg(daily) : daily;
+  const fromIdx = (() => { const i = tfStart(daily, c.tf); if (!wk) return i; const t = makeToT(bars.map(b=>b.time))(daily[i].time); return Math.max(0, bars.findIndex(b=>b.time===t)); })();
   const chart = LightweightCharts.createChart(el, {autoSize:true,
     layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:true},
     grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
@@ -1401,7 +1420,7 @@ function mountChart(){
   let spyBars = null;
   if (c.cmp){
     const sd = seriesFor('SPY').daily.slice(); sd[sd.length-1] = liveBar(sd[sd.length-1], prices.SPY);
-    const sRaw = wk ? weekly(sd) : sd, sTo = makeToT(sRaw.map(b=>b.time)), sBy = new Map(sRaw.map(b=>[b.time,b]));
+    const sRaw = wk ? agg(sd) : sd, sTo = makeToT(sRaw.map(b=>b.time)), sBy = new Map(sRaw.map(b=>[b.time,b]));
     spyBars = bars.map(b=>({...sBy.get(sTo(b.time)), time:b.time}));   // line up the S&P with this stock's trading days
     out.b0 = bars[fromIdx].close; out.sb0 = spyBars[fromIdx].close;
     const fmt = {type:'custom', minMove:0.01, formatter:v=>(v>=0?'+':'')+v.toFixed(1)+'%'};
@@ -1426,7 +1445,7 @@ function mountChart(){
     if (marks.length) candle.setMarkers(marks);
     out.main = candle;
   }
-  if (wk) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
+  if (c.tf==='Max') chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
   const leg = document.getElementById('ohlc');
   const evAt = {};
   if (c.ev){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
@@ -1434,8 +1453,8 @@ function mountChart(){
     if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
     const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');
     if (out.cmp){ const sb = spyBars[i];
-      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
-    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' week':''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
+      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' '+unit:''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
+    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' '+unit:''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
   };
   out.hover = false;
   mountMomentum(out, el);
