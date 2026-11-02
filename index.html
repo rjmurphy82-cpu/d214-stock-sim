@@ -2237,9 +2237,16 @@ function act(a, el){
 }
 
 /* ---------- render ---------- */
+// The viewer's own holdings first (largest position first), then the market list fills the rest.
+function tapeList(){
+  const own = {}; ((P && P.pos) || []).forEach(p=>{ if (MARKET[p.sym]) own[p.sym] = (own[p.sym]||0) + Math.abs(posValue(p)); });
+  const mine = Object.keys(own).sort((x,y)=>own[y]-own[x]);
+  return {mine, list:[...mine, ...TAPE.filter(s=>!own[s])]};
+}
 function renderTape(changed){
-  document.getElementById('tape').innerHTML = TAPE.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
-    return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"><span class="s">${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
+  const {mine, list} = tapeList();
+  document.getElementById('tape').innerHTML = list.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
+    return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"${mine.includes(s)?' title="You own this"':''}><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
 }
 /* ---------- sign in ---------- */
 const LOGIN = {dir:null, school:null, kind:'student', teacher:null, tdir:null, sec:null, student:null, admin:false, err:null};
