@@ -285,9 +285,14 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .keys span{display:flex;align-items:center;gap:7px}
 .side-card{display:flex;flex-direction:column;gap:12px;padding:20px 22px;background:var(--card);border:1px solid var(--line);border-radius:6px;min-width:0}
 .wl{display:flex;flex-direction:column;gap:2px;max-height:430px;overflow-y:auto;margin-inline:-8px}
+.wrow{display:flex;align-items:center;gap:2px}
+.wrow>button:first-child{flex:1;min-width:0}
+.wl .wrm{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;padding:0;border-radius:6px;color:var(--dim);font-size:20px;line-height:1}
+.wl .wrm:hover,.wl .wrm:focus-visible{color:var(--white);background:var(--card-hi)}
+.wl .wrm-gap{width:34px;flex:none}
 .wl button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;width:100%;padding:9px 10px;border-radius:6px;text-align:left}
 .wl button:hover{background:var(--card-hi)}
-.wl button[aria-pressed="true"]{background:var(--red-tint);box-shadow:inset 0 0 0 1px var(--red)}
+.wl .wrow>button[aria-pressed="true"]{background:var(--red-tint);box-shadow:inset 0 0 0 1px var(--red)}
 .trow{display:grid;grid-template-columns:76px minmax(0,1fr) 96px minmax(0,1.1fr);gap:14px;align-items:center;min-height:54px;border-top:1px solid var(--line);font-size:16px}
 .trow .vd{font-size:14px;color:var(--muted)}
 .helpbtn{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;min-height:36px;padding:0 12px 0 8px;border:1px solid var(--line-2);border-radius:999px;font-size:14px;font-weight:500;color:var(--soft)}
@@ -729,7 +734,7 @@ P.watch.forEach(ensureSym); P.pos.forEach(p=>ensureSym(p.sym)); (P.log||[]).forE
 /* ---------- live market data from Massive ----------
    The page asks this site's own /api functions, which hold the Massive key on the server.
    If they don't answer (no key yet, or the page is opened from a file), the demo keeps its sample prices. */
-const LIVE = {on:false, asOf:0, status:null, stale:false, quotes:{}, bars:{}, loading:{}, info:{}, hits:{}, meta:{}, searching:{}};
+const LIVE = {on:false, asOf:0, status:null, stale:false, quotes:{}, bars:{}, intra:{}, loading:{}, info:{}, hits:{}, meta:{}, searching:{}};
 const api = path => fetch(path, {headers:{Accept:'application/json'}}).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)));
 const nyToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 window.__d214nl = window.__d214nl || {};   // tickers Massive has no logo for, so we stop asking
@@ -979,7 +984,38 @@ function sampleSeriesFor(sym){
 }
 const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
 // Chart time ranges. Short ones count trading days; 5Y and 10Y count calendar years back from the last bar.
-const TF_LIST = ['1M','3M','6M','1Y','5Y','10Y','Max'], TF_DAYS = {'1M':21,'3M':63,'6M':126,'1Y':252}, TF_YRS = {'5Y':5,'10Y':10};
+const TF_LIST = ['1D','1W','1M','3M','6M','1Y','5Y','10Y','Max'], TF_DAYS = {'1M':21,'3M':63,'6M':126,'1Y':252}, TF_YRS = {'5Y':5,'10Y':10};
+const INTRA = {'1D':'1d','1W':'1w'}, isIntra = tf => !!INTRA[tf];
+// Intraday bars are plotted on Central wall-clock time (the chart library shows times as UTC, so we shift them).
+const CT_FMT = new Intl.DateTimeFormat('en-US', {timeZone:'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
+function ctSec(ms){ const p = {}; CT_FMT.formatToParts(new Date(ms)).forEach(x=>{ p[x.type] = +x.value; }); return Date.UTC(p.year, p.month-1, p.day, p.hour%24, p.minute)/1000; }
+const tLabel = sec => { const d = new Date(sec*1000), h = d.getUTCHours(), m = d.getUTCMinutes();
+  return MONTHS[d.getUTCMonth()]+' '+d.getUTCDate()+', '+((h+11)%12+1)+':'+String(m).padStart(2,'0')+(h<12?' AM':' PM')+' CT'; };
+const timeLabel = t => typeof t==='number' ? tLabel(t) : dLabel(t);
+function loadIntra(sym, tf){
+  const k = sym+'|'+tf, cur = LIVE.intra[k];
+  if (LIVE.loading[k] || (cur && Date.now()-cur.at < 120000)) return;
+  LIVE.loading[k] = true;
+  api('/api/bars?ticker='+encodeURIComponent(sym)+'&range='+INTRA[tf])
+    .then(d=>{ LIVE.intra[k] = {at:Date.now(), step:d.step, bars:(d.bars||[]).map(b=>({time:ctSec(b[0]), open:b[1], high:b[2], low:b[3], close:b[4], vol:b[5]}))}; })
+    .catch(()=>{ LIVE.intra[k] = {at:Date.now(), step:5, bars:[]}; })
+    .finally(()=>{ LIVE.loading[k] = false; if (route()==='charts' && UI.chart.tf===tf) render(); });
+}
+// Sample mode: a made-up path through the last day (1D) or five days (1W) of the sample daily bars.
+function sampleIntra(sym, tf){
+  const d = sampleSeriesFor(sym).daily, days = tf==='1W' ? d.slice(-5) : d.slice(-1), step = tf==='1W' ? 15 : 5, n = 390/step;
+  let s = hashOf(sym+tf); const rnd = () => { s = (s*1103515245+12345) & 0x7fffffff; return s/0x7fffffff - 0.5; };
+  const out = [];
+  days.forEach((b, j)=>{ const base = Date.UTC(+b.time.slice(0,4), +b.time.slice(5,7)-1, +b.time.slice(8,10), 8, 30)/1000;
+    const end = j===days.length-1 ? prices[sym] : b.close; let px = b.open, w = 0;
+    for (let i=0;i<n;i++){ const tgt = b.open+(end-b.open)*(i+1)/n; w = w*0.85 + rnd()*Math.abs(end)*0.004; const c = tgt + w*(i<n-1?1:0);
+      out.push({time:base+i*step*60, open:px, high:Math.max(px,c)*(1+Math.abs(rnd())*0.002), low:Math.min(px,c)*(1-Math.abs(rnd())*0.002), close:c, vol:Math.round(b.vol/n*(0.6+Math.abs(rnd())))}); px = c; } });
+  return {step, bars:out};
+}
+function intraFor(sym, tf){
+  if (!LIVE.on) return sampleIntra(sym, tf);
+  const v = LIVE.intra[sym+'|'+tf]; return v && v.bars.length ? v : null;
+}
 function tfStart(d, tf){
   if (TF_DAYS[tf]) return Math.max(0, d.length-1-TF_DAYS[tf]);
   if (!TF_YRS[tf]) return 0;
@@ -1049,6 +1085,7 @@ function vCharts(){
   const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
   if (LIVE.on){
     loadInfo(sym); loadBars(sym); if (c.cmp) loadBars('SPY');
+    if (isIntra(c.tf)){ loadIntra(sym, c.tf); if (c.cmp) loadIntra('SPY', c.tf); }
     const missing = !LIVE.bars[sym] || (c.cmp && !LIVE.bars.SPY);
     if (missing || !LIVE.bars[sym].length) return `<div class="wrap"><div class="side-card" style="margin-block:48px;align-items:flex-start">
       <span class="disp" style="font-size:28px;color:var(--white)">${tico(sym)} ${sym}</span>
@@ -1056,17 +1093,18 @@ function vCharts(){
       ${missing ? '' : `<button type="button" class="chip" data-act="csym:SPY">See SPY instead</button>`}</div></div>`;
   }
   const S = seriesFor(sym), d = S.daily, N = d.length;
-  const d0 = d[tfStart(d, c.tf)];
-  const rng = (price/d0.close-1)*100;
+  const d0 = d[tfStart(d, c.tf)], intra = isIntra(c.tf);
+  const ib = intra ? intraFor(sym, c.tf) : null;
+  const rng = c.tf==='1D' ? chg : c.tf==='1W' ? (ib ? (price/ib.bars[0].open-1)*100 : 0) : (price/d0.close-1)*100;
   const since = 'since '+d0.time.slice(0,4);
-  const tfLabel = {'1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
-  const rngText = c.tf==='Max' ? since : 'over '+c.tf;
+  const tfLabel = {'1D':'latest trading day','1W':'past 5 trading days','1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
+  const rngText = c.tf==='Max' ? since : c.tf==='1D' ? 'today' : 'over '+c.tf;
   const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
   const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
   const wl = watchList(), owned = P.pos.map(p=>p.sym);
   const mine = P.pos.filter(p=>p.sym===sym);
   const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
-  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${(k==='ma'||k==='mom')&&c.cmp?'disabled':''}>${l}</button>`;
+  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${((k==='ma'||k==='mom')&&c.cmp) || (intra && k!=='cmp') ?'disabled':''}>${l}</button>`;
   const unit = tfUnit(d, c.tf), wk = !!unit, ab = unit==='month' ? 'mo' : 'wk';
   const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
   const keys = [
@@ -1128,17 +1166,18 @@ function vCharts(){
           <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} ${rngText}</span>
         </div>
         <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
+        ${intra ? `<p style="margin:0;font-size:14px;color:var(--dim)">${c.tf==='1D'?'5-minute':'15-minute'} candles, regular market hours in Central time. Averages, trades, events, and momentum are on 1M and longer.</p>` : ''}
       </div>
       <div class="spread" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
         <div class="ohlc" id="ohlc"></div>
         <button type="button" class="helpbtn" data-act="guide"><span class="q" aria-hidden="true">?</span>How to read this</button>
       </div>
-      <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}"></div>
+      <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}">${intra && !ib ? `<p class="empty" style="padding:24px">${LIVE.intra[sym+'|'+c.tf] ? 'Intraday prices aren’t available for '+sym+' right now. Try 1M.' : 'Loading intraday prices…'}</p>` : ''}</div>
       <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)">
         <span class="keys">${keys}</span>
         <span>${LIVE.on ? 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>' : 'Sample prices'} · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
       </div>
-      ${c.mom && !c.cmp ? vMomentum(sym) : ''}
+      ${c.mom && !c.cmp && !intra ? vMomentum(sym) : ''}
       <div class="side-card" style="gap:2px;margin-top:8px;${canTrade()?'':'display:none'}">
         <div class="spread" style="flex-wrap:wrap;padding-bottom:8px"><span class="disp" style="font-size:26px;color:var(--white)">Your ${sym} trades</span><span style="font-size:14px;color:var(--dim)">What happened after each decision</span></div>
         ${logs.length ? logs.map(l=>{ const v=verdict(l,price); const w={buy:'Bought',sell:'Sold',short:'Shorted',cover:'Closed short'}[l.act];
@@ -1151,11 +1190,13 @@ function vCharts(){
         <label for="wsearch" class="sr">Add any stock to your watchlist</label>
         <input id="wsearch" type="text" autocomplete="off" placeholder="Add a stock: name or ticker" value="${esc(UI.wq||'')}" style="height:46px;font-size:16px">
         <div class="wres" id="wres">${wlResults()}</div>
-        <div class="wl">${wl.map(s=>{ const ch=(prices[s]/prev[s]-1)*100; return `<button type="button" aria-pressed="${s===sym}" data-act="csym:${s}">
+        <div class="wl">${wl.map(s=>{ const ch=(prices[s]/prev[s]-1)*100; return `<div class="wrow"><button type="button" aria-pressed="${s===sym}" data-act="csym:${s}">
           <span class="num" style="color:var(--white);font-size:16px">${s}${owned.includes(s)?' <span style="color:var(--link);font-size:11px;letter-spacing:.1em">● OWN</span>':''}</span>
           <span class="num" data-px="${s}" style="text-align:right;color:var(--white)">${prices[s].toFixed(2)}</span>
           <span style="font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(MARKET[s][0])}</span>
-          <span class="num ${cls(ch)}" data-pc="${s}" style="text-align:right;font-size:13px">${pct(ch)}</span></button>`; }).join('')}</div>
+          <span class="num ${cls(ch)}" data-pc="${s}" style="text-align:right;font-size:13px">${pct(ch)}</span></button>${owned.includes(s)
+            ? `<span class="wrm-gap" title="You own ${s}, so it stays on your watchlist"></span>`
+            : `<button type="button" class="wrm" data-act="wrm:${s}" aria-label="Remove ${s} from watchlist" title="Remove from watchlist">×</button>`}</div>`; }).join('')}</div>
       </div>
       <div class="side-card">
         <div class="spread"><span class="label">About ${sym}</span>
@@ -1405,24 +1446,28 @@ let CH = null;
 function mountChart(){
   const el = document.getElementById('chart'); if (!el) return;
   if (!window.LightweightCharts){ el.innerHTML = '<p class="empty" style="padding:24px">The chart didn’t load. Check your connection and refresh the page.</p>'; return; }
-  const c = UI.chart, sym = c.sym;
+  const c = UI.chart, sym = c.sym, intra = isIntra(c.tf);
   if (LIVE.on && (!liveSeries(sym) || (c.cmp && !liveSeries('SPY')))) return;
+  if (intra && (!intraFor(sym, c.tf) || (c.cmp && !intraFor('SPY', c.tf)))) return;
   const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], prices[sym]);
-  const unit = tfUnit(daily, c.tf), wk = !!unit, agg = unit==='month' ? monthly : weekly;
-  const bars = wk ? agg(daily) : daily;
-  const fromIdx = (() => { const i = tfStart(daily, c.tf); if (!wk) return i; const t = makeToT(bars.map(b=>b.time))(daily[i].time); return Math.max(0, bars.findIndex(b=>b.time===t)); })();
+  const unit = intra ? '' : tfUnit(daily, c.tf), wk = !!unit, agg = unit==='month' ? monthly : weekly;
+  const iSer = intra ? intraFor(sym, c.tf) : null;
+  const bars = intra ? iSer.bars.map(b=>({...b})) : wk ? agg(daily) : daily;
+  if (intra){ const I = bars.length-1; bars[I] = liveBar(bars[I], prices[sym]); }
+  const fromIdx = intra ? 0 : (() => { const i = tfStart(daily, c.tf); if (!wk) return i; const t = makeToT(bars.map(b=>b.time))(daily[i].time); return Math.max(0, bars.findIndex(b=>b.time===t)); })();
   const chart = LightweightCharts.createChart(el, {autoSize:true,
     layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:true},
     grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
-    rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3}, crosshair:{mode:0}});
-  const out = {chart, sym, bars, cmp:!!c.cmp};
-  const marks = markersFor(sym, bars.map(b=>b.time), {trades:c.marks, events:c.ev, wk});
+    rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3, timeVisible:intra, secondsVisible:false}, crosshair:{mode:0}});
+  const out = {chart, sym, bars, cmp:!!c.cmp, intra, step:intra ? iSer.step : 0};
+  const marks = intra ? [] : markersFor(sym, bars.map(b=>b.time), {trades:c.marks, events:c.ev, wk});
   let spyBars = null;
   if (c.cmp){
-    const sd = seriesFor('SPY').daily.slice(); sd[sd.length-1] = liveBar(sd[sd.length-1], prices.SPY);
+    const sd = intra ? intraFor('SPY', c.tf).bars.slice() : seriesFor('SPY').daily.slice(); sd[sd.length-1] = liveBar(sd[sd.length-1], prices.SPY);
     const sRaw = wk ? agg(sd) : sd, sTo = makeToT(sRaw.map(b=>b.time)), sBy = new Map(sRaw.map(b=>[b.time,b]));
     spyBars = bars.map(b=>({...sBy.get(sTo(b.time)), time:b.time}));   // line up the S&P with this stock's trading days
     out.b0 = bars[fromIdx].close; out.sb0 = spyBars[fromIdx].close;
+    if (c.tf==='1D'){ out.b0 = prev[sym]; out.sb0 = prev.SPY; } else if (intra){ out.b0 = bars[0].open; out.sb0 = spyBars[0].open; }
     const fmt = {type:'custom', minMove:0.01, formatter:v=>(v>=0?'+':'')+v.toFixed(1)+'%'};
     const spyS = chart.addLineSeries({color:'#8a97a8', lineWidth:2, lineStyle:2, priceFormat:fmt, priceLineVisible:false});
     spyS.setData(spyBars.map(b=>({time:b.time, value:(b.close/out.sb0-1)*100})));
@@ -1437,7 +1482,7 @@ function mountChart(){
     const volS = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:'', lastValueVisible:false, priceLineVisible:false});
     volS.priceScale().applyOptions({scaleMargins:{top:0.8, bottom:0}});
     volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,.32)':'rgba(240,96,111,.32)'})));
-    if (c.ma){
+    if (c.ma && !intra){
       const opt = col => ({color:col, lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
       chart.addLineSeries(opt('#c9a34e')).setData(sma(bars, wk?10:50));
       chart.addLineSeries(opt('#6b8fbf')).setData(sma(bars, wk?40:200));
@@ -1445,16 +1490,16 @@ function mountChart(){
     if (marks.length) candle.setMarkers(marks);
     out.main = candle;
   }
-  if (c.tf==='Max') chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
+  if (c.tf==='Max' || intra) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
   const leg = document.getElementById('ohlc');
   const evAt = {};
-  if (c.ev){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
+  if (c.ev && !intra){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
   out.showAt = (i) => {
     if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
     const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');
     if (out.cmp){ const sb = spyBars[i];
-      leg.innerHTML = `<span>${dLabel(b.time)}${wk?' '+unit:''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
-    else leg.innerHTML = `<span>${dLabel(b.time)}${wk?' '+unit:''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
+      leg.innerHTML = `<span>${timeLabel(b.time)}${wk?' '+unit:''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
+    else leg.innerHTML = `<span>${timeLabel(b.time)}${wk?' '+unit:''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
   };
   out.hover = false;
   mountMomentum(out, el);
@@ -1465,7 +1510,7 @@ function mountChart(){
 // Small RSI or MACD chart under the price chart. It shares the price chart's bars and stays scrolled and zoomed in step with it.
 function mountMomentum(out, mainEl){
   const el = document.getElementById('chart2'), c = UI.chart;
-  if (!el || !c.mom || out.cmp) return;
+  if (!el || !c.mom || out.cmp || out.intra) return;
   const kind = c.ind==='macd' ? 'macd' : 'rsi', bars = out.bars, sym = out.sym;
   const ch = LightweightCharts.createChart(el, {autoSize:true,
     layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:false},
@@ -1507,7 +1552,12 @@ function mountMomentum(out, mainEl){
 }
 function tickChart(){
   if (!CH) return;
-  const sym = CH.sym, p = prices[sym], i = CH.bars.length-1;
+  const sym = CH.sym, p = prices[sym];
+  if (CH.intra && !CH.cmp && LIVE.on && LIVE.status && LIVE.status.market==='open'){
+    const st = CH.step*60, slot = Math.floor(ctSec(Date.now())/st)*st, last = CH.bars[CH.bars.length-1];
+    if (slot > last.time && slot - last.time < 8*3600) CH.bars.push({time:slot, open:last.close, high:last.close, low:last.close, close:last.close, vol:0});
+  }
+  const i = CH.bars.length-1;
   CH.bars[i] = liveBar(CH.bars[i], p); const b = CH.bars[i];
   if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
   else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
@@ -2148,6 +2198,7 @@ function act(a, el){
     }
     case 'csym': ensureSym(v); UI.chart.sym = v; break;
     case 'wadd': ensureSym(v); if (!watchList().includes(v)){ P.watch.push(v); if (canTrade()) call('act', {a:'watch', sym:v, on:true}).catch(()=>{}); } UI.chart.sym = v; UI.wq = ''; break;
+    case 'wrm': P.watch = P.watch.filter(x=>x!==v); if (canTrade()) call('act', {a:'watch', sym:v, on:false}).catch(()=>{}); break;
     case 'wtog': { const on = !P.watch.includes(v); if (on) P.watch.push(v); else P.watch = P.watch.filter(x=>x!==v); if (canTrade()) call('act', {a:'watch', sym:v, on}).catch(()=>{}); break; }
     case 'guide': UI.guide = true; break;
     case 'tf': UI.chart.tf = v; break;
@@ -2162,7 +2213,7 @@ function act(a, el){
   }
   const y = window.scrollY;
   render();
-  if (k==='tf' || k==='ctog' || k==='cview' || k==='ind') window.scrollTo(0, y);
+  if (k==='tf' || k==='ctog' || k==='cview' || k==='ind' || k==='wrm') window.scrollTo(0, y);
 }
 
 /* ---------- render ---------- */
