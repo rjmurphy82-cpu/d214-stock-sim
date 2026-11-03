@@ -47,10 +47,17 @@ nav a:hover{color:var(--white)}
 .demo button{color:var(--link);font-weight:600}
 
 /* market data attribution: stays on screen on every page (required by the Massive order form) */
+.pwr{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border:1px solid var(--line-3);border-radius:999px;background:var(--card);color:var(--soft);font-size:14px;font-weight:500;line-height:1.2;text-decoration:none!important;white-space:nowrap}
+.pwr b{color:var(--white);font-weight:700}
+.pwr:hover{border-color:var(--soft);color:var(--white)}
+.pwr .pdot{width:8px;height:8px;flex:none;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(69,192,138,.18)}
+.pwr.lg{font-size:16px;padding:8px 16px}
+.tape .pwr{flex:none;padding:3px 11px;font-family:var(--body);font-size:13px}
+.srcnote a{color:var(--soft);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .attr{position:sticky;bottom:0;z-index:30;background:rgba(11,18,25,.97);border-top:1px solid var(--line-2);padding-bottom:env(safe-area-inset-bottom,0px)}
 .attr .wrap{display:flex;justify-content:space-between;align-items:center;gap:6px 20px;flex-wrap:wrap;padding-block:10px;font-size:14px;color:var(--dim)}
 .attr .src{color:var(--soft)}
-.attr .src a{color:var(--white);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.attr .src .pwr{font-size:15px}
 .attr .mk{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px}
 .attr .mk i{width:8px;height:8px;border-radius:50%;background:var(--dim);display:block}
 .attr .mk.open i{background:var(--up)}
@@ -409,7 +416,7 @@ input[type=number]{font-size:19px;height:52px;max-width:180px}
 <div class="tape" aria-label="Ticker"><div class="wrap" id="tape"></div></div>
 <div class="wrap banner" id="banner" role="status"></div>
 <main id="app"></main>
-<div class="attr" id="attr" role="contentinfo"><div class="wrap"><span class="src">Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a></span><span class="mk" id="attrMk"></span></div></div>
+<div class="attr" id="attr" role="contentinfo"><div class="wrap"><span class="src"><a class="pwr" href="https://massive.com" target="_blank" rel="noopener"><span class="pdot" aria-hidden="true"></span>Powered by <b>Massive.com</b></a></span><span class="mk" id="attrMk"></span></div></div>
 <div id="overlay"></div>
 <div id="ftip" class="ftip" role="tooltip" hidden></div>
 <div id="print" aria-hidden="true"></div>
@@ -809,11 +816,12 @@ function liveSearch(q, done){
   }, 250);
 }
 const liveHits = (q, kind) => (LIVE.on && LIVE.hits[q.trim()] || []).filter(h=>!kind || h.k===kind);
+const PWR = (c) => '<a class="pwr'+(c?' '+c:'')+'" href="https://massive.com" target="_blank" rel="noopener"><span class="pdot" aria-hidden="true"></span>Powered by <b>Massive.com</b></a>';
 function renderAttr(){
   const box = document.getElementById('attr'); if (!box) return;
   const src = box.querySelector('.src'), mk = document.getElementById('attrMk');
   if (!LIVE.on){ mk.className = 'mk'; mk.textContent = ''; return; }
-  src.innerHTML = 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>';
+  src.innerHTML = PWR();
   const st = LIVE.status && LIVE.status.market, open = st==='open';
   const when = LIVE.asOf ? new Date(LIVE.asOf).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})+' CT' : '';
   const label = open ? 'Market open' : st==='extended-hours' ? (LIVE.status.early ? 'Pre-market' : 'After hours') : st==='closed' ? 'Market closed' : '';
@@ -1178,7 +1186,7 @@ function vCharts(){
       <div class="chartbox" id="chart" role="img" aria-label="${sym} price chart, ${tfLabel}">${intra && !ib ? `<p class="empty" style="padding:24px">${LIVE.intra[sym+'|'+c.tf] ? 'Intraday prices aren’t available for '+sym+' right now. Try 1M.' : 'Loading intraday prices…'}</p>` : ''}</div>
       <div class="spread" style="flex-wrap:wrap;gap:10px;font-size:14px;color:var(--dim)">
         <span class="keys">${keys}</span>
-        <span>${LIVE.on ? 'Market Data Source: <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>' : 'Sample prices'} · charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span>
+        <span>${LIVE.on ? PWR() : 'Sample prices'} <span>Charts by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView</a></span></span>
       </div>
       ${c.mom && !c.cmp && !intra ? vMomentum(sym) : ''}
       <div class="side-card" style="gap:2px;margin-top:8px;${canTrade()?'':'display:none'}">
@@ -1215,7 +1223,7 @@ function vCharts(){
           <div class="rbar" role="img" aria-label="Today’s price is ${Math.round(pos52)} percent of the way from the 52-week low to the high"><i style="left:calc(${pos52.toFixed(1)}% - 2px)"></i></div>
         </div>
         ${kn}
-        <span style="font-size:13px;color:var(--dim)">${ty==='stock' ? 'From Massive: prices, annual reports, and dividend history.' : ty==='etf' && ETFMETA[sym] ? 'Yearly cost and holdings are approximate. Yield is from the past year of payments.' : 'Yield is from the past year of payments.'} Tap a row to see what it means.</span>
+        <span class="srcnote" style="font-size:13px;color:var(--dim)">${ty==='stock' ? 'Prices, annual reports, and dividend history powered by <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>.' : ty==='etf' && ETFMETA[sym] ? 'Yearly cost and holdings are approximate. Yield is from the past year of payments.' : 'Yield is from the past year of payments.'} Tap a row to see what it means.</span>
       </div>
     </aside>
   </div></div>`;
@@ -1379,7 +1387,7 @@ function vFin(sym){
           <p><b style="color:var(--white)">Formula:</b> ${formula}. ${why}</p>
           <p class="num" style="font-size:13px">${RL.map((lb,i)=> vals[i]===null ? '' : `${lb}: ${fmt(vals[i])}`).filter(Boolean).join(' · ')}</p></details>`; }).join('')).join('')}
     </div>
-    <p style="margin:0;font-size:13px;color:var(--dim)">From ${sym}’s annual reports (10-K filings) through Massive. Fiscal years end on the company’s own schedule, not always in December. Ratios are calculated from these numbers.</p>`;
+    <p class="srcnote" style="margin:0;font-size:13px;color:var(--dim)">From ${sym}’s annual reports (10-K filings), powered by <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>. Fiscal years end on the company’s own schedule, not always in December. Ratios are calculated from these numbers.</p>`;
 }
 
 /* Momentum panel under the price chart: one small chart that switches between RSI and MACD */
@@ -1438,7 +1446,7 @@ function vNews(sym){
         ${a.why ? `<p class="nwhy"><b>Why:</b> ${plainify(a.why, used)}</p>` : a.summary ? `<p class="nwhy">${plainify(a.summary, used)}</p>` : ''}
         <div class="nfoot"><span>${esc(a.source||'News')} · ${agoLabel(a.at)}</span>${a.url?`<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">Read the full story ↗</a>`:''}</div>
       </article>`; }).join('')}</div>
-    <p style="margin:0;font-size:13px;color:var(--dim)">Stories from the past 30 days through Massive’s news feed. Story links open the publisher’s site, which may have ads or a paywall.</p>
+    <p class="srcnote" style="margin:0;font-size:13px;color:var(--dim)">Stories from the past 30 days, powered by <a href="https://massive.com" target="_blank" rel="noopener">Massive.com</a>’s news feed. Story links open the publisher’s site, which may have ads or a paywall.</p>
   </div>`;
 }
 function wlResults(){
@@ -2284,7 +2292,7 @@ function tapeList(){
 }
 function renderTape(changed){
   const {mine, list} = tapeList();
-  document.getElementById('tape').innerHTML = list.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
+  document.getElementById('tape').innerHTML = (Object.keys(LIVE.quotes).length ? PWR() : '') + list.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
     return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"${mine.includes(s)?' title="You own this"':''}><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
 }
 /* ---------- sign in ---------- */
@@ -2365,7 +2373,8 @@ function vLogin(){
   } else body = pwForm(stu.name, 'Your password is on the slip from your teacher. Lost it? Your teacher can make you a new one.');
   return `<div class="wrap"><div class="login">
     <div style="display:flex;flex-direction:column;gap:10px"><h1 class="h1">${title}</h1>
-      <p style="margin:0;font-size:18px;color:var(--muted)">District 214 Investing Competition</p></div>
+      <p style="margin:0;font-size:18px;color:var(--muted)">District 214 Investing Competition</p>
+      <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px;font-size:15px;color:var(--dim)">Live stock market data ${PWR('lg')}</span></div>
     ${crumbs.length ? `<div class="crumbs">${crumbs.map(([a,l],i)=>`${i?'<span aria-hidden="true">›</span>':''}<button type="button" data-act="${a}">${esc(l)}</button>`).join('')}</div>` : ''}
     ${L.err ? `<div class="err" role="alert">${esc(L.err)}</div>` : ''}
     ${body}
