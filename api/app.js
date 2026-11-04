@@ -314,6 +314,14 @@ const ROUTES = {
           const v = Number(body[k]); if (!isFinite(v) || v < 0 || v > 100) throw bad('Pick a price from $0 to $100.');
           await P.setSetting(sql, k, v);
         }
+        if (body.minCapM !== undefined) {
+          const v = Number(body.minCapM); if (!isFinite(v) || v < 0 || v > 100000) throw bad('Pick a company size from $0 to $100,000 million.');
+          await P.setSetting(sql, 'minCapM', v);
+        }
+        if (body.minDollarVolM !== undefined) {
+          const v = Number(body.minDollarVolM); if (!isFinite(v) || v < 0 || v > 1000) throw bad('Pick a daily trading amount from $0 to $1,000 million.');
+          await P.setSetting(sql, 'minDollarVolM', v);
+        }
         invalidateStandings();
         return P.getSettings(sql);
       }
