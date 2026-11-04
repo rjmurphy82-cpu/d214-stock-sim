@@ -72,7 +72,8 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
 
   let r = await stu('act', { a: 'trade', sym: 'NVDA', side: 'buy', n: 10 });
   ok('buy 10 NVDA', r.result && r.P.pos.some(p => p.sym === 'NVDA' && p.n === 10), r);
-  const nvdaPx = r.result.price;
+  ok('trade went in as an order first', r.result.pending === true, r.result);
+  const nvdaPx = r.P.log.find(l => l.sym === 'NVDA').price;
   ok('cash went down by the cost', Math.abs(r.P.cash - (100000 - Math.round(nvdaPx * 10 * 100) / 100)) < 0.01, { cash: r.P.cash });
   r = await stu('act', { a: 'trade', sym: 'BND', side: 'buy', n: 100 });
   ok('buy a bond fund', r.P.pos.some(p => p.sym === 'BND'));

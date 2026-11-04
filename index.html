@@ -455,7 +455,7 @@ const WHY = {};   // reasons for a trade (a later feature)
 /* ---------- who is signed in, and their portfolio (the server is the source of truth) ---------- */
 let ROLE = null, ME_INFO = null, SETTINGS = {}, HISTORY = [], BOOTED = false;
 const EMPTY = () => ({cash:0, pos:[], mm:{bal:0, rate:0, earned:0, last:null}, closed:[], tradesWeek:0,
-  watch:['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'], log:[], dca:[], income:[], notes:[], spyStart:null, adj:{}});
+  watch:['SPY','AAPL','MSFT','GOOGL','META','TSLA','V','TLT','ETHE'], log:[], dca:[], income:[], notes:[], orders:[], spyStart:null, adj:{}});
 let P = EMPTY();
 function save(){}   // nothing is stored in the browser: every change goes to the server
 
@@ -1794,6 +1794,7 @@ function vPortfolio(){
   return `
   <div class="wrap">
     ${P.notes.length ? `<div class="note good" role="status">${P.notes.map(n=>`<span>${esc(n)}</span>`).join('')}<button type="button" class="ghost" style="min-height:40px;margin-left:auto" data-act="dismiss">Dismiss</button></div>` : ''}
+    ${ordersBox()}
     <div class="hero">
       <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
         <div class="who">${logo(mi.school,52)}<span class="n">${esc(mi.name||'')}</span><span style="color:var(--dim);font-size:17px">${ROLE==='teacher' ? 'Practice portfolio · '+esc(mi.school) : esc(mi.teacher+' · '+mi.period)+' · '+esc(mi.school)}</span></div>
@@ -2182,6 +2183,21 @@ function closedBox(kind){
   if (kind!=='mm' && !tradingOpen()) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">CLOSED</span><span>The market is closed. Trades go through 8:30 AM to 3:00 PM Central on days the market is open. You can still move money in and out of the money market.</span></div>`;
   return '';
 }
+// Every trade is an order that fills at the first market price after the click (see the Pending list).
+const FILL_SUB = 'It fills at the first market price after you clicked, not the delayed price on screen. Watch for it under Waiting to fill on My Portfolio.';
+const ORDER_WORD = {buy:'Buy', sell:'Sell', short:'Short', cover:'Close short on'};
+function ordersBox(){
+  const wait = (P.orders||[]).filter(o=>o.status==='pending');
+  if (!wait.length) return '';
+  const row = o => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:20px;color:var(--white)">${ORDER_WORD[o.side]} ${o.n!==null&&o.n!==undefined ? fmtSh(+o.n)+' ' : money(+o.amt)+' of '}${esc(o.sym)}</span>
+      <span style="font-size:14px;color:var(--dim)">Placed ${new Date(o.placed).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · about ${money(+o.est)} a share on screen · waiting for the market price</span></span>
+      <button type="button" class="ghost" style="min-height:44px" data-act="ocancel:${o.id}">Cancel</button></div>`;
+  return `<section style="padding-top:8px"><div class="card"><span class="label">Waiting to fill</span>
+    <p class="small" style="margin:0">Orders fill at the first market price after you clicked. The sim’s prices run behind the real market, so this can take up to about 20 minutes. It updates on its own.</p>
+    ${wait.map(row).join('')}</div></section>`;
+}
+// While an order is waiting, check for its fill every 30 seconds.
+setInterval(()=>{ if (document.visibilityState!=='hidden' && canTrade() && !BUSY && (P.orders||[]).some(o=>o.status==='pending')) loadMe(true).then(()=>loadStandings()); }, 30000);
 // Send a change to the server. On success the server's copy of the portfolio replaces ours.
 let BUSY = false;
 async function change(body, el, onDone){
@@ -2192,7 +2208,7 @@ async function change(body, el, onDone){
     const r = await call('act', body);
     applyState(r);
     if (onDone) onDone(r.result || {});
-    if (['trade','mm','dca_start'].includes(body.a)) loadStandings();
+    if (['trade','mm','dca_start','order_cancel'].includes(body.a)) loadStandings();
   }catch(e){ UI.err = e.message; }
   finally{ BUSY = false; const y = window.scrollY; render(); window.scrollTo(0, y); }
 }
@@ -2224,17 +2240,18 @@ function act(a, el){
       UI.sheet.bn = v==='max' ? mx : Math.max(1, (UI.sheet.bn||1)+(v==='+'?1:-1)); break; }
     case 'buymore': {
       const [,sym] = UI.sheet.key.split(':'), n = UI.sheet.bn||1;
-      change({a:'trade', sym, side:'buy', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:'Bought '+fmtSh(n)+' more '+sym, sub:'at '+money(r.price)+' · '+money(r.total)}; });
+      change({a:'trade', sym, side:'buy', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:'Order placed: buy '+fmtSh(n)+' more '+sym, sub:FILL_SUB}; });
       return;
     }
     case 'sn': { const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===UI.sheet.key); UI.sheet.n = v==='all'?p.n : Math.max(Math.min(1,p.n),Math.min(p.n, Math.floor(UI.sheet.n)+(v==='+'?1:-1))); break; }
     case 'sell': {
       const [,sym,side] = UI.sheet.key.split(':'); const p = P.pos.find(x=>x.sym===sym&&x.side===side); if (!p) return;
       const n = Math.min(UI.sheet.n, p.n);
-      change({a:'trade', sym, side: side==='long'?'sell':'cover', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:(side==='short'?'Closed ':'Sold ')+fmtSh(n)+' '+sym, p:r.pnl}; });
+      change({a:'trade', sym, side: side==='long'?'sell':'cover', n}, el, r=>{ if (UI.sheet) UI.sheet.done = {title:'Order placed: '+(side==='short'?'close short on ':'sell ')+fmtSh(n)+' '+sym, sub:FILL_SUB}; });
       return;
     }
     case 'dismiss': P.notes = []; change({a:'dismiss'}); return;
+    case 'ocancel': if (!confirm('Cancel this order?')) return; change({a:'order_cancel', id:v}, el); return;
     case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.n=10; tr.q=''; tr.freq='once'; break;
     case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; if (v==='short') tr.freq='once'; break;
@@ -2242,7 +2259,7 @@ function act(a, el){
     case 'amt': tr.amt = Math.max(100, tr.amt + (v==='+'?100:-100)); break;
     case 'dcastart': {
       const sym = tr.pick[tr.type], amt = tr.amt, freq = tr.freq;
-      change({a:'dca_start', sym, amt, freq}, el, r=>{ tr.done = {title:'Auto-investing in '+sym, sub:whole(amt)+' '+DCA_FREQ[freq][1]+' · first buy done · next '+fmtDay(r.next)}; tr.freq='once'; });
+      change({a:'dca_start', sym, amt, freq}, el, r=>{ tr.done = {title:'Auto-investing in '+sym, sub:whole(amt)+' '+DCA_FREQ[freq][1]+' · first buy is waiting for the market price · next '+fmtDay(r.next)}; tr.freq='once'; });
       return;
     }
     case 'dcatog': change({a:'dca_toggle', id:v}, el); return;
@@ -2254,7 +2271,7 @@ function act(a, el){
     case 'newtrade': tr.done=null; tr.mmAmt=1000; tr.n=10; break;
     case 'submit': {
       const sym = tr.pick[tr.type], n = tr.n, side = (tr.type==='bond'||tr.side==='buy') ? 'buy' : 'short';
-      change({a:'trade', sym, side, n}, el, r=>{ tr.done = {title:(side==='buy'?'Bought ':'Shorted ')+fmtSh(n)+' '+sym, sub:'at '+money(r.price)+' · '+money(r.total)}; });
+      change({a:'trade', sym, side, n}, el, r=>{ tr.done = {title:'Order placed: '+(side==='buy'?'buy ':'short ')+fmtSh(n)+' '+sym, sub:FILL_SUB}; });
       return;
     }
     case 'mmmove': {
