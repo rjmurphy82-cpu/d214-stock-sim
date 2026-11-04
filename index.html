@@ -2509,8 +2509,10 @@ function vAdmin(){
       </div>
       <div class="card"><span class="label">Game settings</span>
         <div class="line"><label for="amm">Money market rate (% a year)</label><input id="amm" type="number" step="0.05" min="0" max="15" value="${s.mmRate}"></div>
-        <div class="line"><label for="amin">No buying stocks under $</label><input id="amin" type="number" step="0.5" min="0" max="100" value="${s.minPrice}"></div>
+        <div class="line"><label for="amin">No buying stocks or funds under $</label><input id="amin" type="number" step="0.5" min="0" max="100" value="${s.minPrice}"></div>
         <div class="line"><label for="ashort">No shorting stocks under $</label><input id="ashort" type="number" step="0.5" min="0" max="100" value="${s.minShortPrice}"></div>
+        <div class="line"><label for="acap">No buying or shorting companies worth under ($ million)</label><input id="acap" type="number" step="50" min="0" max="100000" value="${s.minCapM}"></div>
+        <div class="line"><label for="avol">No buying or shorting anything with less traded yesterday ($ million)</label><input id="avol" type="number" step="0.5" min="0" max="1000" value="${s.minDollarVolM}"></div>
         <div class="btnrow"><button type="button" class="cta" style="min-height:48px" data-act="asave">Save settings</button>
           <button type="button" class="ghost" style="min-height:48px;${s.trading?'':'color:var(--warn);border-color:var(--warn)'}" data-act="atrading">${s.trading ? 'Pause all trading' : 'Trading is paused · Resume'}</button></div>
       </div>
@@ -2676,7 +2678,7 @@ function moreActs(k, v, el){
     }
     case 'asave': {
       const num = id => Number((document.getElementById(id)||{}).value);
-      call('admin_act', {a:'settings', mmRate:num('amm'), minPrice:num('amin'), minShortPrice:num('ashort')})
+      call('admin_act', {a:'settings', mmRate:num('amm'), minPrice:num('amin'), minShortPrice:num('ashort'), minCapM:num('acap'), minDollarVolM:num('avol')})
         .then(s=>{ ADM.settings = s; SETTINGS = s; UI.err = null; UI.modal = {title:'Saved', html:'<p style="margin:0;color:var(--soft)">Settings saved.</p><button type="button" class="ghost" data-act="close">OK</button>'}; })
         .catch(e=>{ UI.err = e.message; }).finally(()=>render());
       return true;
