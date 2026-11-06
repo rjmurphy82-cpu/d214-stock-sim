@@ -42,6 +42,7 @@ Only first names and the shortest last-name piece that keeps classmates apart ar
 ## How the game runs
 
 - **Trades** go through only while the market is open (8:30 AM to 3:00 PM Central), at the live Massive price, checked on the server.
+- **Basic and Advanced trading.** Basic is buy, sell, and short at the next market price. Advanced adds limit orders, stop orders (stop losses), stop limit orders, trailing stops, and auto-invest, each with a **?** pop-up that explains it. Advanced orders can last today only or until canceled (up to 30 days). They're checked against one-minute regular-session prices from after the order was placed, whenever anyone is using the site and again at end of day, so a fill is never based on a price the student could already see. Cash for a waiting buy is set aside, and shares in a waiting sell can't be sold twice.
 - **End of day** runs automatically each weekday around 6:30 PM Central: money market interest, dividends and bond interest (real amounts from Massive), stock splits, auto-invest buys at the closing price, each student's closing value, and the awards. If a day is missed it catches up on the next run, or use **Run end of day now** on the Admin page.
 - **Awards** reward results and patience: Trader of the Day and Best Trade of the Week (closing trades of $1,000 or more), Mover of the Day/Week, Biggest Climber, Steady Hands (no trades all week and still up). There is no award for trading the most.
 - **Rules you can change** on the Admin page: money market rate, minimum price to buy ($1) and to short ($5), and a switch to pause all trading.
@@ -58,4 +59,4 @@ Only first names and the shortest last-name piece that keeps classmates apart ar
 ```
 DATABASE_URL=postgres://... LOCAL_DEV=1 MARKET_MOCK=1 ADMIN_PASSWORD=test ALLOW_CLOSED_TRADES=1 node scripts/dev-server.js
 ```
-`MARKET_MOCK=1` uses made-up prices. `npm test` (with the server running and `ADMIN_PASSWORD` set) checks sign-in, trades, standings, teacher tools, and end of day. `node scripts/test-eod.js` and `node scripts/seed-test.js` need an empty test database.
+`MARKET_MOCK=1` uses made-up prices. `node scripts/test-orders.js` checks how limit and stop orders fill (no database needed). `npm test` (with the server running and `ADMIN_PASSWORD` set) checks sign-in, trades, standings, teacher tools, and end of day. `node scripts/test-eod.js` and `node scripts/seed-test.js` need an empty test database.
