@@ -197,6 +197,29 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .terms button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 10px;background:var(--card);border:2px solid var(--line-2);border-radius:6px}
 .terms button[aria-pressed="true"]{background:#2a2414;border-color:var(--cd)}
 .bondnote{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:6px;color:var(--soft)}
+.modebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.modebar .pill{height:46px;padding:0 22px;font-size:17px}
+.qbtn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;border:1px solid var(--line-3);border-radius:50%;font-size:15px;font-weight:700;color:var(--muted);background:var(--card)}
+.linkbtn{display:inline;padding:0;font:inherit;color:var(--link);text-decoration:underline;text-underline-offset:3px}
+.qbtn:hover{color:var(--white);border-color:var(--muted)}
+.otypes{display:flex;gap:10px;flex-wrap:wrap}
+.otp{display:inline-flex;align-items:center;gap:6px}
+.otp .pill{height:48px;padding:0 18px;font-size:17px}
+.side4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.side4 button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 8px;background:var(--card);border:2px solid var(--line-2);border-radius:6px;text-align:center}
+.side4 button .w{font-family:var(--display);font-weight:900;font-size:23px;color:var(--white)}
+.side4 button .d{font-size:13px;color:var(--dim)}
+.side4 button[aria-pressed="true"]{background:#1b3a2d;border-color:var(--up)}
+.side4 button.sd[aria-pressed="true"]{background:#3a1a24;border-color:var(--link)}
+.side4 button:disabled{opacity:.45;cursor:not-allowed}
+.fieldl{display:flex;align-items:center;gap:8px}
+.preview{display:flex;flex-direction:column;gap:8px;padding:18px 20px;background:var(--pop);border:1px solid var(--line-3);border-left:4px solid var(--cd);border-radius:6px}
+.preview .say{font-size:19px;color:var(--white);line-height:1.45}
+.helpsec{display:flex;flex-direction:column;gap:6px}
+.helpsec p{margin:0;font-size:17px;line-height:1.5;color:var(--soft)}
+.helpex{padding:16px 18px;background:var(--pop);border:1px solid var(--line-2);border-left:4px solid var(--up);border-radius:6px}
+.helpcatch{padding:16px 18px;background:var(--warn-bg);border:1px solid var(--warn-line);border-left:4px solid var(--warn);border-radius:6px}
+.otag{display:inline-block;padding:2px 8px;border:1px solid var(--line-3);border-radius:4px;font-size:12px;letter-spacing:.12em;font-weight:700;color:var(--cd);vertical-align:middle}
 
 /* drawer + sheet */
 .scrim{position:fixed;inset:0;z-index:100;background:rgba(5,9,14,.78);display:flex;justify-content:flex-end}
@@ -338,6 +361,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 }
 @media (max-width:520px){
   .types{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .side4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .terms{grid-template-columns:1fr}
   .row .sb{display:none}
   .brand{font-size:26px}
@@ -1639,7 +1663,8 @@ function tickChart(){
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
   ratioYrs:'5Y', chart:{sym:'NVDA', tf:'6M', type:(()=>{ try{ const t = localStorage.getItem('d214chartType'); return ['line','candle','bar'].includes(t) ? t : 'line'; }catch(e){ return 'line'; } })(), ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
-  trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500} };
+  trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500,
+    mode:'basic', aside:'buy', otype:'limit', lim:0, stp:0, trl:10, tif:'day', advKey:''} };
 
 /* ---------- views ---------- */
 function vStandings(){
@@ -1968,36 +1993,20 @@ function vTrade(){
       <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white);display:inline-flex;align-items:center;gap:12px">${tico(sym)}${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
       ${ownedHtml(sym)}
-      ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`
-        :`<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month${realYield(sym)!==null ? `, about <b style="color:var(--white)">${realYield(sym).toFixed(1)}%</b> a year` : ''}. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>`}
+      ${!canShort ? `<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month${realYield(sym)!==null ? `, about <b style="color:var(--white)">${realYield(sym).toFixed(1)}%</b> a year` : ''}. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>` : ''}
       ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>${ETFMETA[sym] ? `One share gives you a slice of about <b style="color:var(--white)">${ETFMETA[sym][1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : 'One share gives you a slice of many companies, and it trades like a stock.'}</span></div>` : ''}
-      ${isBuy ? `<div style="display:flex;flex-direction:column;gap:10px"><span class="label">How often</span>
-        <div class="pills" role="tablist" aria-label="How often">${[['once','One time'],['week','Every week'],['2week','Every 2 weeks'],['month','Every month']].map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.freq===id}" data-act="freq:${id}">${l}</button>`).join('')}</div></div>` : ''}
-      ${isBuy && tr.freq!=='once' ? (()=>{
-        const amt = tr.amt, sh = amt/price, low = amt/(price*0.9), high = amt/(price*1.1), dTooMuch = amt > P.cash + 0.005 || !(amt >= 10);
-        const dupe = P.dca.some(pl=>pl.sym===sym);
-        return `<div class="line"><span class="label">Amount each time</span><div class="stepper"><button type="button" data-act="amt:-" aria-label="Less money">−</button>${numIn('amt', amt, true)}<button type="button" data-act="amt:+" aria-label="More money">+</button></div></div>
-        <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
-          <span class="label">Dollar cost averaging</span>
-          <ol class="flow">
-            <li><span class="fwhen">Today</span><span class="num famt">${fmtSh(+sh.toFixed(3))} sh</span><span class="fwhat">${whole(amt)} buys this many shares at ${money(price)}.</span></li>
-            <li><span class="fwhen">If it dips 10%</span><span class="num famt up">${fmtSh(+low.toFixed(3))} sh</span><span class="fwhat">The same ${whole(amt)} buys more shares.</span></li>
-            <li><span class="fwhen">If it rises 10%</span><span class="num famt">${fmtSh(+high.toFixed(3))} sh</span><span class="fwhat">It buys fewer, so you never put it all in at the top.</span></li>
-          </ol>
-          <div class="line"><span style="color:var(--dim)">Schedule</span><span class="num" style="color:var(--soft)">Today, then ${DCA_FREQ[tr.freq][1]}</span></div>
-          <div class="line"><span style="color:var(--dim)">Cash after first buy</span><span class="num" style="color:var(--soft)">${money(P.cash-amt)}</span></div>
-          <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio.</span></div>
-        </div>
-        ${dupe ? `<span style="font-size:17px;color:var(--warn)">You already auto-invest in ${sym}. Change it from My Portfolio.</span>` : dTooMuch ? '<span class="down" style="font-size:17px">Not enough cash for the first buy.</span>' : ''}
-        <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${dollarTxt(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`; })() : `
+      ${tr.mode==='adv' ? advHtml(sym, price) : `
+      ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`:''}
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button>${numIn('n', tr.n)}<button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
       <div class="line" style="padding-top:20px;border-top:1px solid var(--line)"><span style="font-size:19px;color:var(--muted)">${isBuy?'Total':'Set aside to short'}</span><span class="num" style="font-size:40px;color:var(--white)">${money(cost)}</span></div>
       <div class="line"><span style="color:var(--dim)">Cash after</span><span class="num" style="color:var(--soft)">${money(P.cash-cost)}</span></div>
       ${tooMuch && tr.n > 0?'<span class="down" style="font-size:17px">Not enough cash for this many shares.</span>':''}
-      <button type="button" class="go" data-act="submit" ${tooMuch||!tradingOpen()?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>`}`;
+      <button type="button" class="go" data-act="submit" ${tooMuch||!tradingOpen()?'disabled':''}>${isBuy?'Buy':'Short'} ${tr.n} ${sym}</button>
+      <p class="small" style="margin:0;text-align:center">Want a limit order, a stop loss, a trailing stop, or auto-invest? Use the <button type="button" class="linkbtn" data-act="mode:adv">Advanced</button> tab.</p>`}`;
   }
   return `<div class="wrap"><div class="tradebox">
     <div class="line"><h1 class="h1">Trade</h1><span style="font-size:18px;color:var(--muted)">Cash <span class="num" style="color:var(--white)">${money(P.cash)}</span></span></div>
+    <div class="modebar" role="tablist" aria-label="Trading mode"><button type="button" role="tab" class="pill" aria-selected="${tr.mode!=='adv'}" data-act="mode:basic">Basic</button><button type="button" role="tab" class="pill" aria-selected="${tr.mode==='adv'}" data-act="mode:adv">Advanced</button><button type="button" class="qbtn" data-act="help:modes" aria-label="What's the difference between Basic and Advanced?">?</button></div>
     <div class="types" role="tablist" aria-label="Investment type">${types.map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.type===id}" data-act="type:${id}">${l}</button>`).join('')}</div>
     ${tr.done ? '' : errBox() + closedBox(tr.type)}
     ${body}</div></div>`;
@@ -2015,6 +2024,217 @@ function ownedHtml(sym){
       <button type="button" class="chip" style="min-height:38px" data-act="sheet:pos:${sym}:${p.side}">${short?'Close short':'Sell'}</button></div>`;
   }).join('');
 }
+/* ---------- Advanced trading: limit, stop, stop limit, trailing stop, auto-invest ---------- */
+const ADV_OT = [['limit','Limit'],['stop','Stop'],['stop_limit','Stop limit'],['trail','Trailing stop'],['dca','Auto-invest']];
+const ADV_DONE = {limit:'Limit order', stop:'Stop order', stop_limit:'Stop limit order', trail:'Trailing stop'};
+const OT_TAG = {limit:'LIMIT', stop:'STOP', stop_limit:'STOP LIMIT', trail:'TRAILING STOP'};
+const r2c = x => Math.round(x*100)/100;
+const isUp = side => side==='buy' || side==='cover';   // buy direction: buy, or buy back to close a short
+function freeShares(sym, side){
+  const p = P.pos.find(x=>x.sym===sym && x.side===(side==='cover'?'short':'long'));
+  if (!p) return 0;
+  const used = (P.orders||[]).filter(o=>o.status==='pending' && o.sym===sym && o.side===side).reduce((a,o)=>a+(+o.n||0), 0);
+  return Math.max(0, +(p.n - used).toFixed(4));
+}
+
+// Starting prices for the boxes whenever the ticker, action, or order type changes.
+function advDefaults(sym, price){
+  const tr = UI.trade, key = sym+'|'+tr.aside+'|'+tr.otype;
+  if (tr.advKey === key) return;
+  tr.advKey = key;
+  const up = isUp(tr.aside);
+  if (tr.otype==='limit') tr.lim = r2c(price*(up?0.97:1.03));
+  if (tr.otype==='stop') tr.stp = r2c(price*(up?1.05:0.95));
+  if (tr.otype==='stop_limit'){ tr.stp = r2c(price*(up?1.05:0.95)); tr.lim = r2c(price*(up?1.06:0.94)); }
+  if (tr.aside==='sell' || tr.aside==='cover') tr.n = freeShares(sym, tr.aside);
+  if (UI.raw){ delete UI.raw.lim; delete UI.raw.stp; delete UI.raw.n; }
+}
+
+// The order in plain English, shown above the button (and on the confirmation).
+function advSentence(sym, side, ot, n, L, S, p, price){
+  const up = isUp(side), sh = fmtSh(+(+n).toFixed(4))+' '+(+n===1?'share':'shares'), sy = '<b>'+esc(sym)+'</b>';
+  const what = {buy:'buy '+sh, sell:'sell '+sh, short:'short '+sh, cover:'buy back '+sh+' to close your short'}[side];
+  const whatSym = {buy:'Buy '+sh+' of '+sy, sell:'Sell '+sh+' of '+sy, short:'Short '+sh+' of '+sy, cover:'Buy back '+sh+' of '+sy+' to close your short'}[side];
+  if (ot==='limit'){
+    if (up) return L >= price ? `${whatSym} at the next market price, as long as it’s ${money(L)} or less.` : `If ${sy} drops to ${money(L)}, ${what} at ${money(L)} or less.`;
+    return L <= price ? `${whatSym} at the next market price, as long as it’s ${money(L)} or more.` : `If ${sy} rises to ${money(L)}, ${what} at ${money(L)} or more.`;
+  }
+  if (ot==='stop') return `If ${sy} ${up?'rises':'falls'} to ${money(S)}, ${what} at the next market price.`;
+  if (ot==='stop_limit') return `If ${sy} ${up?'rises':'falls'} to ${money(S)}, ${what}, but only at ${money(L)} or ${up?'less':'more'}. If the price jumps past ${money(L)}, the order keeps waiting.`;
+  if (ot==='trail'){ const lvl = up ? price*(1+p/100) : price*(1-p/100);
+    return `${whatSym} if it ${up?'rises':'falls'} ${p}% from its ${up?'lowest':'highest'} price after you place this order. Right now that’s ${money(lvl)}, and it moves ${up?'down':'up'} if the price ${up?'falls':'climbs'}.`; }
+  return '';
+}
+const tifText = tif => tif==='gtc'
+  ? `Good until you cancel it, for up to 30 days (through ${fmtDay(addDays(todayStr(), 30))}).`
+  : 'Good for today only. If it hasn’t filled by the 3:00 PM Central close, it’s canceled.';
+// Most a waiting buy or short could cost: the cash the server sets aside for it.
+function advHold(side, ot, n, L, S, p, price){
+  if (side==='buy') return (ot==='limit'||ot==='stop_limit') ? n*L : n*(ot==='stop' ? S : price*(1+p/100))*1.05;
+  if (side==='short') return n*Math.max(price, (ot==='limit'||ot==='stop_limit') ? L : 0)*1.05;
+  return 0;
+}
+
+function advHtml(sym, price){
+  const tr = UI.trade, isBond = tr.type==='bond';
+  const long = P.pos.find(p=>p.sym===sym && p.side==='long'), short = P.pos.find(p=>p.sym===sym && p.side==='short');
+  if ((tr.aside==='sell' && !long) || (tr.aside==='cover' && !short) || (isBond && (tr.aside==='short' || tr.aside==='cover'))) tr.aside = 'buy';
+  if (tr.otype==='dca' && tr.aside!=='buy') tr.otype = 'limit';
+  advDefaults(sym, price);
+  const side = tr.aside, up = isUp(side), ot = tr.otype;
+  const acts = [['buy','Buy','Win if it goes up',true,''], ['sell','Sell', long ? 'You own '+fmtSh(+long.n.toFixed(4)) : 'You don’t own any', !!long, '']]
+    .concat(isBond ? [] : [['short','Short','Win if it goes down',true,'sd'], ['cover','Close short', short ? 'Short '+fmtSh(+short.n.toFixed(4)) : 'You aren’t short', !!short, 'sd']]);
+  const sideHtml = `<div class="side4"${isBond?' style="grid-template-columns:1fr 1fr"':''}>${acts.map(([id,w,d,ok,c])=>`<button type="button" class="${c}" aria-pressed="${side===id}" data-act="aside:${id}" ${ok?'':'disabled'}><span class="w">${w}</span><span class="d">${d}</span></button>`).join('')}</div>`;
+  const otHtml = `<div style="display:flex;flex-direction:column;gap:10px"><span class="label">Order type</span>
+    <div class="otypes">${ADV_OT.filter(([id])=>id!=='dca' || side==='buy').map(([id,l])=>{ const name = id==='stop' && !up ? 'Stop loss' : l;
+      return `<span class="otp"><button type="button" class="pill" aria-pressed="${ot===id}" data-act="otype:${id}">${name}</button><button type="button" class="qbtn" data-act="help:${id}" aria-label="What is ${name.toLowerCase()}?">?</button></span>`; }).join('')}</div></div>`;
+  if (ot==='dca') return sideHtml + otHtml + dcaFormHtml(sym, price) + openOrdersHtml();
+
+  const pos = side==='sell' ? long : side==='cover' ? short : null;
+  const n = tr.n, L = tr.lim, S = tr.stp, pt = tr.trl;
+  const pxRow = (k, label, help, v) => `<div class="line"><span class="fieldl"><span class="label">${label}</span><button type="button" class="qbtn" data-act="help:${help}" aria-label="What does ${label.toLowerCase()} mean?">?</button></span>
+    <div class="stepper"><button type="button" data-act="px:${k}:-" aria-label="Lower ${label.toLowerCase()}">−</button>${numIn(k, v, true)}<button type="button" data-act="px:${k}:+" aria-label="Higher ${label.toLowerCase()}">+</button></div></div>`;
+  let err = '';
+  if (pos && freeShares(sym, side) <= 0) err = 'All your '+esc(sym)+' shares are already in an open order below. Cancel it first to use them here.';
+  else if (!(n > 0)) err = 'Enter how many shares.';
+  else if (pos && n > freeShares(sym, side) + 0.00005){ const f = freeShares(sym, side);
+    err = f > 0 ? 'You only have '+fmtSh(f)+' shares that aren’t already in an order.' : 'All your '+esc(sym)+' shares are already in an open order below. Cancel it first to use them here.'; }
+  else if ((ot==='limit' || ot==='stop_limit') && !(L > 0)) err = 'Enter a limit price.';
+  else if ((ot==='stop' || ot==='stop_limit') && !(S > 0)) err = 'Enter a stop price.';
+  else if ((ot==='stop' || ot==='stop_limit') && up && S <= price) err = `The stop price has to be above the current price (${money(price)}). At or below it, the order would go through right away.`;
+  else if ((ot==='stop' || ot==='stop_limit') && !up && S >= price) err = `The stop price has to be below the current price (${money(price)}). At or above it, the order would go through right away.`;
+  else if (ot==='stop_limit' && up && L < S) err = 'For a stop limit that buys, the limit price has to be at or above the stop price.';
+  else if (ot==='stop_limit' && !up && L > S) err = 'For a stop limit that sells, the limit price has to be at or below the stop price.';
+  const hold = advHold(side, ot, n, L, S, pt, price), tooMuch = !err && hold > P.cash + 0.005;
+  const about = n * (ot==='limit' ? L : ot==='trail' ? (up ? price*(1+pt/100) : price*(1-pt/100)) : S);
+  const btn = {limit:'Place limit order', stop: up ? 'Place stop order' : 'Place stop loss', stop_limit:'Place stop limit order', trail:'Place trailing stop'}[ot];
+  return `${sideHtml}${otHtml}
+    <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button>${numIn('n', n)}<button type="button" data-act="n:+" aria-label="More shares">+</button>${pos ? '<button type="button" data-act="n:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button>' : ''}</div></div>
+    ${ot==='stop' || ot==='stop_limit' ? pxRow('stp', 'Stop price', 'stopprice', S) : ''}
+    ${ot==='limit' || ot==='stop_limit' ? pxRow('lim', 'Limit price', 'limitprice', L) : ''}
+    ${ot==='trail' ? `<div class="line"><span class="fieldl"><span class="label">Trail by</span><button type="button" class="qbtn" data-act="help:trailpct" aria-label="What does trail by mean?">?</button></span>
+      <div class="stepper"><button type="button" data-act="trl:-" aria-label="Smaller percent">−</button><span class="v">${pt}%</span><button type="button" data-act="trl:+" aria-label="Bigger percent">+</button></div></div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:10px"><span class="fieldl"><span class="label">How long</span><button type="button" class="qbtn" data-act="help:tif" aria-label="What do Today only and Until canceled mean?">?</button></span>
+      <div class="pills" role="tablist" aria-label="How long">${[['day','Today only'],['gtc','Until canceled (30 days)']].map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.tif===id}" data-act="tif:${id}">${l}</button>`).join('')}</div></div>
+    <div class="preview"><span class="label" style="color:var(--cd)">Your order, in plain English</span>
+      ${err ? `<span class="say down" style="font-size:17px">${err}</span>` : `<span class="say">${advSentence(sym, side, ot, n, L, S, pt, price)}</span>`}
+      <span style="font-size:15px;color:var(--muted)">${tifText(tr.tif)}</span>
+      ${!err && hold ? `<div class="line" style="padding-top:6px"><span style="color:var(--dim)">Cash set aside while it waits</span><span class="num" style="color:var(--soft)">${money(hold)}</span></div>` : ''}
+      ${!err && !hold ? `<div class="line" style="padding-top:6px"><span style="color:var(--dim)">About</span><span class="num" style="color:var(--soft)">${money(about)}</span></div>` : ''}</div>
+    ${tooMuch ? `<span class="down" style="font-size:17px">Not enough cash. This order needs ${money(hold)} set aside while it waits.</span>` : ''}
+    <button type="button" class="go" data-act="advsubmit" ${err||tooMuch||!tradingOpen()?'disabled':''}>${btn}</button>
+    <p class="small" style="margin:0">Advanced orders watch real market prices minute by minute during regular hours (8:30 AM to 3:00 PM Central), and only count prices from after you place the order.</p>
+    ${openOrdersHtml()}`;
+}
+
+// Auto-invest (dollar cost averaging), moved here from Basic.
+function dcaFormHtml(sym, price){
+  const tr = UI.trade; if (!DCA_FREQ[tr.freq]) tr.freq = 'week';
+  const amt = tr.amt, sh = amt/price, low = amt/(price*0.9), high = amt/(price*1.1), dTooMuch = amt > P.cash + 0.005 || !(amt >= 10);
+  const dupe = P.dca.some(pl=>pl.sym===sym);
+  return `<div style="display:flex;flex-direction:column;gap:10px"><span class="label">How often</span>
+      <div class="pills" role="tablist" aria-label="How often">${[['week','Every week'],['2week','Every 2 weeks'],['month','Every month']].map(([id,l])=>`<button type="button" role="tab" class="pill" aria-selected="${tr.freq===id}" data-act="freq:${id}">${l}</button>`).join('')}</div></div>
+    <div class="line"><span class="label">Amount each time</span><div class="stepper"><button type="button" data-act="amt:-" aria-label="Less money">−</button>${numIn('amt', amt, true)}<button type="button" data-act="amt:+" aria-label="More money">+</button></div></div>
+    <div style="display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)">
+      <span class="label">Dollar cost averaging</span>
+      <ol class="flow">
+        <li><span class="fwhen">Today</span><span class="num famt">${fmtSh(+sh.toFixed(3))} sh</span><span class="fwhat">${whole(amt)} buys this many shares at ${money(price)}.</span></li>
+        <li><span class="fwhen">If it dips 10%</span><span class="num famt up">${fmtSh(+low.toFixed(3))} sh</span><span class="fwhat">The same ${whole(amt)} buys more shares.</span></li>
+        <li><span class="fwhen">If it rises 10%</span><span class="num famt">${fmtSh(+high.toFixed(3))} sh</span><span class="fwhat">It buys fewer, so you never put it all in at the top.</span></li>
+      </ol>
+      <div class="line"><span style="color:var(--dim)">Schedule</span><span class="num" style="color:var(--soft)">Today, then ${DCA_FREQ[tr.freq][1]}</span></div>
+      <div class="line"><span style="color:var(--dim)">Cash after first buy</span><span class="num" style="color:var(--soft)">${money(P.cash-amt)}</span></div>
+      <div class="bondnote" style="font-size:15px"><span class="tag" style="color:var(--up)">AUTO</span><span>Buys fractional shares. Pause or stop anytime from My Portfolio.</span></div>
+    </div>
+    ${dupe ? `<span style="font-size:17px;color:var(--warn)">You already auto-invest in ${sym}. Change it from My Portfolio.</span>` : dTooMuch ? '<span class="down" style="font-size:17px">Not enough cash for the first buy.</span>' : ''}
+    <button type="button" class="go" data-act="dcastart" ${dTooMuch||dupe||!tradingOpen()?'disabled':''}>Auto-invest ${dollarTxt(amt)} in ${sym} ${DCA_FREQ[tr.freq][1]}</button>`;
+}
+
+// One line describing a waiting advanced order's prices.
+function orderTerms(o){
+  const up = isUp(o.side);
+  if (o.otype==='limit') return 'Limit '+money(+o.lim);
+  if (o.otype==='stop') return (up ? 'Stop ' : 'Stop loss ')+money(+o.stop);
+  if (o.otype==='stop_limit') return 'Stop '+money(+o.stop)+' · limit '+money(+o.lim)+(o.triggered ? ' · stop reached, waiting for the limit price' : '');
+  if (o.otype==='trail'){ const mk = +(o.mark ?? o.est), lvl = up ? mk*(1+o.trail/100) : mk*(1-o.trail/100); return 'Trails by '+(+o.trail)+'% · stop is about '+money(lvl)+' now'; }
+  return '';
+}
+const endsText = o => o.tif==='gtc' ? 'until canceled, ends '+new Date(o.expires).toLocaleDateString('en-US',{month:'short', day:'numeric', timeZone:'America/Chicago'}) : 'today only';
+function openOrdersHtml(){
+  const adv = o => o.otype && o.otype!=='market';
+  const open = (P.orders||[]).filter(o=>o.status==='pending' && adv(o)), recent = (P.orders||[]).filter(o=>o.status!=='pending' && adv(o)).slice(0, 5);
+  const row = o => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:20px;color:var(--white)">${ORDER_WORD[o.side]} ${fmtSh(+o.n)} ${esc(o.sym)} <span class="otag">${OT_TAG[o.otype]}</span></span>
+      <span style="font-size:14px;color:var(--dim)">${orderTerms(o)} · ${endsText(o)}</span></span>
+      <button type="button" class="ghost" style="min-height:44px" data-act="ocancel:${o.id}">Cancel</button></div>`;
+  const done = o => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:17px;color:var(--soft)">${ORDER_WORD[o.side]} ${fmtSh(+o.n)} ${esc(o.sym)} <span class="otag">${OT_TAG[o.otype]}</span></span>
+      <span style="font-size:14px;color:var(--dim)">${o.status==='filled' ? 'Filled at '+money(+o.price) : esc(o.note || 'Canceled')}</span></span></div>`;
+  return `<div class="card"><span class="label">Open orders</span>
+    ${open.length ? '<p class="small" style="margin:0">These wait for their price. Cancel any of them before they fill.</p>' + open.map(row).join('') : '<p class="small" style="margin:0">No open orders. Limit and stop orders you place show up here until they fill, end, or you cancel them.</p>'}
+    ${recent.length ? '<span class="label" style="padding-top:10px">Recently finished</span>' + recent.map(done).join('') : ''}</div>`;
+}
+
+// The ? pop-ups: what it is, an example with real numbers, when to use it, and the catch.
+const HELP = {
+  modes: {title:'Basic vs. Advanced',
+    what:'Basic places market orders: buy, sell, or short right away at the next market price. Advanced lets you set a price or a condition first, with limit orders, stop orders, trailing stops, and auto-invest.',
+    ex:'Basic: “Buy 10 shares of Nike now.” Advanced: “Buy 10 shares of Nike, but only if it drops to $76,” or “Sell my Nike if it falls to $72.”',
+    when:'Use Basic when you want in or out now. Use Advanced when you have a plan for a certain price, or want protection while you aren’t watching.',
+    catch:'Advanced orders wait, and might never fill. Cash for a waiting buy stays set aside, and shares in a waiting sell can’t be sold another way until you cancel the order.'},
+  limit: {title:'Limit order',
+    what:'You pick the price. A limit order to buy only goes through at your price or lower. A limit order to sell only goes through at your price or higher.',
+    ex:'Nike is at $80, but you think $76 is a better deal. You set a limit buy for 10 shares at $76. If Nike drops to $76, you buy, paying no more than $760. If it never gets there, nothing happens and your cash stays put.',
+    when:'When the price matters more to you than getting in or out today. It’s also a good way to sell a winner at a target price, like “sell my Nike if it reaches $95.”',
+    catch:'It might never fill. If Nike goes straight up to $90, you miss the whole move while your order waits at $76.'},
+  stop: {title:'Stop order (stop loss)',
+    what:'A stop order waits until the price reaches a level you pick, then trades at the next market price. Used to sell something you own, it’s called a stop loss, because it limits how much you can lose.',
+    ex:'You own 10 shares of Nike that you bought at $80. You set a stop loss at $72. If Nike falls to $72, the sim sells all 10 shares, so you lose about $80 instead of riding it down further.',
+    when:'To protect yourself when you can’t watch the market. On a short, a stop above the price (using Close short) limits how much you lose if the stock goes up instead of down.',
+    catch:'Once it triggers, it trades at the next price, not exactly your stop. If bad news makes the stock drop from $75 straight to $65, you sell near $65. A normal dip can also trigger it right before the price bounces back.'},
+  stop_limit: {title:'Stop limit order',
+    what:'A stop and a limit together. When the price reaches your stop, the order turns into a limit order, so it only trades at your limit price or better.',
+    ex:'You own Nike, bought at $80. You set a stop at $72 and a limit at $70. If Nike falls to $72, the sim tries to sell, but only at $70 or more. If Nike crashes straight past $70 to $65, it doesn’t sell, and the order keeps waiting for $70.',
+    when:'When you want protection but refuse to sell below a certain price.',
+    catch:'In a crash it may not sell at all, and you could end up holding a stock that keeps falling. That’s the trade-off for controlling the price.'},
+  trail: {title:'Trailing stop',
+    what:'A stop loss that moves up with you. You pick a percent, and the stop stays that far below the highest price since you placed the order. It only moves up, never down.',
+    ex:'You own Nike at $80 and set a 10% trailing stop, so the stop starts at $72. Nike climbs to $100, so the stop moves up to $90. If Nike then falls back to $90, the sim sells, locking in about $10 a share of profit.',
+    when:'When a stock is going up and you want to let it keep running while protecting the gains you already have. Investors call this “let your winners run.”',
+    catch:'Set it too tight (like 2%) and normal daily ups and downs will sell you out early. Set it too loose (like 30%) and you give back a lot before it sells. Like a stop loss, it trades at the next price after it triggers.'},
+  dca: {title:'Auto-invest (dollar cost averaging)',
+    what:'You invest the same dollar amount on a schedule, like $500 every week, no matter what the price is.',
+    ex:'You auto-invest $500 a week in VOO. When VOO is $500 a share, you get 1 share. When it dips to $450, the same $500 buys about 1.11 shares. Over time, you end up buying more shares when prices are low.',
+    when:'When you believe in an investment for the long run and don’t want to guess the perfect day to buy.',
+    catch:'If the price only goes up, putting all your money in on day one would have done better. And it keeps buying on schedule, so you need cash ready each time.'},
+  tif: {title:'Today only vs. Until canceled',
+    what:'Today only: if the order hasn’t filled by the 3:00 PM Central close, it’s canceled. Until canceled: it keeps waiting day after day, for up to 30 days, or until you cancel it.',
+    ex:'On Monday you set a limit buy for Nike at $76. With Today only, it’s gone Monday afternoon if Nike never reaches $76. With Until canceled, it’s still waiting if Nike drops to $76 on Thursday.',
+    when:'Use Today only for a quick idea. Use Until canceled for a target price, or a stop loss you want protecting you all week.',
+    catch:'An Until canceled order can fill on a day you forgot about it, so check Open orders. Cash for a waiting buy stays set aside until it fills or you cancel it.'},
+  stopprice: {title:'Stop price',
+    what:'The price that sets the order off. Nothing happens until the stock reaches it.',
+    ex:'Nike is at $80. A stop loss with a stop price of $72 does nothing while Nike is above $72. The moment it trades at $72 or lower, the order goes.',
+    when:'To sell, the stop price goes below today’s price. To buy (or close a short), it goes above today’s price.',
+    catch:'The stop price is a trigger, not a promise. With a plain stop, you get the next market price, which can be lower than your stop in a fast drop.'},
+  limitprice: {title:'Limit price',
+    what:'The worst price you’ll accept. A buy only goes through at the limit price or lower. A sell only goes through at the limit price or higher.',
+    ex:'With a limit price of $76 on a buy, you’ll never pay more than $76 a share. If the next price is $75.50, you get $75.50.',
+    when:'Whenever you want control over the exact price you trade at.',
+    catch:'The tighter your limit, the less likely the order fills.'},
+  trailpct: {title:'Trail by',
+    what:'How far the stop stays behind the stock’s best price, as a percent.',
+    ex:'With 10% on a stock whose best price so far is $100, the stop is at $90. If the best price rises to $110, the stop rises to $99.',
+    when:'Pick a percent bigger than the stock’s normal daily swings. Calm stocks and funds can use a smaller percent. Jumpy stocks and crypto funds need a bigger one.',
+    catch:'There’s no perfect number. Smaller protects more of your gains but sells you out more often.'}
+};
+function helpModal(k){
+  const h = HELP[k]; if (!h) return null;
+  return {title:h.title, html:`<div class="helpsec"><span class="label">What it is</span><p>${h.what}</p></div>
+    <div class="helpsec helpex"><span class="label" style="color:var(--up)">Example</span><p>${h.ex}</p></div>
+    <div class="helpsec"><span class="label">When you’d use it</span><p>${h.when}</p></div>
+    <div class="helpsec helpcatch"><span class="label" style="color:var(--warn)">The catch</span><p>${h.catch}</p></div>
+    <button type="button" class="ghost" data-act="close">Got it</button>`};
+}
+
 // A number box students can type in, between the − and + buttons.
 function numIn(k, v, dollars){
   const raw = UI.raw && UI.raw[k] !== undefined ? UI.raw[k] : (dollars ? String(Math.round(v*100)/100) : String(+(+v).toFixed(4)));
@@ -2025,6 +2245,7 @@ function setNum(k, val){
   const v = isFinite(n) && n > 0 ? Math.round(n*10000)/10000 : 0;
   const tr = UI.trade, sh = UI.sheet;
   if (k==='n') tr.n = v; else if (k==='amt') tr.amt = v; else if (k==='mmAmt') tr.mmAmt = v;
+  else if (k==='lim') tr.lim = v; else if (k==='stp') tr.stp = v;
   else if (k==='bn' && sh) sh.bn = v;
   else if (k==='sn' && sh){ const p = P.pos.find(x=>'pos:'+x.sym+':'+x.side===sh.key); sh.n = p ? Math.min(v, p.n) : v; }
 }
@@ -2187,17 +2408,23 @@ function closedBox(kind){
 const FILL_SUB = 'It fills at the first market price after you clicked, not the delayed price on screen. Watch for it under Waiting to fill on My Portfolio.';
 const ORDER_WORD = {buy:'Buy', sell:'Sell', short:'Short', cover:'Close short on'};
 function ordersBox(){
-  const wait = (P.orders||[]).filter(o=>o.status==='pending');
-  if (!wait.length) return '';
+  const wait = (P.orders||[]).filter(o=>o.status==='pending' && (!o.otype || o.otype==='market'));
+  const adv = (P.orders||[]).some(o=>o.status==='pending' && o.otype && o.otype!=='market');
+  if (!wait.length) return adv ? `<section style="padding-top:8px">${openOrdersHtml()}</section>` : '';
   const row = o => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:20px;color:var(--white)">${ORDER_WORD[o.side]} ${o.n!==null&&o.n!==undefined ? fmtSh(+o.n)+' ' : money(+o.amt)+' of '}${esc(o.sym)}</span>
       <span style="font-size:14px;color:var(--dim)">Placed ${new Date(o.placed).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · about ${money(+o.est)} a share on screen · waiting for the market price</span></span>
       <button type="button" class="ghost" style="min-height:44px" data-act="ocancel:${o.id}">Cancel</button></div>`;
   return `<section style="padding-top:8px"><div class="card"><span class="label">Waiting to fill</span>
     <p class="small" style="margin:0">Orders fill at the first market price after you clicked. The sim’s prices run behind the real market, so this can take up to about 20 minutes. It updates on its own.</p>
-    ${wait.map(row).join('')}</div></section>`;
+    ${wait.map(row).join('')}</div></section>${adv ? `<section style="padding-top:8px">${openOrdersHtml()}</section>` : ''}`;
 }
 // While an order is waiting, check for its fill every 30 seconds.
-setInterval(()=>{ if (document.visibilityState!=='hidden' && canTrade() && !BUSY && (P.orders||[]).some(o=>o.status==='pending')) loadMe(true).then(()=>loadStandings()); }, 30000);
+let POLL = 0;
+setInterval(()=>{
+  if (document.visibilityState==='hidden' || !canTrade() || BUSY) return;
+  const wait = (P.orders||[]).filter(o=>o.status==='pending'), mkt = wait.some(o=>!o.otype || o.otype==='market');
+  if (mkt || (wait.length && ++POLL % 4 === 0)) loadMe(true).then(()=>loadStandings());
+}, 30000);
 // Send a change to the server. On success the server's copy of the portfolio replaces ours.
 let BUSY = false;
 async function change(body, el, onDone){
@@ -2222,7 +2449,7 @@ function act(a, el){
     liveAdd(v).then(ok=>{ if (ok) act(a); else { if (el) el.removeAttribute('aria-busy'); alert('Couldn’t load a price for '+v+' right now. Try again in a minute.'); } });
     return;
   }
-  if (!['sheet','smode','bn','sn','n','amt','mmamt','pick','side','freq','mmdir'].includes(k)) UI.err = null;
+  if (!['sheet','smode','bn','sn','n','amt','mmamt','pick','side','freq','mmdir','help','px','trl','tif'].includes(k)) UI.err = null;
   UI.raw = {};   // a button press replaces anything typed in the number boxes
   switch(k){
     case 'tab': UI.tab=v; break;
@@ -2252,7 +2479,24 @@ function act(a, el){
     }
     case 'dismiss': P.notes = []; change({a:'dismiss'}); return;
     case 'ocancel': if (!confirm('Cancel this order?')) return; change({a:'order_cancel', id:v}, el); return;
-    case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.n=10; tr.q=''; tr.freq='once'; break;
+    case 'type': tr.type=v; tr.done=null; tr.mmAmt=1000; tr.side='buy'; tr.aside='buy'; tr.n=10; tr.q=''; tr.freq='once'; tr.advKey=''; break;
+    case 'mode': tr.mode = v==='adv' ? 'adv' : 'basic'; tr.done = null; tr.advKey = ''; if (tr.mode==='adv' && tr.type==='mm') tr.type = 'stock'; if (tr.mode==='basic') tr.freq = 'once'; break;
+    case 'aside': tr.aside = v; if (v==='buy' || v==='short') tr.n = 10; break;
+    case 'otype': tr.otype = v; break;
+    case 'tif': tr.tif = v==='gtc' ? 'gtc' : 'day'; break;
+    case 'trl': tr.trl = Math.max(1, Math.min(50, tr.trl + (v==='+'?1:-1))); break;
+    case 'px': { const [f, d] = v.split(':'), base = prices[tr.pick[tr.type]] || 1, step = Math.max(0.01, r2c(base*0.01));
+      tr[f] = Math.max(0.01, r2c((tr[f] || base) + (d==='+' ? step : -step))); break; }
+    case 'help': { const h = helpModal(v); if (h) UI.modal = h; break; }
+    case 'advsubmit': {
+      const sym = tr.pick[tr.type], n = tr.n, side = tr.aside, ot = tr.otype, body = {a:'trade', sym, side, n, otype:ot, tif:tr.tif};
+      if (ot==='limit' || ot==='stop_limit') body.lim = tr.lim;
+      if (ot==='stop' || ot==='stop_limit') body.stop = tr.stp;
+      if (ot==='trail') body.trail = tr.trl;
+      const say = advSentence(sym, side, ot, n, tr.lim, tr.stp, tr.trl, prices[sym]).replace(/<[^>]+>/g, '');
+      change(body, el, ()=>{ tr.done = {title:(ot==='stop' && !isUp(side) ? 'Stop loss' : ADV_DONE[ot])+' placed', sub:say+' '+tifText(tr.tif)+' Find it under Open orders.'}; tr.advKey = ''; });
+      return;
+    }
     case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; if (v==='short') tr.freq='once'; break;
     case 'freq': tr.freq=v; break;
@@ -2264,7 +2508,7 @@ function act(a, el){
     }
     case 'dcatog': change({a:'dca_toggle', id:v}, el); return;
     case 'dcastop': if (!confirm('Stop this auto-invest plan? The shares it already bought stay in your portfolio.')) return; change({a:'dca_stop', id:v}, el); return;
-    case 'n': tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break;
+    case 'n': { if (v==='all'){ tr.n = freeShares(tr.pick[tr.type], tr.aside==='cover'?'cover':'sell'); break; } tr.n = Math.max(1, tr.n+(v==='+'?1:-1)); break; }
     case 'mmdir': tr.mmDir = v; tr.mmAmt = 1000; break;
     case 'mmamt': { const avail = tr.mmDir==='in' ? P.cash : P.mm.bal;
       tr.mmAmt = v==='all' ? Math.floor(avail*100)/100 : Math.max(500, Math.round(tr.mmAmt/500)*500 + (v==='+'?500:-500)); break; }
@@ -2292,7 +2536,7 @@ function act(a, el){
     case 'ctype': UI.chart.type = v; try{ localStorage.setItem('d214chartType', v); }catch(e){} break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
-      tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.n = 10; tr.q = ''; tr.done = null; location.hash = '#trade'; break; }
+      tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.aside = side; tr.n = 10; tr.q = ''; tr.done = null; tr.advKey = ''; location.hash = '#trade'; break; }
     case 'drip': change({a:'drip', sym:v}, el); return;
     default: if (moreActs(k, v, el)) return;
   }

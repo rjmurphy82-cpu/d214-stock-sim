@@ -361,6 +361,7 @@ const ROUTES = {
         if (body.confirm !== 'RESET') throw bad('Type RESET to confirm.');
         let spy = null; try { spy = (await M.quotes(['SPY']))?.SPY?.p || null; } catch { /* keep null */ }
         await sql.begin(async tx => {
+          await tx`update orders set status = 'canceled', done_at = now(), note = 'The competition started over.' where status = 'pending'`;
           await tx`delete from trades`; await tx`delete from positions`; await tx`delete from dca_plans`; await tx`delete from income`;
           await tx`delete from snapshots`; await tx`delete from awards`; await tx`delete from market_days`;
           await tx`update accounts set cash = 100000, mm_bal = 0, mm_earned = 0, mm_last = null, notes = '[]'::jsonb, spy_start = ${spy}`;
