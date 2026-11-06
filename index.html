@@ -1664,7 +1664,7 @@ function tickChart(){
 const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
   ratioYrs:'5Y', chart:{sym:'NVDA', tf:'6M', type:(()=>{ try{ const t = localStorage.getItem('d214chartType'); return ['line','candle','bar'].includes(t) ? t : 'line'; }catch(e){ return 'line'; } })(), ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500,
-    mode:'basic', aside:'buy', otype:'limit', lim:0, stp:0, trl:10, tif:'day', advKey:''} };
+    mode:'basic', aside:'buy', otype:'limit', lim:0, stp:0, trl:3, tif:'day', advKey:''} };
 
 /* ---------- views ---------- */
 function vStandings(){
@@ -2044,8 +2044,9 @@ function advDefaults(sym, price){
   tr.advKey = key;
   const up = isUp(tr.aside);
   if (tr.otype==='limit') tr.lim = r2c(price*(up?0.97:1.03));
-  if (tr.otype==='stop') tr.stp = r2c(price*(up?1.05:0.95));
-  if (tr.otype==='stop_limit'){ tr.stp = r2c(price*(up?1.05:0.95)); tr.lim = r2c(price*(up?1.06:0.94)); }
+  if (tr.otype==='stop') tr.stp = r2c(price*(up?1.02:0.98));
+  if (tr.otype==='stop_limit'){ tr.stp = r2c(price*(up?1.02:0.98)); tr.lim = r2c(price*(up?1.03:0.97)); }
+  if (tr.otype==='trail') tr.trl = 3;
   if (tr.aside==='sell' || tr.aside==='cover') tr.n = freeShares(sym, tr.aside);
   if (UI.raw){ delete UI.raw.lim; delete UI.raw.stp; delete UI.raw.n; }
 }
