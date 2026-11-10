@@ -768,7 +768,7 @@ P.watch.forEach(ensureSym); P.pos.forEach(p=>ensureSym(p.sym)); (P.log||[]).forE
 /* ---------- live market data from Massive ----------
    The page asks this site's own /api functions, which hold the Massive key on the server.
    If they don't answer (no key yet, or the page is opened from a file), the demo keeps its sample prices. */
-const LIVE = {on:false, asOf:0, status:null, stale:false, quotes:{}, bars:{}, intra:{}, loading:{}, info:{}, hits:{}, meta:{}, searching:{}};
+const LIVE = {on:false, asOf:0, status:null, stale:false, quotes:{}, bars:{}, intra:{}, loading:{}, info:{}, hits:{}, meta:{}, searching:{}, events:{}};
 const api = path => fetch(path, {headers:{Accept:'application/json'}}).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)));
 const nyToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 window.__d214nl = window.__d214nl || {};   // tickers Massive has no logo for, so we stop asking
@@ -796,7 +796,36 @@ function liveSeries(sym){
   if (q && q.day && q.day.d > daily[daily.length-1].time) daily.push({time:q.day.d, open:q.day.o, high:q.day.h, low:q.day.l, close:q.day.c, vol:q.day.v});
   const events = [];
   if (SPLITS[sym]){ const b = daily.find(x=>x.time>=SPLITS[sym][0]); if (b) events.push({t:b.time, type:'S', note:SPLITS[sym][1]+' stock split · earlier prices adjusted to match'}); }
+  liveEvents(sym, daily).forEach(e=>events.push(e));
+  events.sort((a,b)=> a.t<b.t?-1 : a.t>b.t?1 : 0);
   return {daily, events, nextE:null};
+}
+// Real earnings reports (E) and dividends (D) from /api/app?fn=events, as chart events with a plain-English note.
+function liveEvents(sym, daily){
+  const ev = LIVE.events[sym]; if (!ev || !daily.length) return [];
+  const first = daily[0].time, out = [], at = t => { const i = daily.findIndex(b=>b.time>=t); return i<0 ? -1 : i; };
+  const move = i => i>0 && daily[i] ? (daily[i].close/daily[i-1].close-1)*100 : null;
+  const money2 = v => (v<0?'−$':'$')+Math.abs(v).toFixed(2);
+  (ev.earn||[]).forEach(e=>{ if (e.d < first) return;
+    const i = at(e.d); if (i<0) return;
+    if (e.form){   // SEC filing date (the plan has no earnings calendar)
+      out.push({t:daily[i].time, type:'E', note:(e.form==='10-K'?'Annual':'Quarterly')+' report filed with the SEC ('+e.form+')'}); return; }
+    const r = e.after ? i+1 : i, m = move(r);   // reported after the 4 PM close → the market reacts the next day
+    const per = e.fp && e.fy ? (e.fp==='FY' ? 'full year '+e.fy : e.fp+' '+e.fy) : '';
+    const eps = e.eps!==null && e.eps!==undefined ? ' · earned '+money2(e.eps)+' a share'+(e.est!==null && e.est!==undefined ? ' vs. '+money2(e.est)+' expected ('+(e.eps>=e.est?'beat':'missed')+')' : '') : '';
+    out.push({t:daily[i].time, type:'E', note:'Earnings report'+(per?' ('+per+')':'')+eps+(m===null?'':' · stock '+pct(m)+(r>i?' the next day':' that day'))}); });
+  const divs = (ev.div||[]).filter(d=>d.ex>=first), many = divs.some(d=>d.freq>4);
+  divs.forEach(d=>{ const i = at(d.ex); if (i<0) return;
+    out.push({t:daily[i].time, type:'D', many, note:'Dividend · $'+d.amt.toFixed(d.amt<0.1?3:2)+' per share to anyone who owned it the day before'}); });
+  return out;
+}
+function loadEvents(sym){
+  if (LIVE.events[sym] !== undefined) return;
+  LIVE.events[sym] = null;
+  api('/api/app?fn=events&sym='+encodeURIComponent(sym))
+    .then(d=>{ LIVE.events[sym] = d || {earn:[], div:[]}; })
+    .catch(()=>{ LIVE.events[sym] = {earn:[], div:[]}; })
+    .finally(()=>{ if (route()==='charts' && UI.chart.sym===sym) render(); });
 }
 function loadBars(sym){
   if (LIVE.bars[sym] || LIVE.loading[sym]) return;
@@ -1009,7 +1038,7 @@ function sampleSeriesFor(sym){
   const events = [];
   eIdx.forEach(k=>events.push({i:k, type:'E', note:'Earnings report · '+pct((daily[k].close/daily[k-1].close-1)*100)+' that day'}));
   const f = fundOf(sym);
-  if (isBnd) exIdx.forEach(k=>events.push({i:k, type:'D', note:'Monthly interest · $'+(daily[k].close*f[2]/1200*payFactor(sym, TDATES[k])).toFixed(2)+' per share · the price drops by about that much today'}));
+  if (isBnd) exIdx.forEach(k=>events.push({i:k, type:'D', many:true, note:'Monthly interest · $'+(daily[k].close*f[2]/1200*payFactor(sym, TDATES[k])).toFixed(2)+' per share · the price drops by about that much today'}));
   if (f[2]>0 && (isStock || sym==='SPY')) for (let k=(off+25)%63; k<N; k+=63) events.push({i:k, type:'D', note:'Dividend paid · $'+(daily[k].close*f[2]/100/4).toFixed(2)+' per share'});
   if (SPLITS[sym]){ const i = TDATES.findIndex(t=>t>=SPLITS[sym][0]); if (i>0) events.push({i, type:'S', note:SPLITS[sym][1]+' stock split · earlier prices adjusted to match'}); }
   events.sort((a,b)=>a.i-b.i);
@@ -1104,7 +1133,7 @@ function markersFor(sym, times, opt){
     (P.log||[]).filter(l=>l.sym===sym).forEach(l=>{ const s=sty[l.act]; out.push({time:toT(logDate(l)), position:s[0], shape:s[1], color:s[2], text:s[3]+' '+fmtSh(l.n)}); });
   }
   if (opt.events){
-    seriesFor(sym).events.forEach(e=>{ if (opt.wk && e.type==='D') return;
+    seriesFor(sym).events.forEach(e=>{ if (opt.wk && e.type==='D' && e.many) return;
       out.push({time:toT(e.t || TDATES[e.i]), position:'aboveBar', shape:'circle', color:EV_COLOR[e.type], text:e.type}); });
   }
   return out.sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
@@ -1119,7 +1148,7 @@ function verdict(l, price){
 function vCharts(){
   const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
   if (LIVE.on){
-    loadInfo(sym); loadBars(sym); if (c.cmp) loadBars('SPY');
+    loadInfo(sym); loadBars(sym); if (c.cmp) loadBars('SPY'); if (c.ev) loadEvents(sym);
     if (isIntra(c.tf)){ loadIntra(sym, c.tf); if (c.cmp) loadIntra('SPY', c.tf); }
     const missing = !LIVE.bars[sym] || (c.cmp && !LIVE.bars.SPY);
     if (missing || !LIVE.bars[sym].length) return `<div class="wrap"><div class="side-card" style="margin-block:48px;align-items:flex-start">
@@ -1582,7 +1611,7 @@ function mountChart(){
   if (c.tf==='Max' || intra) chart.timeScale().fitContent(); else chart.timeScale().setVisibleLogicalRange({from:fromIdx, to:bars.length-1+3});
   const leg = document.getElementById('ohlc');
   const evAt = {};
-  if (c.ev && !intra){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D') return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
+  if (c.ev && !intra){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D' && e.many) return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
   out.showAt = (i) => {
     if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
     const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');

@@ -174,6 +174,14 @@ const ROUTES = {
     try { return await M.dividendInfo(sym); } catch { return { last: 0, lastEx: null, freq: 0, ttm: 0 }; }
   } },
 
+  // Earnings reports and dividend payments for the E and D markers on the price chart.
+  events: { run: async ({ user, q }) => {
+    requireRole(user, 'student', 'teacher', 'admin');
+    const sym = String(q.get('sym') || '').toUpperCase();
+    if (!M.TICKER.test(sym)) throw bad('Bad ticker.');
+    try { return await M.eventsFor(sym); } catch { return { earn: [], div: [], src: null }; }
+  } },
+
   /* ---------- teachers ---------- */
   teacher: { run: async ({ sql, user, q }) => {
     requireRole(user, 'teacher', 'admin');
