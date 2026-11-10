@@ -1870,7 +1870,7 @@ function vPortfolio(){
         ${c.bond ? bondCardHtml(c) : c.mm ? `<span class="num up" style="font-size:28px">+${money(c.g)}</span>
         <span class="num" style="font-size:14px;color:var(--soft)">+${money(mmPerDay())} a day · ${P.mm.rate.toFixed(2)}%</span>
         <span style="font-size:13px;color:var(--dim)">Balance ${money(P.mm.bal)} · move money anytime</span>
-        <span class="spread"><span style="font-size:13px;color:var(--dim)">Interest earned</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
+        <span class="spread"><span style="font-size:13px;color:var(--dim)">Share of portfolio</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
         : `<span class="num ${cls(c.g)}" style="font-size:28px">${pct(c.gp)}</span>
         <span class="spread"><span class="num ${cls(c.g)}" style="font-size:17px">${signed(c.g)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`}
       </button>`).join(''):'<p class="empty">No holdings yet. Head to Trade to make your first investment.</p>'}
