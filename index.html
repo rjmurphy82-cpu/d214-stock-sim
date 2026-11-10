@@ -919,7 +919,7 @@ function bondCardHtml(c){
   return `<span class="num ${cls(b.total)}" style="font-size:28px">${pct(b.totalPct)}</span>
     <span class="num" style="font-size:13px;color:var(--soft)">Price <span class="${cls(b.g)}">${signed(b.g)}</span> · Interest <span class="up">+${money(b.income)}</span></span>
     <span style="font-size:13px;color:var(--dim)">${b.pending ? 'Payment coming '+fmtDay(b.pending.pay)+': '+money(b.pending.amount) : b.next.est===null ? 'Pays interest monthly' : 'Next payment about '+money(b.next.est)+' around '+fmtDay(b.next.pay)}</span>
-    <span class="spread"><span class="num ${cls(b.total)}" style="font-size:17px">${signed(b.total)} total</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`;
+    <span class="spread"><span class="num ${cls(b.total)}" style="font-size:17px">${signed(b.total)} total</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}% <span style="font-family:var(--body);font-size:12px">of portfolio</span></span></span>`;
 }
 function incomeSection(){
   const today = todayStr(), held = P.pos.filter(p=>p.side==='long' && isBond(p.sym));
@@ -1872,7 +1872,7 @@ function vPortfolio(){
         <span style="font-size:13px;color:var(--dim)">Balance ${money(P.mm.bal)} · move money anytime</span>
         <span class="spread"><span style="font-size:13px;color:var(--dim)">Share of portfolio</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`
         : `<span class="num ${cls(c.g)}" style="font-size:28px">${pct(c.gp)}</span>
-        <span class="spread"><span class="num ${cls(c.g)}" style="font-size:17px">${signed(c.g)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}%</span></span>`}
+        <span class="spread"><span class="num ${cls(c.g)}" style="font-size:17px">${signed(c.g)}</span><span class="num" style="font-size:14px;color:var(--dim)">${c.w.toFixed(1)}% <span style="font-family:var(--body);font-size:12px">of portfolio</span></span></span>`}
       </button>`).join(''):'<p class="empty">No holdings yet. Head to Trade to make your first investment.</p>'}
       <button type="button" class="hc" style="border-top-color:var(--cashc)" disabled>
         <span class="spread"><span class="sym">CASH</span><span class="tag" style="color:#6b7c91">CASH</span></span>
