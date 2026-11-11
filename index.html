@@ -277,7 +277,7 @@
    The leaderboard is read from the stock sim through /api/board, which passes the TV key along to the sim. */
 const qs = new URLSearchParams(location.search);
 // Each school's own site defaults to that school (hersey-market-board.vercel.app → Hersey); ?school= still wins.
-const HOST_SCHOOL = /^(hersey|jhhs)/.test(location.hostname) ? 'hersey' : /^prospect/.test(location.hostname) ? 'prospect' : 'rolling-meadows';
+const HOST_SCHOOL = /^(hersey|jhhs)/.test(location.hostname) ? 'hersey' : /^prospect/.test(location.hostname) ? 'prospect' : /^(elk-grove|eghs)/.test(location.hostname) ? 'elk-grove' : 'rolling-meadows';
 const SCHOOL = (qs.get('school') || HOST_SCHOOL).toLowerCase();
 const KEY = qs.get('key') || '';
 
@@ -288,7 +288,10 @@ const BRANDS = {
              '--gold': '#E76728', '--gold-soft': '#F5A06C', '--accent-rgb': '231,103,40', '--purple-ink': '#1E0F08' } },
   'prospect': { name: 'PROSPECT', mascot: 'KNIGHTS', short: 'PROSPECT', sub: 'Knights Market Challenge', logo: '/logos/prospect-knight.png',
     theme: { '--purple': '#1E5A96', '--primary-deep': '#003366', '--primary-rgb': '30,90,150', '--purple-line': '#3A78B5',
-             '--gold': '#3399CC', '--gold-soft': '#8FD0F0', '--accent-rgb': '51,153,204', '--purple-ink': '#001A33' } }
+             '--gold': '#3399CC', '--gold-soft': '#8FD0F0', '--accent-rgb': '51,153,204', '--purple-ink': '#001A33' } },
+  'elk-grove': { name: 'ELK GROVE', mascot: 'GRENADIERS', short: 'ELK GROVE', sub: 'Grenadier Market Challenge', logo: '/logos/elk-grove-grenadier.png', glow: true,
+    theme: { '--purple': '#2F6B3A', '--primary-deep': '#173D21', '--primary-rgb': '47,107,58', '--purple-line': '#4A8A55',
+             '--gold': '#F2B400', '--gold-soft': '#FFD866', '--accent-rgb': '242,180,0', '--purple-ink': '#0B1A0F' } }
 };
 const BRAND = BRANDS[SCHOOL] || { name: SCHOOL.replace(/-/g, ' ').toUpperCase(), mascot: '', short: SCHOOL.replace(/-/g, ' ').toUpperCase(), sub: 'Market Challenge', logo: '/logos/' + SCHOOL + '.png' };
 
@@ -315,7 +318,8 @@ async function getJSON(url) { const r = await fetch(url, { cache: 'no-store' });
 
 /* ---------- branding + fit the 1920x1080 stage to the screen ---------- */
 if (BRAND.theme) for (const [k, v] of Object.entries(BRAND.theme)) document.documentElement.style.setProperty(k, v);
-$('crest').src = BRAND.logo; $('crest').alt = BRAND.name + ' logo';
+$('crest').src = BRAND.logo;
+if (BRAND.glow) $('crest').style.filter = 'drop-shadow(0 0 3px rgba(255,255,255,.55)) drop-shadow(0 4px 10px rgba(0,0,0,.5))';   // dark logos need a light edge on black $('crest').alt = BRAND.name + ' logo';
 $('bName').innerHTML = esc(BRAND.name) + (BRAND.mascot ? ' <span>' + esc(BRAND.mascot) + '</span>' : '');
 $('bSub').innerHTML = esc(BRAND.sub) + ' &middot; District 214 Investment Simulation';
 $('lbTitle').textContent = BRAND.short + ' Top 10 Traders';
