@@ -389,7 +389,7 @@ function renderNews(initial) {
 /* ---------- leaderboard ---------- */
 let prevOrder = [];
 async function board() {
-  if (!KEY) return lbNote('This board needs its TV key. Add <b>&amp;key=…</b> to the address.');
+  if (!KEY) return lbNote('This board needs its TV key.<br>Add <b>&amp;key=</b> and your TV key to the end of the address.');
   try {
     const j = await getJSON('/api/board?school=' + encodeURIComponent(SCHOOL) + '&key=' + encodeURIComponent(KEY));
     renderBoard(j);
@@ -398,7 +398,7 @@ async function board() {
       : e.status === 503 ? esc(e.message) : 'The leaderboard is unavailable right now. Retrying…');
   }
 }
-function lbNote(html) { if (!prevOrder.length) $('lbRows').innerHTML = `<div class="note">${html}</div>`; }
+function lbNote(html) { if (!prevOrder.length) $('lbRows').innerHTML = `<div class="note"><div>${html}</div></div>`; }
 function renderBoard(j) {
   const wrap = $('lbRows'), top = j.top || [];
   if (!top.length) { prevOrder = []; return void (wrap.innerHTML = '<div class="note">No students yet at this school.</div>'); }
