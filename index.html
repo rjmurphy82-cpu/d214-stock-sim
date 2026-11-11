@@ -11,6 +11,9 @@
 <style>
   :root{
     --purple:#4F2683;
+    --primary-deep:#3A1D63;
+    --primary-rgb:79,38,131;
+    --accent-rgb:246,190,0;
     --purple-deep:#1E0F36;
     --purple-ink:#140A26;
     --purple-mid:#2E1752;
@@ -108,7 +111,7 @@
     display:flex;align-items:center;justify-content:space-between;white-space:nowrap;gap:12px;
     font-family:Oswald,sans-serif;font-weight:600;font-size:30px;letter-spacing:2px;text-transform:uppercase;
     padding:18px 24px;border-bottom:3px solid var(--gold);
-    background:linear-gradient(90deg,var(--purple),#3A1D63);
+    background:linear-gradient(90deg,var(--purple),var(--primary-deep));
   }
   .panel h2 small{white-space:nowrap;font-family:Inter,sans-serif;font-size:16px;color:var(--gold-soft);letter-spacing:1px;font-weight:600}
 
@@ -134,7 +137,7 @@
   .idx .val{font-size:30px;font-weight:700;text-align:right}
   .idx .chg{font-size:21px;font-weight:700;text-align:right}
   .idx svg{grid-column:1/-1;width:100%;height:30px;margin-top:4px}
-  .mood{padding:16px 24px 20px;border-top:3px solid var(--gold);background:rgba(79,38,131,.22)}
+  .mood{padding:16px 24px 20px;border-top:3px solid var(--gold);background:rgba(var(--primary-rgb),.22)}
   .mood .lbl{font-family:Oswald,sans-serif;font-size:20px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold-soft)}
   .mood .bar{display:flex;height:22px;border-radius:12px;overflow:hidden;margin:10px 0 8px;background:#333}
   .mood .bar .g{background:var(--up);transition:width 1s}
@@ -153,7 +156,7 @@
     border-bottom:1px solid rgba(255,255,255,.06);
   }
   .lb-row.even{background:rgba(255,255,255,.03)}
-  .lb-row.flash{background:rgba(246,190,0,.18)}
+  .lb-row.flash{background:rgba(var(--accent-rgb),.18)}
   .rank{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-family:Oswald,sans-serif;font-weight:700;font-size:28px;background:#1E1E23;border:2px solid var(--purple)}
   .r1 .rank{background:linear-gradient(145deg,#FFE27A,#E0A400);color:var(--purple-ink);border:none;box-shadow:0 0 22px rgba(246,190,0,.55)}
   .r2 .rank{background:linear-gradient(145deg,#F2F2F7,#AEB1BD);color:var(--purple-ink);border:none}
@@ -237,11 +240,15 @@
    Prices, index ETFs, and news come from Massive through this site's /api functions (the key stays on the server).
    The leaderboard is read from the stock sim through /api/board, which passes the TV key along to the sim. */
 const qs = new URLSearchParams(location.search);
-const SCHOOL = (qs.get('school') || 'rolling-meadows').toLowerCase();
+// Each school's own site defaults to that school (hersey-market-board.vercel.app → Hersey); ?school= still wins.
+const SCHOOL = (qs.get('school') || (/^(hersey|jhhs)/.test(location.hostname) ? 'hersey' : 'rolling-meadows')).toLowerCase();
 const KEY = qs.get('key') || '';
 
 const BRANDS = {
-  'rolling-meadows': { name: 'ROLLING MEADOWS', mascot: 'MUSTANGS', short: 'RMHS', sub: 'Mustang Market Challenge', logo: '/logos/rolling-meadows-mustang.png' }
+  'rolling-meadows': { name: 'ROLLING MEADOWS', mascot: 'MUSTANGS', short: 'RMHS', sub: 'Mustang Market Challenge', logo: '/logos/rolling-meadows-mustang.png' },
+  'hersey': { name: 'JOHN HERSEY', mascot: 'HUSKIES', short: 'HERSEY', sub: 'Husky Market Challenge', logo: '/logos/hersey-husky.png',
+    theme: { '--purple': '#6E3F24', '--primary-deep': '#3F2417', '--primary-rgb': '110,63,36', '--purple-line': '#8A5634',
+             '--gold': '#E76728', '--gold-soft': '#F5A06C', '--accent-rgb': '231,103,40', '--purple-ink': '#1E0F08' } }
 };
 const BRAND = BRANDS[SCHOOL] || { name: SCHOOL.replace(/-/g, ' ').toUpperCase(), mascot: '', short: SCHOOL.replace(/-/g, ' ').toUpperCase(), sub: 'Market Challenge', logo: '/logos/' + SCHOOL + '.png' };
 
@@ -267,6 +274,7 @@ const tChicago = ms => new Date(ms).toLocaleTimeString('en-US', { timeZone: 'Ame
 async function getJSON(url) { const r = await fetch(url, { cache: 'no-store' }); const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status }); return j; }
 
 /* ---------- branding + fit the 1920x1080 stage to the screen ---------- */
+if (BRAND.theme) for (const [k, v] of Object.entries(BRAND.theme)) document.documentElement.style.setProperty(k, v);
 $('crest').src = BRAND.logo; $('crest').alt = BRAND.name + ' logo';
 $('bName').innerHTML = esc(BRAND.name) + (BRAND.mascot ? ' <span>' + esc(BRAND.mascot) + '</span>' : '');
 $('bSub').innerHTML = esc(BRAND.sub) + ' &middot; District 214 Investment Simulation';
@@ -431,8 +439,9 @@ function renderBoard(j) {
   show(aw('best_trade_week'), 'sTrade', 'sTradeS', 'Announced Friday after the close');
   const cl = j.classes || [];
   if (cl.length > 1) {
-    $('sClass').innerHTML = `${esc(cl[0].label)} <span class="up">leads</span>`;
-    $('sClassS').textContent = cl.slice(0, 3).map(c => `${c.label} ${sign(c.avg)}${fmt(Math.abs(c.avg))}%`).join(' · ');
+    const pc = c => `<span class="num ${cls(c.avg)}">${sign(c.avg)}${fmt(Math.abs(c.avg))}%</span>`;
+    $('sClass').innerHTML = `${esc(cl[0].label)} ${pc(cl[0])}`;
+    $('sClassS').innerHTML = `Next: ${esc(cl[1].label)} ${pc(cl[1])}`;
   } else if (cl.length === 1) { $('sClass').textContent = cl[0].label; $('sClassS').textContent = `Class average ${sign(cl[0].avg)}${fmt(Math.abs(cl[0].avg))}%`; }
   $('lbUpdated').textContent = 'Updated ' + tChicago(Date.now());
 }
