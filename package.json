@@ -1,0 +1,7 @@
+{
+  "name": "d214-market-board",
+  "private": true,
+  "type": "module",
+  "description": "Hallway TV market board. Market data from Massive; school standings read from the D214 stock sim.",
+  "engines": { "node": ">=18" }
+}
