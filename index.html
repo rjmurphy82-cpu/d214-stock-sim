@@ -143,7 +143,7 @@
 
   /* Leaderboard */
   .lb{flex:1;display:flex;flex-direction:column;min-height:0}
-  .lb-head,.lb-row{display:grid;grid-template-columns:96px 1fr 210px 230px 150px;align-items:center;padding:0 28px}
+  .lb-head,.lb-row{display:grid;grid-template-columns:84px minmax(0,1fr) 185px 185px 140px;column-gap:12px;align-items:center;padding:0 28px}
   .lb-head{height:48px;font-size:16px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--char-line)}
   .lb-head div:nth-child(n+4){text-align:right}
   .lb-rows{position:relative;flex:1;min-height:0;overflow:hidden}
@@ -158,9 +158,9 @@
   .r1 .rank{background:linear-gradient(145deg,#FFE27A,#E0A400);color:var(--purple-ink);border:none;box-shadow:0 0 22px rgba(246,190,0,.55)}
   .r2 .rank{background:linear-gradient(145deg,#F2F2F7,#AEB1BD);color:var(--purple-ink);border:none}
   .r3 .rank{background:linear-gradient(145deg,#F0B68A,#B46A35);color:var(--purple-ink);border:none}
-  .lb-row .who{font-size:30px;font-weight:700}
+  .lb-row .who{font-size:30px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .lb-row .who .mv{font-size:18px;margin-left:10px;font-weight:700}
-  .lb-row .cls{font-size:20px;color:var(--muted);font-weight:600}
+  .lb-row .cls{font-size:20px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .lb-row .val{font-size:28px;font-weight:700;text-align:right}
   .lb-row .ret{font-size:27px;font-weight:700;text-align:right}
   .r1 .who{color:var(--gold-soft)}
@@ -413,6 +413,8 @@ function renderBoard(j) {
     row.className = `lb-row r${i + 1} ${i % 2 ? 'even' : ''}`;
     row.innerHTML = `<div><div class="rank">${i + 1}</div></div><div class="who">${esc(s.name)}${mv}</div><div class="cls">${esc(s.cls)}</div>` +
       `<div class="val num">$${fmt(s.value, 0)}</div><div class="ret num ${c}">${sign(ret)}${fmt(Math.abs(s.ret))}%</div>`;
+    const who = row.querySelector('.who');                      // shrink long names to fit on one line
+    for (let f = 30; f > 20 && who.scrollWidth > who.clientWidth; f -= 2) who.style.fontSize = f - 2 + 'px';
     if (was > i) { row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600); }
     requestAnimationFrame(() => { row.style.transform = `translateY(${i * rowH}px)`; });
   });
