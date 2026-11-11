@@ -138,9 +138,9 @@ const ROUTES = {
     if (!school) throw bad('Unknown school.');
     const st = await standings(sql);
     const secs = st.sections.filter(s => s.school === school);
-    const label = s => s.teacher + ' ' + s.period;
+    const label = s => s.teacher + ' · ' + s.period;          // same label as the Standings page
     const secLabel = new Map(secs.map(s => [s.id, label(s)]));
-    const kids = st.students.filter(s => s.school === school).sort((a, b) => b.value - a.value || a.id - b.id);
+    const kids = st.students.filter(s => s.school === school).sort((a, b) => b.ret - a.ret || a.id - b.id);   // same order as the Standings page
     const nameOf = new Map(kids.map(s => [s.id, s.name]));
     const classes = secs.map(s => {
       const k = kids.filter(x => x.sec === s.id);
