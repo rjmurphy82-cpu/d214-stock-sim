@@ -42,6 +42,10 @@ Company financials need Massive's Financials & Ratios data (included in Stocks A
 
 Each function caches its answer (20 seconds for prices, up to a day for company info), and Vercel's CDN shares that answer across every visitor. Students don't each make their own Massive calls.
 
+## TV board connection (read only)
+
+The hallway TV market board is its own site. It reads one school's top 10, awards, and class battle from `/api/app?fn=tv&school=rolling-meadows&key=...`. That route can't change anything, and it only answers when the key matches the `TV_KEY` environment variable set here in Vercel. Without `TV_KEY`, it is off.
+
 ## Attribution (required)
 
 The Massive order form requires "Market Data Source: Massive.com", linked to https://massive.com, to be visible on every page that shows Massive data. The bar at the bottom of the screen does this on every page and stays on screen while scrolling. Massive has final approval over its form, placement, and prominence, so get their sign-off before launch and don't remove or hide the bar.
