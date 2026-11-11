@@ -894,11 +894,43 @@ function goLive(){
   LIVE.on = true; LIVE.stale = false;
   if (liveTimers) return;
   liveTimers = true;
-  const st = () => api('/api/status').then(s=>{ LIVE.status = s; renderAttr(); renderBanner(); }).catch(()=>{});
-  st();
   setInterval(refreshLive, 60000);
-  setInterval(st, 300000);
+  loadStatus();
+  setInterval(loadStatus, 300000);
+  setInterval(clockTick, 5000);
   document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshLive(); });
+}
+// Market open or closed. The server sends today's (or the next) session and its clock; the page flips
+// open/closed right at 8:30 and 3:00 Central using the server's time, so a laptop clock that's off doesn't matter.
+// The server still checks every order, and its answer replaces the page's on every status check.
+function loadStatus(){
+  const t0 = Date.now();
+  return api('/api/status').then(s=>{
+    if (s.serverTime) LIVE.skew = s.serverTime - Math.round((t0 + Date.now())/2);
+    LIVE.status = s; LIVE.clockOpen = clockOpen();
+    renderAttr(); renderBanner();
+  }).catch(()=>{});
+}
+function clockOpen(){
+  const s = LIVE.status && LIVE.status.session; if (!s) return null;
+  const t = Date.now() + (LIVE.skew||0);
+  return t >= s.open && t < s.close;
+}
+function clockTick(){
+  const now = clockOpen();
+  if (now !== null && now !== LIVE.clockOpen){
+    LIVE.clockOpen = now;
+    LIVE.status = Object.assign({}, LIVE.status, {market: now ? 'open' : 'closed'});
+    LIVE.flip = true;
+    setTimeout(loadStatus, 20000 + Math.random()*40000);   // confirm with the server (spread out so 600 pages don't ask at once)
+  }
+  if (!LIVE.flip) return;
+  // Redraw so Buy and Sell buttons unlock or lock, even with a trade window open. Wait if someone is typing.
+  const ae = document.activeElement;
+  if (ae && (ae.tagName==='TEXTAREA' || (ae.tagName==='INPUT' && ae.type!=='button'))) { renderAttr(); return; }
+  LIVE.flip = false;
+  if (!ROLE || (route()==='charts' && !UI.sheet && !UI.drawer)) return renderAttr();
+  const y = window.scrollY; render(); window.scrollTo(0,y); renderTape(true);
 }
 /* ---------- bond funds: monthly interest ---------- */
 // [rate sensitivity, credit quality]
@@ -2431,7 +2463,7 @@ const errBox = () => UI.err ? `<div class="err" role="alert">${esc(UI.err)}</div
 function tradingOpen(){ return SETTINGS.trading!==false && (!LIVE.status || !LIVE.status.market || LIVE.status.market==='open'); }
 function closedBox(kind){
   if (SETTINGS.trading===false) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">PAUSED</span><span>Trading is paused right now. Check with your teacher.</span></div>`;
-  if (kind!=='mm' && !tradingOpen()) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">CLOSED</span><span>The market is closed. Trades go through 8:30 AM to 3:00 PM Central on days the market is open. You can still move money in and out of the money market.</span></div>`;
+  if (kind!=='mm' && !tradingOpen()) return `<div class="bondnote"><span class="tag" style="color:var(--warn)">CLOSED</span><span>The market is closed. Trades go through 8:30 AM to 3:00 PM Central on days the market is open (until noon on early-close days, like the day after Thanksgiving). You can still move money in and out of the money market.</span></div>`;
   return '';
 }
 // Every trade is an order that fills at the first market price after the click (see the Pending list).

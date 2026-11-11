@@ -59,4 +59,4 @@ Only first names and the shortest last-name piece that keeps classmates apart ar
 ```
 DATABASE_URL=postgres://... LOCAL_DEV=1 MARKET_MOCK=1 ADMIN_PASSWORD=test ALLOW_CLOSED_TRADES=1 node scripts/dev-server.js
 ```
-`MARKET_MOCK=1` uses made-up prices. `node scripts/test-orders.js` checks how limit and stop orders fill (no database needed). `npm test` (with the server running and `ADMIN_PASSWORD` set) checks sign-in, trades, standings, teacher tools, and end of day. `node scripts/test-eod.js` and `node scripts/seed-test.js` need an empty test database.
+`MARKET_MOCK=1` uses made-up prices. `node scripts/test-orders.js` checks how limit and stop orders fill, and `node scripts/test-hours.js` checks market hours, holidays, and early closes (neither needs a database). `npm test` (with the server running and `ADMIN_PASSWORD` set) checks sign-in, trades, standings, teacher tools, and end of day. `node scripts/test-eod.js` and `node scripts/seed-test.js` need an empty test database.
