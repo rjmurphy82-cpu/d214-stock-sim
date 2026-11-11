@@ -13,6 +13,8 @@ const PRESS_RELEASES = /globe ?newswire|pr ?newswire|business ?wire|accesswire|n
 const PROMO = /\([A-Z]{1,5}\)|on your (investing )?radar|right now\?|worth a look|\bto buy\b|\bbuy now\b|should you buy|\bstrong (etf|stock|buy)\b|\bstocks? (to|that)\b|dividend (king|stock)|\bmillionaire|\bretire|\b\d+ (stocks?|etfs?|funds?)\b|\byield investors\b|\bzacks rank\b|smart beta|no-brainer|unstoppable|million|loading up|\bi'?m\b|\bmy\b|costly mistake|could (build|make|soar|double)|here's how|forever|passive income|dividend|\b\d+ ([\w-]+ ){0,2}(stocks?|etfs?|funds?|mistakes?|reasons?|ways?)\b/i;
 // Big-picture words: the economy, the Fed, rates, prices, jobs, the overall market, whole sectors, trade, energy.
 const MACRO = /\bfed\b|federal reserve|powell|interest rate|rate (cut|hike)|inflation|\bcpi\b|\bppi\b|\bjobs?\b|payroll|unemployment|labor|economy|economic|\bgdp\b|recession|consumer|retail sales|spending|housing|mortgage|treasur|yields?\b|bond|tariff|trade|china|oil|crude|opec|gas prices|energy|wall street|stock market|markets?\b|s&p|\bdow\b|nasdaq|rally|sell-?off|earnings season|sector|banks?\b|\bai\b|chip|tech stocks|dollar|gold|shutdown|congress|white house|election/i;
+// Stories about the economy as a whole get an "Economy" label instead of whichever fund Massive tagged.
+const ECON = /\bfed\b|federal reserve|interest rate|rate (cut|hike)|inflation|\bcpi\b|\bjobs?\b|payroll|unemployment|labor market|\bgdp\b|economy|recession|tariff|midterm|election|congress|white house|shutdown/i;
 const MOODS = { positive: 'good', negative: 'bad', neutral: 'neutral' };
 const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
 
@@ -38,7 +40,7 @@ export default async function handler(req, res) {
           if (prev && !(FUNDS[prev.fund] === 'Market' && FUNDS[fund] !== 'Market')) continue;
           const ins = (a.insights || []).find(i => i.ticker === fund) || null;
           byKey.set(key, {
-            fund, tag: FUNDS[fund], title, summary: clip(a.description, 200), source: clip(pub, 50), at: a.published_utc || '',
+            fund, tag: ECON.test(title) ? 'Economy' : FUNDS[fund], title, summary: clip(a.description, 200), source: clip(pub, 50), at: a.published_utc || '',
             mood: ins ? (MOODS[ins.sentiment] || 'neutral') : null, why: ''
           });
         }
