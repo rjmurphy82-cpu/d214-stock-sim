@@ -277,14 +277,18 @@
    The leaderboard is read from the stock sim through /api/board, which passes the TV key along to the sim. */
 const qs = new URLSearchParams(location.search);
 // Each school's own site defaults to that school (hersey-market-board.vercel.app → Hersey); ?school= still wins.
-const SCHOOL = (qs.get('school') || (/^(hersey|jhhs)/.test(location.hostname) ? 'hersey' : 'rolling-meadows')).toLowerCase();
+const HOST_SCHOOL = /^(hersey|jhhs)/.test(location.hostname) ? 'hersey' : /^prospect/.test(location.hostname) ? 'prospect' : 'rolling-meadows';
+const SCHOOL = (qs.get('school') || HOST_SCHOOL).toLowerCase();
 const KEY = qs.get('key') || '';
 
 const BRANDS = {
   'rolling-meadows': { name: 'ROLLING MEADOWS', mascot: 'MUSTANGS', short: 'RMHS', sub: 'Mustang Market Challenge', logo: '/logos/rolling-meadows-mustang.png' },
   'hersey': { name: 'JOHN HERSEY', mascot: 'HUSKIES', short: 'HERSEY', sub: 'Husky Market Challenge', logo: '/logos/hersey-husky.png',
     theme: { '--purple': '#6E3F24', '--primary-deep': '#3F2417', '--primary-rgb': '110,63,36', '--purple-line': '#8A5634',
-             '--gold': '#E76728', '--gold-soft': '#F5A06C', '--accent-rgb': '231,103,40', '--purple-ink': '#1E0F08' } }
+             '--gold': '#E76728', '--gold-soft': '#F5A06C', '--accent-rgb': '231,103,40', '--purple-ink': '#1E0F08' } },
+  'prospect': { name: 'PROSPECT', mascot: 'KNIGHTS', short: 'PROSPECT', sub: 'Knights Market Challenge', logo: '/logos/prospect-knight.png',
+    theme: { '--purple': '#1E5A96', '--primary-deep': '#003366', '--primary-rgb': '30,90,150', '--purple-line': '#3A78B5',
+             '--gold': '#3399CC', '--gold-soft': '#8FD0F0', '--accent-rgb': '51,153,204', '--purple-ink': '#001A33' } }
 };
 const BRAND = BRANDS[SCHOOL] || { name: SCHOOL.replace(/-/g, ' ').toUpperCase(), mascot: '', short: SCHOOL.replace(/-/g, ' ').toUpperCase(), sub: 'Market Challenge', logo: '/logos/' + SCHOOL + '.png' };
 
@@ -401,7 +405,7 @@ function renderIndices() {
 
 /* ---------- news ---------- */
 let NEWS = [], newsIdx = 0;
-const ago = iso => { const m = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000)); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' days ago'; };
+const ago = iso => { const m = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000)); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : (Math.round(m / 1440) === 1 ? '1 day ago' : Math.round(m / 1440) + ' days ago'); };
 async function news() {
   try {
     const j = await getJSON('/api/news');
