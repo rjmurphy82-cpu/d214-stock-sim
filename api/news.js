@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       // Newest first, but no more than 3 stories from any one sector so the panel stays broad.
       const per = {}, items = [];
       for (const n of [...byKey.values()].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))) {
-        if ((per[n.tag] = (per[n.tag] || 0) + 1) > 3) continue;
+        if ((per[n.tag] = (per[n.tag] || 0) + 1) > (n.tag === 'Economy' ? 5 : 3)) continue;
         items.push(n);
         if (items.length >= 14) break;
       }
