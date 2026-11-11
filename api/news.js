@@ -1,4 +1,4 @@
-// GET /api/news?ticker=AAPL      (or ?market=1 for the whole market, used by the hallway TV board)
+// GET /api/news?ticker=AAPL
 // Recent news stories about one company from Massive's news feed, newest first.
 // Massive tags each story with the companies it is about and whether it reads as good,
 // bad, or neutral for each one, plus a one-sentence reason. We pass along only what the
@@ -13,7 +13,6 @@ const clip = (s, n) => {
 };
 
 export default async function handler(req, res) {
-  if (param(req, 'market') === '1') return marketNews(res);
   const ticker = param(req, 'ticker').toUpperCase();
   if (!TICKER.test(ticker)) return send(res, 400, { error: 'Pass a ticker.' });
   try {
@@ -50,41 +49,6 @@ export default async function handler(req, res) {
     // Massive answers 401/403 when the plan doesn't include the news feed.
     if (e && /plan/.test(e.message || '')) return send(res, 200, { ticker, items: [], unavailable: 'plan' }, 3600);
     if (e && e.status === 404) return send(res, 200, { ticker, items: [] }, 900);
-    fail(res, e);
-  }
-}
-
-// The latest stories across the whole market, for the hallway TV board. Cached 10 minutes.
-async function marketNews(res) {
-  try {
-    const out = await cached('news:market', 10 * 60000, async () => {
-      const since = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
-      const r = await massive('/v2/reference/news', { 'published_utc.gte': since, order: 'desc', sort: 'published_utc', limit: 60 });
-      const seen = new Set();
-      const items = [];
-      for (const a of r.results || []) {
-        const title = clip(a.title, 160);
-        const key = title.toLowerCase();
-        if (!title || seen.has(key)) continue;
-        seen.add(key);
-        const tickers = (a.tickers || []).filter(t => TICKER.test(t)).slice(0, 3);
-        const ins = (a.insights || [])[0] || null;
-        items.push({
-          title,
-          summary: clip(a.description, 220),
-          source: clip(a.publisher && a.publisher.name, 60),
-          at: a.published_utc || '',
-          tickers,
-          mood: ins ? (MOODS[ins.sentiment] || 'neutral') : null,
-          why: ins ? clip(ins.sentiment_reasoning, 200) : ''
-        });
-        if (items.length >= 16) break;
-      }
-      return { market: true, items };
-    });
-    send(res, 200, out, 600);
-  } catch (e) {
-    if (e && /plan/.test(e.message || '')) return send(res, 200, { market: true, items: [], unavailable: 'plan' }, 3600);
     fail(res, e);
   }
 }

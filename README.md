@@ -42,14 +42,9 @@ Company financials need Massive's Financials & Ratios data (included in Stocks A
 
 Each function caches its answer (20 seconds for prices, up to a day for company info), and Vercel's CDN shares that answer across every visitor. Students don't each make their own Massive calls.
 
-## Hallway TV board
+## TV board connection (read only)
 
-`tv.html` is a full-screen board for a school's TV: scrolling prices for the 25 largest stocks, the major indices (tracked with SPY, DIA, QQQ, and IWM), market news, and the school's top 10 with Mover of the Day, Best Trade of the Week, and Class Battle. It fits any 16:9 screen.
-
-1. In Vercel, add an environment variable `TV_KEY` (any long random word, for example `mustangs-7f3k9q2x`) for Production and Preview, then redeploy.
-2. On the TV, open `https://d214-stock-sim.vercel.app/tv.html?school=rolling-meadows&key=YOUR_TV_KEY` and go full screen.
-
-The key keeps student names off the open internet: without it the board shows prices and news but no leaderboard. Rolling Meadows has its own branding; other schools (`hersey`, `prospect`, `buffalo-grove`, `elk-grove`, `wheeling`) work now with their logo and can get full branding in `BRANDS` at the top of the page's script.
+The hallway TV market board is its own site. It reads one school's top 10, awards, and class battle from `/api/app?fn=tv&school=rolling-meadows&key=...`. That route can't change anything, and it only answers when the key matches the `TV_KEY` environment variable set here in Vercel. Without `TV_KEY`, it is off.
 
 ## Attribution (required)
 
