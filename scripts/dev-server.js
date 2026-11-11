@@ -32,6 +32,14 @@ async function mockMarket(name, url, res) {
   if (name === 'search') { const q = (url.searchParams.get('q') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5); return json({ results: q ? [{ s: q, n: q + ' Test Co.', k: 'stock' }] : [] }); }
   if (name === 'ticker') return json({ s: t, n: t + ' Test Co.', k: M.BOND.has(t) ? 'etf' : 'stock', sector: '', about: '', cap: null, logo: false });
   if (name === 'logo') { res.statusCode = 404; return res.end(); }
+  if (name === 'news' && url.searchParams.get('market') === '1') {
+    const ago = h => new Date(Date.now() - h * 3600000).toISOString();
+    return json({ market: true, items: [
+      { title: 'Stocks Rally as the Fed Holds Interest Rates Steady', summary: '', source: 'Test Daily', at: ago(1), tickers: ['SPY'], mood: 'good', why: 'Steady rates make it cheaper for companies to borrow and grow.' },
+      { title: 'Chipmaker Shares Slide After Weak Sales Forecast', summary: '', source: 'Test Wire', at: ago(3), tickers: ['NVDA', 'AVGO'], mood: 'bad', why: 'A lower forecast means investors expect less profit ahead.' },
+      { title: 'Oil Prices Climb on Supply Worries', summary: 'Crude rose for a third day.', source: 'Test Markets', at: ago(6), tickers: ['XOM'], mood: 'neutral', why: '' }
+    ] });
+  }
   if (name === 'news') {
     if (t === 'NONEWS') return json({ ticker: t, items: [] });
     const ago = h => new Date(Date.now() - h * 3600000).toISOString();

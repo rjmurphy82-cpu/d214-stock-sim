@@ -1,5 +1,6 @@
 // /api/app?fn=...  Every signed-in part of the game: sign-in, portfolio, trades, standings, teacher and admin tools.
 // One function file keeps the project well under Vercel's limit on the number of functions.
+import crypto from 'node:crypto';
 import { sqlReady } from '../lib/db.js';
 import { HttpError, bad, query, readJson, sendJson, sendError, requireSameSite } from '../lib/http.js';
 import { checkPw, hashPw, encPw, decPw, newPassword, makeSession, setSessionCookie, clearSessionCookie, currentUser, requireRole, checkRate, noteFail, clearFails } from '../lib/auth.js';
@@ -118,6 +119,41 @@ const ROUTES = {
     if (['trade', 'mm', 'dca_start'].includes(body.a)) invalidateStandings();
     const state = await P.portfolioState(sql, sid);
     return { result, ...state };
+  } },
+
+  /* ---------- hallway TV board (tv.html) ---------- */
+  // A school's top 10, class battle, and awards for a TV that nobody signs in to.
+  // Locked by the TV_KEY environment variable, so student names never show to the open internet.
+  tv: { public: true, run: async ({ req, res, sql, q }) => {
+    const want = String(process.env.TV_KEY || '');
+    if (!want) throw new HttpError(503, 'The TV board is not set up yet. Add TV_KEY in Vercel.');
+    const net = 'ip:' + ip(req);
+    await checkRate(sql, [net]);
+    const got = Buffer.from(String(q.get('key') || '')), exp = Buffer.from(want);
+    if (got.length !== exp.length || !crypto.timingSafeEqual(got, exp)) {
+      await noteFail(sql, [net]).catch(() => {});
+      throw new HttpError(403, 'Wrong TV key.');
+    }
+    const school = SCHOOLS.find(s => s.toLowerCase().replace(/\s+/g, '-') === String(q.get('school') || '').toLowerCase());
+    if (!school) throw bad('Unknown school.');
+    const st = await standings(sql);
+    const secs = st.sections.filter(s => s.school === school);
+    const label = s => s.teacher + ' ' + s.period;
+    const secLabel = new Map(secs.map(s => [s.id, label(s)]));
+    const kids = st.students.filter(s => s.school === school).sort((a, b) => b.value - a.value || a.id - b.id);
+    const nameOf = new Map(kids.map(s => [s.id, s.name]));
+    const classes = secs.map(s => {
+      const k = kids.filter(x => x.sec === s.id);
+      return { label: label(s), avg: k.length ? k.reduce((a, x) => a + x.ret, 0) / k.length : 0, size: k.length };
+    }).sort((a, b) => b.avg - a.avg);
+    const awards = st.awards.filter(a => a.scope === 'school:' + school && nameOf.has(a.student))
+      .map(a => ({ kind: a.kind, label: a.label, d: a.d, name: nameOf.get(a.student), cls: secLabel.get(kids.find(x => x.id === a.student).sec) || '', text: a.text || '', lesson: a.lesson || '' }));
+    res.setHeader('Cache-Control', 'no-store');
+    return {
+      school, at: st.at, spyRet: st.spyRet, count: kids.length,
+      top: kids.slice(0, 10).map(s => ({ id: s.id, name: s.name, cls: secLabel.get(s.sec) || '', value: s.value, ret: s.ret })),
+      classes, awards
+    };
   } },
 
   /* ---------- standings (everyone signed in) ---------- */

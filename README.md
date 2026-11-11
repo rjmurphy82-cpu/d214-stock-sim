@@ -42,6 +42,15 @@ Company financials need Massive's Financials & Ratios data (included in Stocks A
 
 Each function caches its answer (20 seconds for prices, up to a day for company info), and Vercel's CDN shares that answer across every visitor. Students don't each make their own Massive calls.
 
+## Hallway TV board
+
+`tv.html` is a full-screen board for a school's TV: scrolling prices for the 25 largest stocks, the major indices (tracked with SPY, DIA, QQQ, and IWM), market news, and the school's top 10 with Mover of the Day, Best Trade of the Week, and Class Battle. It fits any 16:9 screen.
+
+1. In Vercel, add an environment variable `TV_KEY` (any long random word, for example `mustangs-7f3k9q2x`) for Production and Preview, then redeploy.
+2. On the TV, open `https://d214-stock-sim.vercel.app/tv.html?school=rolling-meadows&key=YOUR_TV_KEY` and go full screen.
+
+The key keeps student names off the open internet: without it the board shows prices and news but no leaderboard. Rolling Meadows has its own branding; other schools (`hersey`, `prospect`, `buffalo-grove`, `elk-grove`, `wheeling`) work now with their logo and can get full branding in `BRANDS` at the top of the page's script.
+
 ## Attribution (required)
 
 The Massive order form requires "Market Data Source: Massive.com", linked to https://massive.com, to be visible on every page that shows Massive data. The bar at the bottom of the screen does this on every page and stays on screen while scrolling. Massive has final approval over its form, placement, and prominence, so get their sign-off before launch and don't remove or hide the bar.
