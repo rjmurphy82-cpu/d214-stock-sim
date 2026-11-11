@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       return {
         items: [
           { id: 'y10',   label: '10-Year Treasury', note: 'U.S. borrowing cost for 10 years', unit: '%',  daily: true, ...lastTwo(ty, 'yield_10_year') },
-          { id: 'cpi',   label: 'Inflation',        note: 'Prices vs. a year ago (CPI)',               unit: '%',  ...lastTwo(inf, 'cpi_year_over_year') },
+          { id: 'cpi',   label: 'Inflation',        note: 'Prices vs. a year ago (CPI)',               unit: '%',  ...cpiYoY(inf) },
           { id: 'unemp', label: 'Unemployment',     note: 'Workers without a job',        unit: '%',  ...lastTwo(lab, 'unemployment_rate') },
           { id: 'jobs',  label: 'Job Openings',     note: 'Jobs employers are trying to fill',         unit: 'M',  ...scale(lastTwo(lab, 'job_openings'), 1 / 1000) },
           { id: 'pay',   label: 'Avg. Hourly Pay',  note: 'Private-sector workers',                    unit: '$',  ...lastTwo(lab, 'avg_hourly_earnings') }
@@ -29,5 +29,17 @@ export default async function handler(req, res) {
   } catch (e) {
     fail(res, e);
   }
+}
+// Year-over-year CPI from the index itself (the ready-made year-over-year field can lag behind).
+function cpiYoY(rows) {
+  const m = new Map(rows.filter(r => typeof r.cpi === 'number').map(r => [r.date.slice(0, 7), r.cpi]));
+  const back = (ym, n) => { const [y, mo] = ym.split('-').map(Number), d = new Date(Date.UTC(y, mo - 1 - n, 1)); return d.toISOString().slice(0, 7); };
+  const yoy = ym => m.has(ym) && m.has(back(ym, 12)) ? (m.get(ym) / m.get(back(ym, 12)) - 1) * 100 : null;
+  const months = [...m.keys()].sort().reverse();
+  for (const ym of months) {
+    const v = yoy(ym);
+    if (v != null) return { value: v, prev: yoy(back(ym, 1)), date: ym + '-01' };
+  }
+  return lastTwo(rows, 'cpi_year_over_year') || {};
 }
 function scale(x, k) { return x ? { ...x, value: x.value * k, prev: x.prev == null ? null : x.prev * k } : {}; }
