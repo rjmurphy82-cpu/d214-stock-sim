@@ -101,6 +101,34 @@
 
   /* ===== Main ===== */
   main{display:grid;grid-template-columns:450px 1fr 450px;gap:26px;padding:24px 30px;min-height:0}
+  .col{display:flex;flex-direction:column;gap:20px;min-height:0}
+  .col .news{flex:1}
+  .col .econ{flex:1}
+  .col .idxp{flex:none}
+  .idxp .idx-list{flex:none}
+  .idxp .idx{flex:none;height:74px;padding:4px 24px;grid-template-rows:auto}
+  .idxp .idx svg{display:none}
+  .idxp .idx .name{font-size:23px}
+  .idxp .idx .name small{font-size:13px}
+  .idxp .idx .val{font-size:26px}
+  .idxp .idx .chg{font-size:18px}
+  .idxp .mood{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;padding:7px 24px}
+  .col .panel h2{padding:14px 24px;font-size:27px}
+  .idxp .mood .bar{margin:0;height:14px}
+  .idxp .mood .lbl{font-size:17px}
+  .idxp .mood span.up,.idxp .mood span.down{font-size:16px;font-weight:700;white-space:nowrap}
+  .econ-list{flex:1;display:flex;flex-direction:column;justify-content:space-around;min-height:0}
+  .econ-row .k small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .econ .note{position:static;padding:30px 24px;font-size:20px}
+  .econ-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:5px 24px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .econ-row:last-child{border-bottom:none}
+  .econ-row .k{min-width:0;font-family:Oswald,sans-serif;font-size:20px;letter-spacing:.5px;font-weight:600;line-height:1.1}
+  .econ-row .k small{display:block;font-family:Inter,sans-serif;font-size:13px;color:var(--muted);letter-spacing:0;font-weight:600;margin-top:2px}
+  .econ-row .v{font-size:23px;font-weight:700;text-align:right;line-height:1.1}
+  .econ-row .c{display:block;white-space:nowrap;font-size:13px;font-weight:700;text-align:right;margin-top:2px}
+  .econ-row .c .when{color:var(--muted);font-family:Inter,sans-serif;font-weight:600}
+  .mood-pill{display:inline-block;font-size:13px;font-weight:800;letter-spacing:1px;padding:4px 8px;border-radius:6px;margin-left:8px;text-transform:uppercase}
+  .mood-pill.good{color:var(--up);border:1px solid var(--up)} .mood-pill.bad{color:var(--down);border:1px solid var(--down)}
   .panel{
     background:linear-gradient(180deg,var(--char-panel),var(--char-panel2));
     border:2px solid var(--purple);border-radius:20px;overflow:hidden;
@@ -124,8 +152,8 @@
   .news-item.enter{opacity:0;transform:translateY(24px)}
   .news-tag{display:inline-block;font-size:14px;font-weight:700;letter-spacing:1.5px;padding:4px 10px;border-radius:6px;background:var(--gold);color:var(--purple-ink);text-transform:uppercase}
   .news-date{font-size:15px;color:var(--muted);margin-left:10px;font-weight:600}
-  .news-item h3{font-size:25px;line-height:1.25;margin-top:10px;font-weight:700}
-  .news-item p{font-size:19px;line-height:1.4;color:#DCD2EE;margin-top:8px}
+  .news-item h3{font-size:23px;line-height:1.25;margin-top:10px;font-weight:700}
+  .news-item p{font-size:17px;line-height:1.4;color:#DCD2EE;margin-top:7px}
   .news-item p b{color:var(--gold-soft);font-weight:700}
 
   /* Indices */
@@ -204,10 +232,12 @@
   </header>
 
   <main>
-    <section class="panel">
-      <h2>Market News <small>Live</small></h2>
-      <div class="news-list" id="newsList"><div class="note">Loading the latest market news…</div></div>
-    </section>
+    <div class="col">
+      <section class="panel news">
+        <h2>Market News <small>Live</small></h2>
+        <div class="news-list" id="newsList"><div class="note">Loading the latest market news…</div></div>
+      </section>
+    </div>
 
     <section class="panel">
       <h2><span id="lbTitle">Top 10 Traders</span> <small id="lbUpdated"></small></h2>
@@ -222,15 +252,21 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2>Major Indices <small>Today</small></h2>
-      <div class="idx-list" id="idxList"></div>
-      <div class="mood">
-        <div class="lbl">Top 25 Stocks: Up vs. Down</div>
-        <div class="bar"><div class="g" id="moodG" style="width:50%"></div><div class="r" id="moodR" style="width:50%"></div></div>
-        <div class="txt"><span class="up" id="moodUp">--</span><span class="down" id="moodDn">--</span></div>
-      </div>
-    </section>
+    <div class="col">
+      <section class="panel idxp">
+        <h2>Major Indices <small>Today</small></h2>
+        <div class="idx-list" id="idxList"></div>
+        <div class="mood">
+          <span class="lbl">Top 25</span>
+          <div class="bar"><div class="g" id="moodG" style="width:50%"></div><div class="r" id="moodR" style="width:50%"></div></div>
+          <span class="up" id="moodUp">--</span><span class="down" id="moodDn">--</span>
+        </div>
+      </section>
+      <section class="panel econ">
+        <h2>Economy <small>Fed data</small></h2>
+        <div class="econ-list" id="econList"><div class="note">Loading economic data…</div></div>
+      </section>
+    </div>
   </main>
 
   <div class="ticker bottom"><div class="label">▼ MARKET</div><div class="track" id="trackBot"></div></div>
@@ -359,7 +395,7 @@ function renderIndices() {
   const known = TOP25.filter(s => chgOf(s) != null), up = known.filter(s => chgOf(s) > 0).length, dn = known.length - up;
   if (known.length) {
     $('moodG').style.width = (up / known.length * 100) + '%'; $('moodR').style.width = (dn / known.length * 100) + '%';
-    $('moodUp').textContent = `▲ ${up} up`; $('moodDn').textContent = `${dn} down ▼`;
+    $('moodUp').textContent = `▲ ${up}`; $('moodDn').textContent = `▼ ${dn}`;
   }
 }
 
@@ -375,10 +411,9 @@ async function news() {
 }
 function newsEl(n) {
   const d = document.createElement('div'); d.className = 'news-item';
-  const tag = n.mood === 'good' ? '<span class="news-tag good">Good news</span>' : n.mood === 'bad' ? '<span class="news-tag bad">Bad news</span>' : '<span class="news-tag">Market</span>';
-  d.innerHTML = `${tag}<span class="news-src">${esc(n.source)}${n.at ? ' · ' + ago(n.at) : ''}</span><h3>${esc(n.title)}</h3>` +
-    (n.why ? `<p><b>Why it matters:</b> ${esc(n.why)}</p>` : n.summary ? `<p>${esc(n.summary)}</p>` : '') +
-    (n.tickers && n.tickers.length ? `<div class="chips">${n.tickers.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : '');
+  const mood = n.mood === 'good' ? '<span class="mood-pill good">▲ Good news</span>' : n.mood === 'bad' ? '<span class="mood-pill bad">▼ Bad news</span>' : '';
+  d.innerHTML = `<span class="news-tag">${esc(n.tag || 'Market')}</span>${mood}<span class="news-src">${esc(n.source)}${n.at ? ' · ' + ago(n.at) : ''}</span><h3>${esc(n.title)}</h3>` +
+    (n.why ? `<p><b>Why it matters:</b> ${esc(n.why)}</p>` : n.summary ? `<p>${esc(n.summary)}</p>` : '');
   return d;
 }
 function renderNews(initial) {
@@ -392,6 +427,26 @@ function renderNews(initial) {
     const el = newsEl(NEWS[(newsIdx + 3) % NEWS.length]); el.classList.add('enter'); list.appendChild(el);
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('enter')));
   }, 800);
+}
+
+/* ---------- economy snapshot ---------- */
+// Which way is good news for each figure (yields are neither, so they stay gray).
+const GOOD_WHEN = { y10: 0, cpi: -1, unemp: -1, jobs: 1, pay: 1 };
+const monthName = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+function econVal(i, v) { return i.unit === '$' ? '$' + fmt(v) : i.unit === 'M' ? fmt(v, 1) + 'M' : fmt(v, 2) + '%'; }
+async function economy() {
+  try {
+    const j = await getJSON('/api/economy');
+    if (!j.items || !j.items.length) return;
+    $('econList').innerHTML = j.items.map(i => {
+      const d = i.prev == null ? null : i.value - i.prev;
+      const good = GOOD_WHEN[i.id] || 0, c = d == null || Math.abs(d) < 1e-9 ? 'flat' : !good ? 'flat' : (d * good > 0 ? 'up' : 'down');
+      const chg = d == null ? '' : `${arrow(d)} ${i.unit === '$' ? '$' + fmt(Math.abs(d)) : i.unit === 'M' ? Math.round(Math.abs(d) * 1000) + 'K' : fmt(Math.abs(d), 2) + (i.id === 'y10' ? ' pts' : ' pts')}`;
+      const when = i.daily ? 'vs. prior day' : monthName(i.date);
+      return `<div class="econ-row"><div class="k">${esc(i.label)}<small>${esc(i.note)}</small></div>` +
+        `<div><div class="v num">${econVal(i, i.value)}</div><span class="c num ${c}">${chg} <span class="when">${when}</span></span></div></div>`;
+    }).join('');
+  } catch (e) { if (!$('econList').querySelector('.econ-row')) $('econList').innerHTML = '<div class="note">Economic data is unavailable right now.</div>'; }
 }
 
 /* ---------- leaderboard ---------- */
@@ -452,8 +507,8 @@ status(); setInterval(status, 60000);
 shuffleTickers(); setInterval(shuffleTickers, 180000);
 renderIndices();
 quotes(); setInterval(quotes, 20000);
-bars(); setInterval(bars, 5 * 60000);
-news(); setInterval(news, 10 * 60000); setInterval(() => renderNews(false), 12000);
+news(); setInterval(news, 10 * 60000); setInterval(() => renderNews(false), 10000);
+economy(); setInterval(economy, 60 * 60000);
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(board); setInterval(board, 30000);
 setTimeout(() => location.reload(), 6 * 3600000);   // pick up any updates to this page
 </script>
