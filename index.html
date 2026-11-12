@@ -196,6 +196,8 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .terms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .terms button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 10px;background:var(--card);border:2px solid var(--line-2);border-radius:6px}
 .terms button[aria-pressed="true"]{background:#2a2414;border-color:var(--cd)}
+.pickabout{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:14px 18px;border-left:3px solid var(--red);background:var(--card);border-radius:4px;color:var(--soft);font-size:17px;line-height:1.45}
+.pickabout .pickcat{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600}
 .bondnote{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:6px;color:var(--soft)}
 .modebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .modebar .pill{height:46px;padding:0 22px;font-size:17px}
@@ -2068,6 +2070,7 @@ function vTrade(){
         <label for="search" class="label">${({stock:'Stock',etf:'ETF',bond:'Bond fund',crypto:'Crypto fund'})[tr.type]}</label>
         <input id="search" type="text" autocomplete="off" placeholder="${tr.type==='stock'?'Search a company or ticker':'Search a fund or ticker'}" value="${esc(tr.q)}">
         <div class="frow" id="chips">${chipsHtml()}</div>
+        ${ABOUT[sym] && ABOUT[sym][1] ? `<div class="pickabout"><span class="num" style="color:var(--white);font-weight:600">${sym}</span>${ABOUT[sym][0] ? `<span class="pickcat">${esc(ABOUT[sym][0])}</span>` : ''}<span>${esc(ABOUT[sym][1])}</span></div>` : ''}
       </div>
       <div class="quote"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:38px;font-weight:500;color:var(--white);display:inline-flex;align-items:center;gap:12px">${tico(sym)}${sym}</span><span style="color:var(--dim);font-size:17px">${m[0]}</span><button type="button" class="chip" data-act="chartsym:${sym}" style="align-self:flex-start;min-height:38px;margin-top:6px">See chart</button></span>
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
