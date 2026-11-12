@@ -2336,10 +2336,21 @@ function chipsHtml(){
   if (LIVE.on && q && (tr.type==='stock' || tr.type==='etf')){
     liveSearch(tr.q, ()=>{ const ch = document.getElementById('chips'); if (ch) ch.innerHTML = chipsHtml(); });
     liveHits(tr.q, tr.type).forEach(h=>{ if (!list.includes(h.s) && list.length<16 && (!MARKET[h.s] || MARKET[h.s][1]===tr.type)) list.push(h.s); });
+  }
+  // Typing SPY on the Stocks tab (or AAPL on the ETFs tab) still finds it, with a tag saying which kind it is.
+  const other = tr.type==='stock' ? 'etf' : tr.type==='etf' ? 'stock' : null, cross = [];
+  if (other && q){
+    const add = s=>{ if (cross.length<4 && !list.includes(s) && !cross.includes(s) && s.toLowerCase().startsWith(q) && (!MARKET[s] || MARKET[s][1]===other)) cross.push(s); };
+    Object.keys(MARKET).filter(s=>MARKET[s][1]===other).sort((a,b)=>(b.toLowerCase()===q)-(a.toLowerCase()===q) || a.length-b.length).forEach(add);
+    if (LIVE.on) liveHits(tr.q, other).forEach(h=>add(h.s));
+  }
+  const crossHtml = cross.map(s=>`<button type="button" class="chip num" aria-pressed="false" data-act="pick:${s}" title="${other==='etf'?'This is an ETF. Picking it opens the ETFs tab.':'This is a stock. Picking it opens the Stocks tab.'}">${s} <span style="font-family:var(--body);font-size:11px;letter-spacing:.08em;color:#9a86c9">${other==='etf'?'ETF':'STOCK'}</span></button>`).join('');
+  if (LIVE.on && q && (tr.type==='stock' || tr.type==='etf')){
+    if (!list.length && crossHtml) return crossHtml;
     if (!list.length) return `<span class="empty">${LIVE.searching[tr.q.trim()] || !LIVE.hits[tr.q.trim()] ? 'Searching…' : 'No U.S. '+(tr.type==='etf'?'ETF':'stock')+' matches that.'}</span>`;
   }
-  if (!list.length) return `<span class="empty">No match in the demo list. The real app will search every U.S. ticker.</span>`;
-  return list.map(s=>`<button type="button" class="chip num" aria-pressed="${tr.pick[tr.type]===s}" data-act="pick:${s}">${s}</button>`).join('');
+  if (!list.length && !crossHtml) return `<span class="empty">No match in the demo list. The real app will search every U.S. ticker.</span>`;
+  return list.map(s=>`<button type="button" class="chip num" aria-pressed="${tr.pick[tr.type]===s}" data-act="pick:${s}">${s}</button>`).join('') + crossHtml;
 }
 
 /* ---------- drawer (details on standings) ---------- */
@@ -2577,7 +2588,10 @@ function act(a, el){
       change(body, el, ()=>{ tr.done = {title:(ot==='stop' && !isUp(side) ? 'Stop loss' : ADV_DONE[ot])+' placed', sub:say+' '+tifText(tr.tif)+' Find it under Open orders.'}; tr.advKey = ''; });
       return;
     }
-    case 'pick': ensureSym(v); tr.pick[tr.type]=v; break;
+    case 'pick': ensureSym(v);
+      // a stock picked from the ETFs tab (or an ETF from the Stocks tab) moves to its own tab
+      if (MARKET[v] && MARKET[v][1]!==tr.type && (MARKET[v][1]==='stock' || MARKET[v][1]==='etf')){ tr.type = MARKET[v][1]; tr.q = ''; tr.n = 10; tr.done = null; tr.advKey = ''; }
+      tr.pick[tr.type]=v; break;
     case 'side': tr.side=v; if (v==='short') tr.freq='once'; break;
     case 'freq': tr.freq=v; break;
     case 'amt': tr.amt = Math.max(100, tr.amt + (v==='+'?100:-100)); break;
