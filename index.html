@@ -1103,7 +1103,8 @@ function sampleSeriesFor(sym){
 }
 const liveBar = (b,p) => ({...b, close:p, high:Math.max(b.high,p), low:Math.min(b.low,p)});
 // Chart time ranges. Short ones count trading days; 5Y and 10Y count calendar years back from the last bar.
-const TF_LIST = ['1D','1W','1M','3M','6M','1Y','5Y','10Y','Max'], TF_DAYS = {'1M':21,'3M':63,'6M':126,'1Y':252}, TF_YRS = {'5Y':5,'10Y':10};
+// YTD starts from the last close of the prior year, the standard way year-to-date returns are measured.
+const TF_LIST = ['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'], TF_DAYS = {'1M':21,'3M':63,'6M':126,'1Y':252}, TF_YRS = {'5Y':5,'10Y':10};
 const INTRA = {'1D':'1d','1W':'1w'}, isIntra = tf => !!INTRA[tf];
 // Intraday bars are plotted on Central wall-clock time (the chart library shows times as UTC, so we shift them).
 const CT_FMT = new Intl.DateTimeFormat('en-US', {timeZone:'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
@@ -1136,13 +1137,14 @@ function intraFor(sym, tf){
   const v = LIVE.intra[sym+'|'+tf]; return v && v.bars.length ? v : null;
 }
 function tfStart(d, tf){
+  if (tf==='YTD'){ const jan1 = d[d.length-1].time.slice(0,4)+'-01-01', i = d.findIndex(b=>b.time>=jan1); return i<=0 ? 0 : i-1; }
   if (TF_DAYS[tf]) return Math.max(0, d.length-1-TF_DAYS[tf]);
   if (!TF_YRS[tf]) return 0;
   const t = new Date(d[d.length-1].time+'T00:00:00Z'); t.setUTCFullYear(t.getUTCFullYear()-TF_YRS[tf]);
   const cut = t.toISOString().slice(0,10), i = d.findIndex(b=>b.time>=cut); return i<0 ? 0 : i;
 }
 // Daily candles up to a year, weekly for 5Y and 10Y, monthly for Max when there are 15+ years of history.
-const tfUnit = (d, tf) => TF_DAYS[tf] ? '' : (tf==='Max' && d.length>252*15) ? 'month' : 'week';
+const tfUnit = (d, tf) => (TF_DAYS[tf] || tf==='YTD') ? '' : (tf==='Max' && d.length>252*15) ? 'month' : 'week';
 function monthly(d){
   const out=[]; let cur=null, key=null;
   d.forEach(b=>{ const m = b.time.slice(0,7);
@@ -1216,8 +1218,8 @@ function vCharts(){
   const ib = intra ? intraFor(sym, c.tf) : null;
   const rng = c.tf==='1D' ? chg : c.tf==='1W' ? (ib ? (price/ib.bars[0].open-1)*100 : 0) : (price/d0.close-1)*100;
   const since = 'since '+d0.time.slice(0,4);
-  const tfLabel = {'1D':'latest trading day','1W':'past 5 trading days','1M':'past month','3M':'past 3 months','6M':'past 6 months','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
-  const rngText = c.tf==='Max' ? since : c.tf==='1D' ? 'today' : 'over '+c.tf;
+  const tfLabel = {'1D':'latest trading day','1W':'past 5 trading days','1M':'past month','3M':'past 3 months','6M':'past 6 months','YTD':'year to date','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
+  const rngText = c.tf==='Max' ? since : c.tf==='1D' ? 'today' : c.tf==='YTD' ? 'this year' : 'over '+c.tf;
   const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
   const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
   const wl = watchList(), owned = P.pos.map(p=>p.sym);
@@ -1283,7 +1285,7 @@ function vCharts(){
       <div class="spread" style="flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
           <div class="tf" role="group" aria-label="Time range">${TF_LIST.map(t=>`<button type="button" aria-pressed="${c.tf===t}" data-act="tf:${t}">${t}</button>`).join('')}</div>
-          <span class="num rng ${cls(rng)}" title="Change over the ${tfLabel}">${pct(rng)} ${rngText}</span>
+          <span class="num rng ${cls(rng)}" title="${c.tf==='YTD' ? 'Change so far this year' : 'Change over the '+tfLabel}">${pct(rng)} ${rngText}</span>
         </div>
         <div class="seg ctype" role="group" aria-label="Chart type">${[['line','Line'],['candle','Candle'],['bar','Bar']].map(([k,l])=>`<button type="button" aria-pressed="${(c.type||'line')===k && !c.cmp}" data-act="ctype:${k}" ${c.cmp?'disabled title="vs S&amp;P 500 always shows lines"':''}>${l}</button>`).join('')}</div>
         <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
