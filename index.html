@@ -304,6 +304,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .tf button{min-height:42px;min-width:48px;padding:0 12px;border:1px solid var(--line-2);border-radius:6px;font-family:var(--mono);font-size:14px;color:var(--soft)}
 .tf button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:var(--white)}
 .chip:disabled{opacity:.4;cursor:not-allowed}
+.cext{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:15px}.cext:empty{display:none}.cext .tag{color:var(--muted);font-size:11px}
 .ohlc{display:flex;gap:16px;flex-wrap:wrap;min-height:22px;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .momread{margin:0;min-height:48px;font-size:16px;line-height:1.5;color:var(--soft)}
 .ntally{display:flex;flex-direction:column;gap:8px;font-size:15px}
@@ -1116,8 +1117,8 @@ function loadIntra(sym, tf){
   const k = sym+'|'+tf, cur = LIVE.intra[k];
   if (LIVE.loading[k] || (cur && Date.now()-cur.at < 120000)) return;
   LIVE.loading[k] = true;
-  api('/api/bars?ticker='+encodeURIComponent(sym)+'&range='+INTRA[tf])
-    .then(d=>{ LIVE.intra[k] = {at:Date.now(), step:d.step, bars:(d.bars||[]).map(b=>({time:ctSec(b[0]), open:b[1], high:b[2], low:b[3], close:b[4], vol:b[5]}))}; })
+  api('/api/bars?ticker='+encodeURIComponent(sym)+'&range='+INTRA[tf]+'&ext=1')
+    .then(d=>{ LIVE.intra[k] = {at:Date.now(), step:d.step, bars:(d.bars||[]).map(b=>({time:ctSec(b[0]), open:b[1], high:b[2], low:b[3], close:b[4], vol:b[5], ses:b[6]===undefined ? 1 : b[6]}))}; })
     .catch(()=>{ LIVE.intra[k] = {at:Date.now(), step:5, bars:[]}; })
     .finally(()=>{ LIVE.loading[k] = false; if (route()==='charts' && UI.chart.tf===tf) render(); });
 }
@@ -1129,13 +1130,48 @@ function sampleIntra(sym, tf){
   days.forEach((b, j)=>{ const base = Date.UTC(+b.time.slice(0,4), +b.time.slice(5,7)-1, +b.time.slice(8,10), 8, 30)/1000;
     const end = j===days.length-1 ? prices[sym] : b.close; let px = b.open, w = 0;
     for (let i=0;i<n;i++){ const tgt = b.open+(end-b.open)*(i+1)/n; w = w*0.85 + rnd()*Math.abs(end)*0.004; const c = tgt + w*(i<n-1?1:0);
-      out.push({time:base+i*step*60, open:px, high:Math.max(px,c)*(1+Math.abs(rnd())*0.002), low:Math.min(px,c)*(1-Math.abs(rnd())*0.002), close:c, vol:Math.round(b.vol/n*(0.6+Math.abs(rnd())))}); px = c; } });
+      out.push({time:base+i*step*60, open:px, high:Math.max(px,c)*(1+Math.abs(rnd())*0.002), low:Math.min(px,c)*(1-Math.abs(rnd())*0.002), close:c, vol:Math.round(b.vol/n*(0.6+Math.abs(rnd()))), ses:1}); px = c; } });
   return {step, bars:out};
 }
+// The bars a 1D or 1W chart shows: the latest 1 or 5 trading days, with or without pre-market and after-hours.
+// ses on each bar: 0 pre-market (3:00 to 8:30 AM Central), 1 regular (8:30 AM to 3:00 PM), 2 after-hours (3:00 to 7:00 PM).
+// Extended hours are on the chart only. Orders still fill only at regular-session prices.
+const ctDay = sec => Math.floor(sec/86400);
 function intraFor(sym, tf){
-  if (!LIVE.on) return sampleIntra(sym, tf);
-  const v = LIVE.intra[sym+'|'+tf]; return v && v.bars.length ? v : null;
+  const v = LIVE.on ? LIVE.intra[sym+'|'+tf] : sampleIntra(sym, tf);
+  if (!v || !v.bars.length) return null;
+  const all = UI.chart.ext!==false ? v.bars : v.bars.filter(b=>b.ses===1);
+  const days = [...new Set(all.map(b=>ctDay(b.time)))].slice(tf==='1W' ? -5 : -1);
+  const bars = all.filter(b=>days.includes(ctDay(b.time)));
+  return bars.length ? {step:v.step, bars} : null;
 }
+const isExt = b => b.ses===0 || b.ses===2;
+const bandPt = b => ({time:b.time, value:isExt(b) ? 1 : 0, color:'rgba(138,151,168,.10)'});
+// Which session's bar the live price belongs on right now: regular bars while the market is open,
+// today's pre-market or after-hours bar during extended hours. Otherwise the bar keeps its own prices.
+function liveFits(b){
+  if (!LIVE.on || b.ses===undefined) return true;
+  const st = LIVE.status && LIVE.status.market;
+  if (!st) return true;
+  if (st==='open') return b.ses===1;
+  return st==='extended-hours' && isExt(b) && ctDay(b.time)===ctDay(ctSec(Date.now()+(LIVE.skew||0)));
+}
+// The latest regular-session close, for after-hours: the last regular 5-minute bar, or Massive's day bar.
+function regClose(sym){
+  const v = LIVE.intra[sym+'|1D'];
+  if (v) for (let i=v.bars.length-1; i>=0; i--) if (v.bars[i].ses===1) return v.bars[i].close;
+  const q = LIVE.quotes[sym]; return q && q.day && q.day.c > 0 ? q.day.c : null;
+}
+// Before the open and after the close, the big price stays at the regular close (like most finance sites) and the
+// pre-market or after-hours price shows under it. Returns null during regular hours or when the market is closed.
+function extQuote(sym){
+  const st = LIVE.on && LIVE.status; if (!st || st.market!=='extended-hours') return null;
+  const pre = !!st.early && !st.after, close = pre ? prev[sym] : regClose(sym), p = prices[sym];
+  if (!(close > 0) || !(p > 0)) return null;
+  return {pre, close, p, ch:(p/close-1)*100, chg:pre ? null : (close/prev[sym]-1)*100};
+}
+// The price for the big number and the latest daily or regular-session bar.
+const shownPx = sym => { const x = extQuote(sym); return x ? x.close : prices[sym]; };
 function tfStart(d, tf){
   if (tf==='YTD'){ const jan1 = d[d.length-1].time.slice(0,4)+'-01-01', i = d.findIndex(b=>b.time>=jan1); return i<=0 ? 0 : i-1; }
   if (TF_DAYS[tf]) return Math.max(0, d.length-1-TF_DAYS[tf]);
@@ -1202,11 +1238,23 @@ function verdict(l, price){
   return {ch, good:t[0], text:t[1]};
 }
 
+// The change line next to the big price, and the pre-market or after-hours line under it.
+function cChgHtml(sym){
+  const x = extQuote(sym);
+  if (x && x.pre) return `<span id="cChg" class="num" style="font-size:19px;color:var(--dim)">at yesterday’s close</span>`;
+  const chg = x ? x.chg : (prices[sym]/prev[sym]-1)*100;
+  return `<span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today${x ? ' at the close' : ''}</span>`;
+}
+function cExtHtml(sym){
+  const x = extQuote(sym); if (!x) return '';
+  return `<span class="tag">${x.pre ? 'PRE-MARKET' : 'AFTER HOURS'}</span><span class="num" style="color:var(--white)">${money(x.p)}</span><span class="num ${cls(x.ch)}">${pct(x.ch)}</span><span style="color:var(--dim)">${x.pre ? 'vs. yesterday’s close' : 'since the close'}. Watch only: trades happen 8:30 AM to 3:00 PM.</span>`;
+}
 function vCharts(){
   const c = UI.chart, sym = c.sym, m = MARKET[sym], price = prices[sym], chg = (price/prev[sym]-1)*100;
   if (LIVE.on){
     loadInfo(sym); loadBars(sym); if (c.cmp) loadBars('SPY'); if (c.ev) loadEvents(sym);
     if (isIntra(c.tf)){ loadIntra(sym, c.tf); if (c.cmp) loadIntra('SPY', c.tf); }
+    if (LIVE.status && LIVE.status.market==='extended-hours') loadIntra(sym, '1D');   // for the regular close after hours
     const missing = !LIVE.bars[sym] || (c.cmp && !LIVE.bars.SPY);
     if (missing || !LIVE.bars[sym].length) return `<div class="wrap"><div class="side-card" style="margin-block:48px;align-items:flex-start">
       <span class="disp" style="font-size:28px;color:var(--white)">${tico(sym)} ${sym}</span>
@@ -1216,16 +1264,19 @@ function vCharts(){
   const S = seriesFor(sym), d = S.daily, N = d.length;
   const d0 = d[tfStart(d, c.tf)], intra = isIntra(c.tf);
   const ib = intra ? intraFor(sym, c.tf) : null;
-  const rng = c.tf==='1D' ? chg : c.tf==='1W' ? (ib ? (price/ib.bars[0].open-1)*100 : 0) : (price/d0.close-1)*100;
+  const ib0 = ib && (ib.bars.find(b=>b.ses===1) || ib.bars[0]), xq = extQuote(sym), xOn = xq && c.ext!==false;
+  // 1D before the open with extended hours off shows yesterday's session, so its change is open to close.
+  const r1d = !xq || xOn ? chg : !xq.pre ? xq.chg : ib ? (ib.bars[ib.bars.length-1].close/ib.bars[0].open-1)*100 : 0;
+  const rng = c.tf==='1D' ? r1d : c.tf==='1W' ? (ib0 ? (price/ib0.open-1)*100 : 0) : (price/d0.close-1)*100;
   const since = 'since '+d0.time.slice(0,4);
   const tfLabel = {'1D':'latest trading day','1W':'past 5 trading days','1M':'past month','3M':'past 3 months','6M':'past 6 months','YTD':'year to date','1Y':'past year','5Y':'past 5 years','10Y':'past 10 years','Max':'full history ('+since+')'}[c.tf];
-  const rngText = c.tf==='Max' ? since : c.tf==='1D' ? 'today' : c.tf==='YTD' ? 'this year' : 'over '+c.tf;
+  const rngText = c.tf==='Max' ? since : c.tf==='1D' ? (xOn ? 'incl. '+(xq.pre ? 'pre-market' : 'after hours') : xq && xq.pre ? 'yesterday' : 'today') : c.tf==='YTD' ? 'this year' : 'over '+c.tf;
   const yr = d.slice(-252), hi52 = Math.max(price,...yr.map(b=>b.high)), lo52 = Math.min(price,...yr.map(b=>b.low));
   const info = ABOUT[sym] || ['',''], canShort = m[1]!=='bond';
   const wl = watchList(), owned = P.pos.map(p=>p.sym);
   const mine = P.pos.filter(p=>p.sym===sym);
   const logs = (P.log||[]).filter(l=>l.sym===sym).slice().sort((a,b)=> logDate(a)<logDate(b)?1:-1);
-  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${((k==='ma'||k==='mom')&&c.cmp) || (intra && k!=='cmp') ?'disabled':''}>${l}</button>`;
+  const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${((k==='ma'||k==='mom')&&c.cmp) || (intra && k!=='cmp' && k!=='ext') ?'disabled':''}>${l}</button>`;
   const unit = tfUnit(d, c.tf), wk = !!unit, ab = unit==='month' ? 'mo' : 'wk';
   const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
   const keys = [
@@ -1274,9 +1325,10 @@ function vCharts(){
           <div class="who">${tico(sym)}<span class="num" style="font-size:40px;font-weight:500;color:var(--white)">${sym}</span><span style="font-size:18px;color:var(--dim)">${esc(m[0])}</span>
             ${mine.map(p=>`<span class="tag" style="color:${p.side==='short'?'var(--warn)':'var(--link)'}">${p.side==='short'?'YOU’RE SHORT':'YOU OWN'}</span>`).join('')}</div>
           <div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
-            <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(price)}</span>
-            <span id="cChg" class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span>
+            <span class="num" id="cPrice" style="font-size:clamp(36px,5vw,52px);line-height:1;color:var(--white)">${money(shownPx(sym))}</span>
+            ${cChgHtml(sym)}
           </div>
+          <div id="cExt" class="cext">${cExtHtml(sym)}</div>
         </div>
         ${canTrade() ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="cta" data-act="go:buy:${sym}">Buy ${sym}</button>${canShort?`<button type="button" class="ghost" data-act="go:short:${sym}">Short</button>`:''}</div>` : ''}
       </div>
@@ -1288,8 +1340,8 @@ function vCharts(){
           <span class="num rng ${cls(rng)}" title="${c.tf==='YTD' ? 'Change so far this year' : 'Change over the '+tfLabel}">${pct(rng)} ${rngText}</span>
         </div>
         <div class="seg ctype" role="group" aria-label="Chart type">${[['line','Line'],['candle','Candle'],['bar','Bar']].map(([k,l])=>`<button type="button" aria-pressed="${(c.type||'line')===k && !c.cmp}" data-act="ctype:${k}" ${c.cmp?'disabled title="vs S&amp;P 500 always shows lines"':''}>${l}</button>`).join('')}</div>
-        <div class="frow" role="group" aria-label="Chart layers">${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
-        ${intra ? `<p style="margin:0;font-size:14px;color:var(--dim)">${c.tf==='1D'?'5-minute':'15-minute'} candles, regular market hours in Central time. Averages, trades, events, and momentum are on 1M and longer.</p>` : ''}
+        <div class="frow" role="group" aria-label="Chart layers">${intra ? tog('ext','Extended hours') : ''}${tog('ma','Averages')}${tog('cmp','vs S&amp;P 500')}${tog('marks','My trades')}${tog('ev','Events')}${tog('mom','Momentum')}</div>
+        ${intra ? `<p style="margin:0;font-size:14px;color:var(--dim)">${c.tf==='1D'?'5-minute':'15-minute'} candles in Central time${c.ext!==false ? '. The shaded parts are pre-market (3:00 to 8:30 AM) and after-hours (3:00 to 7:00 PM) trading. You can watch them, but trades only happen during regular market hours' : ', regular market hours'}. Averages, trades, events, and momentum are on 1M and longer.</p>` : ''}
       </div>
       <div class="spread" style="flex-wrap:nowrap;gap:12px;align-items:flex-start">
         <div class="ohlc" id="ohlc"></div>
@@ -1612,21 +1664,28 @@ function mountChart(){
   const c = UI.chart, sym = c.sym, intra = isIntra(c.tf);
   if (LIVE.on && (!liveSeries(sym) || (c.cmp && !liveSeries('SPY')))) return;
   if (intra && (!intraFor(sym, c.tf) || (c.cmp && !intraFor('SPY', c.tf)))) return;
-  const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], prices[sym]);
+  const daily = seriesFor(sym).daily.slice(); const L = daily.length-1; daily[L] = liveBar(daily[L], shownPx(sym));
   const unit = intra ? '' : tfUnit(daily, c.tf), wk = !!unit, agg = unit==='month' ? monthly : weekly;
   const iSer = intra ? intraFor(sym, c.tf) : null;
   const bars = intra ? iSer.bars.map(b=>({...b})) : wk ? agg(daily) : daily;
-  if (intra){ const I = bars.length-1; bars[I] = liveBar(bars[I], prices[sym]); }
+  if (intra){ const I = bars.length-1; if (liveFits(bars[I])) bars[I] = liveBar(bars[I], prices[sym]); }
   const fromIdx = intra ? 0 : (() => { const i = tfStart(daily, c.tf); if (!wk) return i; const t = makeToT(bars.map(b=>b.time))(daily[i].time); return Math.max(0, bars.findIndex(b=>b.time===t)); })();
   const chart = LightweightCharts.createChart(el, {autoSize:true,
     layout:{background:{type:'solid',color:'#141e29'}, textColor:'#aab4c3', fontFamily:"'IBM Plex Mono', ui-monospace, monospace", fontSize:12, attributionLogo:true},
     grid:{vertLines:{color:'#1b2633'}, horzLines:{color:'#1b2633'}},
     rightPriceScale:{borderColor:'#2a3847'}, timeScale:{borderColor:'#2a3847', rightOffset:3, timeVisible:intra, secondsVisible:false}, crosshair:{mode:0}});
   const out = {chart, sym, bars, cmp:!!c.cmp, intra, step:intra ? iSer.step : 0};
+  // Pre-market and after-hours: a light shaded band behind those bars (added first so it sits behind the price).
+  if (intra && bars.some(isExt)){
+    out.band = chart.addHistogramSeries({priceScaleId:'band', lastValueVisible:false, priceLineVisible:false, base:0, priceFormat:{type:'volume'}});
+    out.band.priceScale().applyOptions({scaleMargins:{top:0, bottom:0}});
+    out.band.setData(bars.map(bandPt));
+  }
   const marks = intra ? [] : markersFor(sym, bars.map(b=>b.time), {trades:c.marks, events:c.ev, wk});
   let spyBars = null;
   if (c.cmp){
-    const sd = intra ? intraFor('SPY', c.tf).bars.slice() : seriesFor('SPY').daily.slice(); sd[sd.length-1] = liveBar(sd[sd.length-1], prices.SPY);
+    const sd = intra ? intraFor('SPY', c.tf).bars.slice() : seriesFor('SPY').daily.slice(), sL = sd.length-1;
+    if (!intra) sd[sL] = liveBar(sd[sL], shownPx('SPY')); else if (liveFits(sd[sL])) sd[sL] = liveBar(sd[sL], prices.SPY);
     const sRaw = wk ? agg(sd) : sd, sTo = makeToT(sRaw.map(b=>b.time)), sBy = new Map(sRaw.map(b=>[b.time,b]));
     spyBars = bars.map(b=>({...sBy.get(sTo(b.time)), time:b.time}));   // line up the S&P with this stock's trading days
     out.b0 = bars[fromIdx].close; out.sb0 = spyBars[fromIdx].close;
@@ -1635,7 +1694,8 @@ function mountChart(){
     const spyS = chart.addLineSeries({color:'#8a97a8', lineWidth:2, lineStyle:2, priceFormat:fmt, priceLineVisible:false});
     spyS.setData(spyBars.map(b=>({time:b.time, value:(b.close/out.sb0-1)*100})));
     const me = chart.addLineSeries({color:'#ef5b70', lineWidth:3, priceFormat:fmt});
-    me.setData(bars.map(b=>({time:b.time, value:(b.close/out.b0-1)*100})));
+    out.pt = b => ({time:b.time, value:(b.close/out.b0-1)*100, ...(isExt(b) ? {color:'rgba(239,91,112,.5)'} : {})});
+    me.setData(bars.map(out.pt));
     if (marks.length) me.setMarkers(marks);
     out.main = me;
   } else {
@@ -1645,19 +1705,24 @@ function mountChart(){
     if (type==='line'){
       const base = c.tf==='1D' ? prev[sym] : bars[fromIdx].close, up = bars[bars.length-1].close >= base;
       const col = up ? '#45c08a' : '#f0606f';
-      candle = chart.addAreaSeries({lineColor:col, lineWidth:2, topColor:up?'rgba(69,192,138,.28)':'rgba(240,96,111,.28)', bottomColor:'rgba(20,30,41,0)', priceLineVisible:true});
-      candle.setData(bars.map(b=>({time:b.time, value:b.close})));
+      const rgb = up ? '69,192,138' : '240,96,111';
+      candle = chart.addAreaSeries({lineColor:col, lineWidth:2, topColor:'rgba('+rgb+',.28)', bottomColor:'rgba(20,30,41,0)', priceLineVisible:true});
+      out.pt = b => isExt(b) ? {time:b.time, value:b.close, lineColor:'rgba('+rgb+',.5)', topColor:'rgba('+rgb+',.08)', bottomColor:'rgba(20,30,41,0)'} : {time:b.time, value:b.close};
+      candle.setData(bars.map(out.pt));
     } else if (type==='bar'){
       candle = chart.addBarSeries({upColor:'#45c08a', downColor:'#f0606f', thinBars:false, openVisible:true});
-      candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+      out.pt = b => ({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close, ...(isExt(b) ? {color:b.close>=b.open?'rgba(69,192,138,.5)':'rgba(240,96,111,.5)'} : {})});
+      candle.setData(bars.map(out.pt));
     } else {
       candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f'});
-      candle.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
+      out.pt = b => { const p = {time:b.time, open:b.open, high:b.high, low:b.low, close:b.close};
+        if (isExt(b)){ const k = b.close>=b.open ? 'rgba(69,192,138,.5)' : 'rgba(240,96,111,.5)'; p.color = k; p.wickColor = k; } return p; };
+      candle.setData(bars.map(out.pt));
     }
     candle.priceScale().applyOptions({scaleMargins:{top:0.08, bottom:0.24}});
     const volS = chart.addHistogramSeries({priceFormat:{type:'volume'}, priceScaleId:'', lastValueVisible:false, priceLineVisible:false});
     volS.priceScale().applyOptions({scaleMargins:{top:0.8, bottom:0}});
-    volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,.32)':'rgba(240,96,111,.32)'})));
+    volS.setData(bars.map(b=>({time:b.time, value:b.vol, color:b.close>=b.open?'rgba(69,192,138,'+(isExt(b)?'.16)':'.32)'):'rgba(240,96,111,'+(isExt(b)?'.16)':'.32)')})));
     if (c.ma && !intra){
       const opt = col => ({color:col, lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
       chart.addLineSeries(opt('#c9a34e')).setData(sma(bars, wk?10:50));
@@ -1672,7 +1737,8 @@ function mountChart(){
   if (c.ev && !intra){ const toT = makeToT(bars.map(b=>b.time)); seriesFor(sym).events.forEach(e=>{ if (wk && e.type==='D' && e.many) return; const t = toT(e.t || TDATES[e.i]); (evAt[t] = evAt[t] || []).push(e); }); }
   out.showAt = (i) => {
     if (!leg) return; i = Math.max(0, Math.min(bars.length-1, i)); const b = bars[i];
-    const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('');
+    const evs = (evAt[b.time]||[]).map(e=>`<span style="color:${EV_COLOR[e.type]}">${e.note}</span>`).join('')
+      + (isExt(b) ? `<span style="color:var(--dim)">${b.ses===0 ? 'Pre-market' : 'After hours'} · watch only</span>` : '');
     if (out.cmp){ const sb = spyBars[i];
       leg.innerHTML = `<span>${timeLabel(b.time)}${wk?' '+unit:''}</span><span style="color:#ef5b70">${sym} ${sgnp((b.close/out.b0-1)*100)}</span><span>S&amp;P 500 ${sgnp((sb.close/out.sb0-1)*100)}</span>${evs}`; }
     else leg.innerHTML = `<span>${timeLabel(b.time)}${wk?' '+unit:''}</span><span>O ${b.open.toFixed(2)}</span><span>H ${b.high.toFixed(2)}</span><span>L ${b.low.toFixed(2)}</span><span class="${cls(b.close-b.open)}">C ${b.close.toFixed(2)}</span><span>Vol ${fmtVol(b.vol)}</span>${evs}`;
@@ -1728,28 +1794,34 @@ function mountMomentum(out, mainEl){
 }
 function tickChart(){
   if (!CH) return;
-  const sym = CH.sym, p = prices[sym];
-  if (CH.intra && !CH.cmp && LIVE.on && LIVE.status && LIVE.status.market==='open'){
-    const st = CH.step*60, slot = Math.floor(ctSec(Date.now())/st)*st, last = CH.bars[CH.bars.length-1];
-    if (slot > last.time && slot - last.time < 8*3600) CH.bars.push({time:slot, open:last.close, high:last.close, low:last.close, close:last.close, vol:0});
+  const sym = CH.sym, p = prices[sym], st = LIVE.status && LIVE.status.market;
+  // During regular hours (and extended hours when they're shown), start a new candle when its time slot begins.
+  const extOn = UI.chart.ext!==false && st==='extended-hours';
+  if (CH.intra && !CH.cmp && LIVE.on && (st==='open' || extOn)){
+    const st2 = CH.step*60, now = ctSec(Date.now()+(LIVE.skew||0)), slot = Math.floor(now/st2)*st2, last = CH.bars[CH.bars.length-1];
+    const ses = st==='open' ? 1 : (now % 86400) < 8.5*3600 ? 0 : 2;
+    if (slot > last.time && slot - last.time < 8*3600 && (st==='open' || ctDay(slot)===ctDay(last.time)))
+      CH.bars.push({time:slot, open:last.close, high:last.close, low:last.close, close:last.close, vol:0, ses});
   }
   const i = CH.bars.length-1;
-  CH.bars[i] = liveBar(CH.bars[i], p); const b = CH.bars[i];
-  if (CH.cmp) CH.main.update({time:b.time, value:(p/CH.b0-1)*100});
-  else if (CH.type==='line') CH.main.update({time:b.time, value:b.close});
-  else CH.main.update({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close});
-  if (!CH.hover) CH.showAt(i);
-  if (CH.momTick) CH.momTick();
-  const chg = (p/prev[sym]-1)*100, pe = document.getElementById('cPrice'), ce = document.getElementById('cChg');
-  if (pe) pe.textContent = money(p);
-  if (ce){ ce.textContent = pct(chg)+' today'; ce.className = 'num '+cls(chg); }
+  if (!CH.intra || liveFits(CH.bars[i])){
+    CH.bars[i] = liveBar(CH.bars[i], CH.intra ? p : shownPx(sym)); const b = CH.bars[i];
+    if (CH.pt) CH.main.update(CH.pt(b));
+    if (CH.band) CH.band.update(bandPt(b));
+    if (!CH.hover) CH.showAt(i);
+    if (CH.momTick) CH.momTick();
+  }
+  const pe = document.getElementById('cPrice'), ce = document.getElementById('cChg'), xe = document.getElementById('cExt');
+  if (pe) pe.textContent = money(shownPx(sym));
+  if (ce) ce.outerHTML = cChgHtml(sym);
+  if (xe) xe.innerHTML = cExtHtml(sym);
   document.querySelectorAll('[data-px]').forEach(e=>{ e.textContent = prices[e.dataset.px].toFixed(2); });
   document.querySelectorAll('[data-pc]').forEach(e=>{ const s=e.dataset.pc, ch=(prices[s]/prev[s]-1)*100; e.textContent = pct(ch); e.className = 'num '+cls(ch); });
 }
 
 /* ---------- ui state ---------- */
 const UI = { tab:'students', school:null, ti:null, sec:null, drawer:null, sheet:null, modal:null, err:null, slips:null, preview:null, csv:'', adminTeacher:null, eodLog:null,
-  ratioYrs:'5Y', chart:{sym:'NVDA', tf:'6M', type:(()=>{ try{ const t = localStorage.getItem('d214chartType'); return ['line','candle','bar'].includes(t) ? t : 'line'; }catch(e){ return 'line'; } })(), ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price'}, wq:'', guide:false,
+  ratioYrs:'5Y', chart:{sym:'NVDA', tf:'6M', type:(()=>{ try{ const t = localStorage.getItem('d214chartType'); return ['line','candle','bar'].includes(t) ? t : 'line'; }catch(e){ return 'line'; } })(), ma:true, cmp:false, marks:true, ev:true, mom:false, ind:'rsi', view:'price', ext:(()=>{ try{ return localStorage.getItem('d214chartExt')!=='0'; }catch(e){ return true; } })()}, wq:'', guide:false,
   trade:{type:'stock', pick:{stock:'NVDA',etf:'VOO',bond:'BND',crypto:'GBTC'}, side:'buy', n:10, q:'', done:null, mmDir:'in', mmAmt:1000, freq:'once', amt:500,
     mode:'basic', aside:'buy', otype:'limit', lim:0, stp:0, trl:3, tif:'day', advKey:''} };
 
@@ -2634,7 +2706,7 @@ function act(a, el){
     case 'tf': UI.chart.tf = v; break;
     case 'cview': UI.chart.view = v; break;
     case 'ind': UI.chart.ind = v==='macd' ? 'macd' : 'rsi'; break;
-    case 'ctog': UI.chart[v] = !UI.chart[v]; break;
+    case 'ctog': UI.chart[v] = !UI.chart[v]; if (v==='ext'){ try{ localStorage.setItem('d214chartExt', UI.chart.ext?'1':'0'); }catch(e){} } break;
     case 'ryrs': UI.ratioYrs = v; break;
     case 'ctype': UI.chart.type = v; try{ localStorage.setItem('d214chartType', v); }catch(e){} break;
     case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;

@@ -2,7 +2,7 @@
 // early closes, and how Massive's live status is used as a backup.
 // No database or market data needed:  node scripts/test-hours.js
 import assert from 'node:assert/strict';
-import { calendarFrom, sessionOn, sessionFrom, marketAt, isRegular } from '../lib/market.js';
+import { calendarFrom, sessionOn, sessionFrom, marketAt, isRegular, sessionOfBar } from '../lib/market.js';
 
 let n = 0; const ok = (name, fn) => { fn(); n++; console.log('ok', name); };
 // A moment given as Central time (handles daylight saving time the same way Chicago does).
@@ -87,6 +87,25 @@ ok('no answer from Massive: the clock alone decides', () => {
 ok('empty or broken calendar still gives regular weekday hours', () => {
   const t = at('2026-11-27', '13:00');
   assert.equal(marketAt(t, sessionFrom(t, calendarFrom(null)), null), 'open');
+});
+
+ok('chart sessions: pre-market 3:00 to 8:30, regular to 3:00, after-hours to 7:00 Central', () => {
+  const ses = hm => sessionOfBar(at('2026-11-11', hm));
+  assert.equal(ses('02:55'), -1);
+  assert.equal(ses('03:00'), 0);
+  assert.equal(ses('08:25'), 0);
+  assert.equal(ses('08:30'), 1);
+  assert.equal(ses('14:55'), 1);
+  assert.equal(ses('15:00'), 2);
+  assert.equal(ses('18:55'), 2);
+  assert.equal(ses('19:00'), -1);
+});
+ok('chart sessions on an early close: after-hours starts at 12:00 Central and ends at 4:00', () => {
+  const ses = hm => sessionOfBar(at('2026-11-27', hm));
+  assert.equal(ses('11:55'), 1);
+  assert.equal(ses('12:00'), 2);
+  assert.equal(ses('15:55'), 2);
+  assert.equal(ses('16:00'), -1);
 });
 
 console.log(`\n${n} market-hours checks passed`);
