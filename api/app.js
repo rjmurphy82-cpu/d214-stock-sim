@@ -173,7 +173,7 @@ const ROUTES = {
     let s = st.students.find(x => x.id === id);
     const [acct] = await sql`select a.cash, a.mm_bal, a.mm_last, st.display, st.practice from accounts a join students st on st.id = a.student_id where a.student_id = ${id} and st.active`;
     if (!acct || (!s && !acct.practice)) throw new HttpError(404, 'Student not found.');
-    const pos = await sql`select p.sym, p.side, p.shares, p.basis, y.kind from positions p left join symbols y on y.sym = p.sym where p.student_id = ${id}`;
+    const pos = await sql`select p.sym, p.side, p.shares, p.basis, p.opened_at, y.kind from positions p left join symbols y on y.sym = p.sym where p.student_id = ${id}`;
     let extra = {};
     try { extra = await M.quotes(pos.map(p => p.sym).filter(sym => !st.quotes[sym])); } catch { /* fall back below */ }
     const qp = sym => (st.quotes[sym] || extra[sym] || {}).p;
@@ -190,14 +190,14 @@ const ROUTES = {
       const px = qp(p.sym) || last[p.sym] || p.basis;
       const v = p.side === 'long' ? p.shares * px : p.shares * (2 * p.basis - px);
       const g = (p.side === 'long' ? px / p.basis - 1 : 1 - px / p.basis) * 100;
-      return { s: p.sym, ty: p.side === 'short' ? 'Short' : TY[p.kind] || 'Stock', v, g, n: p.shares, b: p.basis, px };
+      return { s: p.sym, ty: p.side === 'short' ? 'Short' : TY[p.kind] || 'Stock', v, g, n: p.shares, b: p.basis, px, o: p.opened_at };
     }).sort((a, b) => b.v - a.v);
     if (acct.mm_bal > 0.005) holds.push({ s: 'Money mkt', ty: 'MM', v: acct.mm_bal, g: null });
     holds.push({ s: 'Cash', ty: 'Cash', v: acct.cash, g: null });
     holds.forEach(h => { h.w = h.v / s.value * 100; });
     const out = { id, name: s.name, value: s.value, ret: s.ret, holds, practice: !!s.practice };
-    out.trades = (await sql`select sym, act, shares, price, at, auto, basis, pnl from trades where student_id = ${id} order by at desc limit 100`)
-      .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, b: t.basis, pnl: t.pnl }));
+    out.trades = (await sql`select sym, act, shares, price, at, auto, basis, pnl, opened_at from trades where student_id = ${id} order by at desc limit 500`)
+      .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, b: t.basis, pnl: t.pnl, oa: t.opened_at }));
     if (full) out.activity = (await activity(sql, [id]))[id];
     return out;
   } },

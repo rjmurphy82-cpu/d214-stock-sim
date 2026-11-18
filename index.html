@@ -969,6 +969,11 @@ const BONDMETA = {
 const RATE_DEF = 'How much a bond fund’s price moves when interest rates change. When rates go up, bond prices go down, and when rates go down, bond prices go up. Funds with long-term bonds (like TLT) move the most. Short-term funds (like BIL) barely move.';
 const rateTip = label => `<span class="tip" tabindex="0">${label}<span class="tipbox" role="tooltip">${RATE_DEF}</span></span>`;
 const fmtSh = n => Number.isInteger(n) ? String(n) : n.toFixed(3);
+/* Date and time of a trade, always in Central time so every school sees the same clock. */
+const stamp = t => t ? new Date(t).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+const heldFor = (a,b) => { if (!a) return ''; const ms = new Date(b||Date.now())-new Date(a), d = Math.floor(ms/86400000);
+  if (d>=1) return d===1 ? '1 day' : d+' days'; const h = Math.floor(ms/3600000); return h>=1 ? h+' hr' : Math.max(1,Math.round(ms/60000))+' min'; };
+const timeline = (o,c) => `<span style="font-size:13px;color:var(--dim)">${o?'Opened '+stamp(o)+' → ':''}Closed ${stamp(c)}${o?' · held '+heldFor(o,c):''}</span>`;
 const isBond = sym => !!MARKET[sym] && MARKET[sym][1]==='bond';
 function exDateFor(y, m){ // first trading day of the month (skips weekends, New Year's Day and Labor Day)
   let t = Date.UTC(y, m, 1);
@@ -1973,7 +1978,7 @@ function vPortfolio(){
     .concat(P.mm.bal>0.005 ? [{key:'mm', sym:'MONEY MKT', ty:'MM', g:P.mm.earned, gp:0, w:P.mm.bal/t.total*100, rule:'var(--cd)', mm:true}] : []);
   const wins = P.closed.filter(c=>c.s>=c.b), losses = P.closed.filter(c=>c.s<c.b);
   const pl = c => (c.s-c.b)*c.n, sum = l => l.reduce((a,c)=>a+pl(c),0);
-  const ctRow = c => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:21px;color:var(--white)">${c.sym}</span><span style="font-size:14px;color:var(--dim)">${fmtSh(c.n)} sh · ${money(c.b)} → ${money(c.s)} · ${c.d}</span></span>
+  const ctRow = c => `<div class="ctr"><span style="display:flex;flex-direction:column;gap:4px"><span class="num" style="font-size:21px;color:var(--white)">${c.sym}</span><span style="font-size:14px;color:var(--dim)">${fmtSh(c.n)} sh · ${money(c.b)} → ${money(c.s)}</span>${c.ca ? timeline(c.oa,c.ca) : `<span style="font-size:13px;color:var(--dim)">${c.d}</span>`}</span>
     <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px" class="num ${cls(pl(c))}"><span style="font-size:21px">${signed2(pl(c))}</span><span style="font-size:15px">${pct((c.s-c.b)/c.b*100)}</span></span></div>`;
   return `
   <div class="wrap">
@@ -2547,6 +2552,7 @@ function vSheet(){
     html = `${head}${tabs}${errBox()}${closedBox('trade')}
       <div class="kv"><span><span class="k">${isShort?'Shorted at':'Bought at'}</span><span class="v">${money(p.b)}</span></span><span><span class="k">Now</span><span class="v">${money(price)}</span></span>
         <span><span class="k">Shares</span><span class="v">${fmtSh(p.n)}</span></span><span><span class="k">${isBond(sym)&&!isShort?'Price change':'Gain so far'}</span><span class="v ${cls(posGain(p))}">${signed2(posGain(p))}</span></span></div>
+      ${p.o?`<span class="small">${isShort?'Shorted':'First bought'} ${stamp(p.o)} CT · held ${heldFor(p.o)}</span>`:''}
       ${isBond(sym)&&!isShort ? bondSheetHtml(p) : ''}
       ${WHY[sym]?`<p class="disp" style="margin:0;font-weight:700;font-style:italic;font-size:17px;color:var(--fg)">“${WHY[sym]}” <span style="font-family:var(--body);font-style:normal;font-weight:400;font-size:14px;color:var(--dim)">your reason when you bought</span></p>`:''}
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="sn:-" aria-label="Fewer shares">−</button>${numIn('sn', n)}<button type="button" data-act="sn:+" aria-label="More shares">+</button><button type="button" data-act="sn:all" style="width:auto;padding:0 16px;font-size:16px;font-weight:600">All</button></div></div>
@@ -2881,7 +2887,7 @@ function closedHtml(h){
   const wins = done.filter(t=>t.pnl>=0), losses = done.filter(t=>t.pnl<0), sum = l => l.reduce((a,t)=>a+t.pnl,0);
   const row = t => { const p = t.b ? (t.act==='cover' ? (t.b-t.price)/t.b : (t.price-t.b)/t.b)*100 : null;
     return `<div class="ctr"><span style="display:flex;flex-direction:column;gap:3px"><span class="num" style="font-size:17px;color:var(--white)">${esc(t.sym)}${t.act==='cover'?' <span class="small">short</span>':''}</span>
-      <span style="font-size:13px;color:var(--dim)">${fmtSh(+(+t.n).toFixed(4))} sh · ${t.b?money(t.b)+' → ':''}${money(t.price)} · ${new Date(t.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></span>
+      <span style="font-size:13px;color:var(--dim)">${fmtSh(+(+t.n).toFixed(4))} sh · ${t.b?money(t.b)+' → ':''}${money(t.price)}</span>${timeline(t.oa,t.at)}</span>
       <span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap" class="num ${cls(t.pnl)}"><span style="font-size:17px">${signed2(t.pnl)}</span>${p===null?'':`<span style="font-size:13px">${pct(p)}</span>`}</span></div>`; };
   return `<div class="spread" style="flex-wrap:wrap"><span class="label">Closed trades</span><span style="color:var(--muted);font-size:14px">Wins <span class="num up">${signed2(sum(wins))}</span> · Losses <span class="num down">${signed2(sum(losses))}</span></span></div>
     <div class="closed" style="padding-top:0;grid-template-columns:1fr;gap:12px">
@@ -2891,19 +2897,29 @@ function closedHtml(h){
 }
 function holdTableHtml(h){
   const TYC = {Stock:'#8a97a8',ETF:'#9a86c9',Bond:'#6b8fbf',Crypto:'#e08a4f',Short:'#e0b45a',MM:'#c9a34e',Cash:'#6b7c91'};
-  return `<div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Gain</th></tr></thead>
+  return `<div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Value</th><th class="r">Gain</th><th>Opened</th></tr></thead>
       <tbody>${h.holds.map(x=>`<tr><td><span class="num" style="color:var(--white)">${esc(x.s)}</span> <span class="tag" style="color:${TYC[x.ty]||'#8a97a8'}">${esc(x.ty).toUpperCase()}</span></td>
         <td class="r num">${x.n!==undefined ? fmtSh(+x.n.toFixed(4)) : ''}</td><td class="r num">${x.b!==undefined ? money(x.b) : ''}</td><td class="r num">${whole(x.v)}</td>
-        <td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td></tr>`).join('')}</tbody></table></div>`;
+        <td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td><td class="small" style="white-space:nowrap">${x.o?stamp(x.o)+' · '+heldFor(x.o):''}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function tradeLogHtml(h){
   const W = {buy:'Bought', sell:'Sold', short:'Shorted', cover:'Closed short'};
-  return `<span class="label">All trades</span>
-    ${h.trades.length ? `<div class="tscroll"><table class="tbl" style="font-size:14px"><tbody>${h.trades.slice(0,40).map(t=>`<tr><td class="small">${new Date(t.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
-      <td style="color:var(--white)">${W[t.act]} ${fmtSh(+t.n.toFixed(4))} ${esc(t.sym)}${t.auto?' <span class="small">(auto)</span>':''}</td><td class="r num">${money(t.price)}</td>
-      <td class="r num ${t.pnl===null?'':cls(t.pnl)}">${t.pnl===null?'':signed2(t.pnl)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No trades yet.</p>'}`;
+  return `<div class="spread" style="flex-wrap:wrap"><span class="label">Every trade</span><span class="small">${h.trades.length} trade${h.trades.length===1?'':'s'} · times are Central</span></div>
+    ${h.trades.length ? `<div class="tscroll" style="max-height:420px;overflow-y:auto"><table class="tbl" style="font-size:14px"><thead><tr><th>Date &amp; time</th><th>Trade</th><th class="r">Price</th><th class="r">Total</th><th class="r">Result</th></tr></thead><tbody>${h.trades.map(t=>`<tr><td class="small" style="white-space:nowrap">${stamp(t.at)}</td>
+      <td style="color:var(--white)">${W[t.act]} ${fmtSh(+(+t.n).toFixed(4))} ${esc(t.sym)}${t.auto?' <span class="small">(auto)</span>':''}${(t.act==='sell'||t.act==='cover')&&t.oa?`<div class="small">opened ${stamp(t.oa)} · held ${heldFor(t.oa,t.at)}</div>`:''}</td><td class="r num">${money(t.price)}</td><td class="r num" style="color:var(--soft)">${money(t.price*t.n)}</td>
+      <td class="r num ${t.pnl===null||t.pnl===undefined?'':cls(t.pnl)}">${t.pnl===null||t.pnl===undefined?'':signed2(t.pnl)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No trades yet.</p>'}`;
 }
-function publicDetail(h){ return `${closedHtml(h)}${tradeLogHtml(h)}`; }
+/* Open positions with when each one was first bought (or shorted). */
+function openHtml(h){
+  const open = (h.holds||[]).filter(x=>x.ty!=='Cash'&&x.ty!=='MM');
+  if (!open.length) return '';
+  return `<span class="label">Open positions</span>
+    <div class="tscroll"><table class="tbl" style="font-size:14px"><thead><tr><th>Holding</th><th class="r">Shares</th><th class="r">Avg cost</th><th class="r">Gain</th><th>Opened</th><th class="r">Held</th></tr></thead>
+    <tbody>${open.map(x=>`<tr><td><span class="num" style="color:var(--white)">${esc(x.s)}</span>${x.ty==='Short'?' <span class="small">short</span>':''}</td>
+      <td class="r num">${x.n!==undefined?fmtSh(+(+x.n).toFixed(4)):''}</td><td class="r num">${x.b!==undefined?money(x.b):''}</td><td class="r num ${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</td>
+      <td class="small" style="white-space:nowrap">${x.o?stamp(x.o):'—'}</td><td class="r small">${x.o?heldFor(x.o):''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function publicDetail(h){ return `${openHtml(h)}${closedHtml(h)}${tradeLogHtml(h)}`; }
 function fullDetail(id, h){
   const act = h.activity || {};
   return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>

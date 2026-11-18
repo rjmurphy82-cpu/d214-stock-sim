@@ -118,6 +118,7 @@ const ok = (label, cond, extra) => { assert.ok(cond, label + (extra ? ' :: ' + J
   ok('my standing is live-valued', meRow && Math.abs(meRow.value - 100000) < 5000, meRow);
   const snap = await stu('student', undefined, '&id=' + dirT.sections.flatMap(s => s.students).find(s => s.name === others[0].name).id);
   ok('students see another portfolio in full: holdings with shares and every trade', snap.holds && Array.isArray(snap.trades) && snap.holds.filter(h => h.ty !== 'Cash' && h.ty !== 'MM').every(h => h.n !== undefined) && !snap.activity, snap);
+  ok('students see when each position opened and when each trade happened', snap.holds.filter(h => h.ty !== 'Cash' && h.ty !== 'MM').every(h => h.o) && snap.trades.every(t => t.at) && snap.trades.filter(t => t.act === 'sell' || t.act === 'cover').every(t => t.oa), snap);
 
   // Teacher view.
   const tch = client();
