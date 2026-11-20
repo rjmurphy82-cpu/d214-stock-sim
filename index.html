@@ -2724,7 +2724,10 @@ function act(a, el){
     case 'sec': UI.sec = v===''?null:+v; if (UI.sec!==null) UI.ti = D.sections[UI.sec].ti; break;
     case 'awt': UI.awKind = v; break;
     case 'aw': { const o = awardScopeOptions().find(x=>x.key===v); if (v==='district'){ UI.school=null; UI.ti=null; UI.sec=null; } else if (o){ Object.assign(UI, o.set); } break; }
-    case 'open': UI.back = v.startsWith('student:') && UI.drawer && UI.drawer.startsWith('class:') ? UI.drawer : null; UI.drawer=v; break;
+    // A class on the Classes leaderboard shows the whole class as a leaderboard, not a side panel.
+    case 'open': if (v.startsWith('class:') && route()==='standings'){ const sec = D.sections[+v.split(':')[1]];
+      if (sec){ UI.tab='students'; UI.school=sec.school; UI.ti=sec.ti; UI.sec=sec.id; UI.drawer=null; UI.back=null; render(); window.scrollTo(0,0); return true; } }
+      UI.back = v.startsWith('student:') && UI.drawer && UI.drawer.startsWith('class:') ? UI.drawer : null; UI.drawer=v; break;
     case 'close': UI.back=null; UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; break;
     case 'clearerr': UI.err = null; break;
     case 'sheet': { if (v==='mm'){ tr.type='mm'; tr.mmDir='out'; tr.mmAmt=1000; tr.done=null; location.hash='#trade'; break; } const pos = v.startsWith('pos:') ? P.pos.find(x=>'pos:'+x.sym+':'+x.side===v) : null; UI.sheet={key:v,n:pos?pos.n:0,mode:'sell',bn:1}; break; }
