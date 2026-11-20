@@ -2909,11 +2909,11 @@ function vClasses(){
           <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
-        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
-        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th class="r">Adv. trades</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
+        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
-          <td class="r num">${k.week||0}</td><td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td><td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
       </div></section>`; }).join('')}
     <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
   </div>`;
@@ -3132,6 +3132,13 @@ function moreActs(k, v, el){
       }).catch(e=>alert(e.message));
       if (el) el.setAttribute('aria-busy','true');
       go(false).finally(()=>{ if (el) el.removeAttribute('aria-busy'); });
+      return true;
+    }
+    case 'tchal': {
+      const se = CLS && CLS.sections.find(s=>s.id===+v); if (!se) return true;
+      const on = !se.challenge;
+      if (!confirm((on?'Turn on':'Turn off')+' the Advanced Trades Challenge for '+se.teacher+' · '+se.period+'? '+(on?'Students will see it on their Checkup tab with a grade.':'It disappears from their Checkup tab. Their trades still count if you turn it back on.'))) return true;
+      call('teacher_act', {a:'challenge_class', sectionId:se.id, on}).then(()=>{ loadClasses(); render(); }).catch(e=>alert(e.message));
       return true;
     }
     case 'trename': {
