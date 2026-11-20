@@ -1049,8 +1049,8 @@ const dcaNext = (d, f) => f==='month' ? addMonths(d,1) : addDays(d, DCA_FREQ[f][
 const nextBizDay = d => { let t = Date.parse(d+'T00:00:00Z'); while ([0,6].includes(new Date(t).getUTCDay())) t += DAY; return new Date(t).toISOString().slice(0,10); };
 /* Advanced Trades Challenge: eight kinds of trades to complete. A step is checked once that kind of trade fills. */
 const CHALLENGE = [
-  ['limit_buy','Limit buy','Advanced → Buy → Limit, a few cents below today’s price.'],
-  ['limit_sell','Limit sell','Advanced → Sell → Limit, on something you own, a few cents above today’s price.'],
+  ['limit_buy','Limit buy','Advanced → Buy → Limit, a few cents below today’s price. Checks when placed.'],
+  ['limit_sell','Limit sell','Advanced → Sell → Limit, on something you own, a few cents above today’s price. Checks when placed.'],
   ['stop','Stop loss','Advanced → Sell → Stop loss, about 5% below today’s price. Checks when placed.'],
   ['stop_limit','Stop limit','Advanced → Sell → Stop limit. Set a stop and a limit. Checks when placed.'],
   ['trail','Trailing stop','Advanced → Sell → Trailing stop, like 5%. Checks when placed.'],
@@ -1071,7 +1071,7 @@ function challengeSection(){
   return `<section class="wrap" style="padding-top:56px">
     <div class="spread" style="flex-wrap:wrap;align-items:center;gap:20px">
       <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><h2 class="h2">Advanced Trades Challenge</h2>
-        <p style="color:var(--dim);margin:0">Make each kind of trade at least once. Limit orders, auto-invest, and shorts check when they fill; an order still waiting shows “…”. Stop loss, stop limit, and trailing stop check as soon as you place them. Tap ? on the Trade tab to learn each one.</p></div>
+        <p style="color:var(--dim);margin:0">Make each kind of trade at least once. Limit, stop loss, stop limit, and trailing stop orders check as soon as you place them. Auto-invest and shorts check when they fill; one still waiting shows “…”. Tap ? on the Trade tab to learn each one.</p></div>
       <div class="gc${good?'':' warn'}" style="padding:18px 30px;gap:6px;min-width:150px"><span class="label">Assignment grade</span><span class="g" style="font-size:64px;color:${good?'var(--white)':'var(--warn)'}">${g}</span><span class="num" style="font-size:17px;color:var(--white)">${n} of ${all} · ${Math.round(n/all*100)}%</span></div>
     </div>
     <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
