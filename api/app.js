@@ -10,6 +10,7 @@ import { standings, invalidateStandings, activity } from '../lib/standings.js';
 import { importRoster, SCHOOLS, periodName } from '../lib/roster.js';
 import { runEOD } from '../lib/eod.js';
 import { practiceId } from '../lib/practice.js';
+import { challenge, doneCount } from '../lib/challenge.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
 const int = v => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw bad('Bad request.'); return n; };
@@ -199,6 +200,7 @@ const ROUTES = {
     out.trades = (await sql`select sym, act, shares, price, at, auto, basis, pnl, opened_at from trades where student_id = ${id} order by at desc limit 500`)
       .map(t => ({ sym: t.sym, act: t.act, n: t.shares, price: t.price, at: t.at, auto: t.auto, b: t.basis, pnl: t.pnl, oa: t.opened_at }));
     if (full) out.activity = (await activity(sql, [id]))[id];
+    if (full) out.challenge = (await challenge(sql, [id]))[id];
     return out;
   } },
 
@@ -229,13 +231,14 @@ const ROUTES = {
     const st = await standings(sql);
     const roster = await sql`select id, display, section_id, last_login from students where active and section_id = any(${secs.map(s => s.id)}) order by display`;
     const act = await activity(sql, roster.map(r => r.id));
+    const chal = await challenge(sql, roster.map(r => r.id));
     const byId = new Map(st.students.map(s => [s.id, s]));
     const rankIn = list => { const m = new Map(); list.slice().sort((a, b) => b.ret - a.ret).forEach((s, i) => m.set(s.id, i + 1)); return m; };
     const district = rankIn(st.students);
     return {
       spyRet: st.spyRet,
       sections: secs.map(se => {
-        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login }));
+        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login, adv: doneCount(chal[r.id]) }));
         const cr = rankIn(kids);
         kids.forEach(k => { k.classRank = cr.get(k.id); k.districtRank = district.get(k.id); });
         kids.sort((a, b) => a.classRank - b.classRank);

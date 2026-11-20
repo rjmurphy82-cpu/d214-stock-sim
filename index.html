@@ -225,6 +225,12 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
 .helpsec p{margin:0;font-size:17px;line-height:1.5;color:var(--soft)}
 .helpex{padding:16px 18px;background:var(--pop);border:1px solid var(--line-2);border-left:4px solid var(--up);border-radius:6px}
 .helpcatch{padding:16px 18px;background:var(--warn-bg);border:1px solid var(--warn-line);border-left:4px solid var(--warn);border-radius:6px}
+.chk{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;padding-top:18px}
+.chki{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:6px}
+.chki.ck-done{border-left-color:var(--up)} .chki.ck-wait{border-left-color:var(--warn)}
+.chki .bx{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;border:2px solid #4a5d74;color:var(--dim)}
+.chki.ck-done .bx{background:var(--up);border-color:var(--up);color:#0f1720} .chki.ck-wait .bx{border-color:var(--warn);color:var(--warn)}
+.chkbar{height:8px;border-radius:4px;background:var(--card-hi);overflow:hidden;margin-top:14px}.chkbar i{display:block;height:100%;background:var(--up)}
 .otag{display:inline-block;padding:2px 8px;border:1px solid var(--line-3);border-radius:4px;font-size:12px;letter-spacing:.12em;font-weight:700;color:var(--cd);vertical-align:middle}
 
 /* drawer + sheet */
@@ -1041,6 +1047,38 @@ function bondSheetHtml(p){
 const DCA_FREQ = {week:[7,'every week'], '2week':[14,'every 2 weeks'], month:[0,'every month']};
 const dcaNext = (d, f) => f==='month' ? addMonths(d,1) : addDays(d, DCA_FREQ[f][0]);
 const nextBizDay = d => { let t = Date.parse(d+'T00:00:00Z'); while ([0,6].includes(new Date(t).getUTCDay())) t += DAY; return new Date(t).toISOString().slice(0,10); };
+/* Advanced Trades Challenge: eight kinds of trades to complete. A step is checked once that kind of trade fills. */
+const CHALLENGE = [
+  ['limit_buy','Limit buy','Advanced → Buy → Limit, a few cents below today’s price.'],
+  ['limit_sell','Limit sell','Advanced → Sell → Limit, on something you own, a few cents above today’s price.'],
+  ['stop','Stop loss','Advanced → Sell → Stop loss, about 5% below today’s price. Checks when placed.'],
+  ['stop_limit','Stop limit','Advanced → Sell → Stop limit. Set a stop and a limit. Checks when placed.'],
+  ['trail','Trailing stop','Advanced → Sell → Trailing stop, like 5%. Checks when placed.'],
+  ['dca','Auto-invest','Advanced → Buy → Auto-invest. The first buy happens right away.'],
+  ['short','Short sale','Basic → Short a stock you think will go down.']
+];
+function challengeList(c, small){
+  return `<div class="chk"${small?' style="padding-top:6px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"':''}>${CHALLENGE.map(([k,name,how])=>{ const x = (c&&c[k])||{s:'todo'};
+    const sub = x.s==='done' ? `Done${x.sym?' · '+esc(x.sym):''}${x.at?' · '+stamp(x.at):''}` : x.s==='wait' ? `Waiting to fill${x.sym?' · '+esc(x.sym):''}` : (small ? 'Not yet' : how);
+    return `<div class="chki ck-${x.s}"${small?' style="padding:10px 12px"':''}><span class="bx">${x.s==='done'?'✓':x.s==='wait'?'…':''}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="color:var(--white);font-weight:600;font-size:${small?15:17}px">${name}</span><span style="font-size:13px;color:${x.s==='done'?'var(--up)':x.s==='wait'?'var(--warn)':'var(--dim)'}">${sub}</span></span></div>`; }).join('')}</div>`;
+}
+const challengeDone = c => CHALLENGE.filter(([k])=>c&&c[k]&&c[k].s==='done').length;
+// Assignment grade from how many steps are done: 7 = A, 6 = B, 5 = C, 4 = D, 3 or fewer = F.
+const challengeGrade = n => { const p = n/CHALLENGE.length*100; return p>=90?'A':p>=80?'B':p>=70?'C':p>=55?'D':'F'; };
+function challengeSection(){
+  const c = P.challenge; if (!c) return '';
+  const n = challengeDone(c), all = CHALLENGE.length, g = challengeGrade(n), good = g==='A'||g==='B';
+  return `<section class="wrap" style="padding-top:56px">
+    <div class="spread" style="flex-wrap:wrap;align-items:center;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><h2 class="h2">Advanced Trades Challenge</h2>
+        <p style="color:var(--dim);margin:0">Make each kind of trade at least once. Limit orders, auto-invest, and shorts check when they fill; an order still waiting shows “…”. Stop loss, stop limit, and trailing stop check as soon as you place them. Tap ? on the Trade tab to learn each one.</p></div>
+      <div class="gc${good?'':' warn'}" style="padding:18px 30px;gap:6px;min-width:150px"><span class="label">Assignment grade</span><span class="g" style="font-size:64px;color:${good?'var(--white)':'var(--warn)'}">${g}</span><span class="num" style="font-size:17px;color:var(--white)">${n} of ${all} · ${Math.round(n/all*100)}%</span></div>
+    </div>
+    <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
+    ${challengeList(c)}
+  </section>`;
+}
+
 function dcaSection(){
   if (!P.dca.length) return '';
   return `<section class="wrap" style="padding-top:48px">
@@ -2100,6 +2138,7 @@ function vCheckup(){
         <span class="fix"><b>To improve:</b> ${g.fix}</span>
       </div>`).join('')}</div>
   </div>
+  ${challengeSection()}
   <section class="wrap" style="padding-block:56px 72px">
     <h2 class="h2">Checklist</h2>
     <div class="checks">${c.checks.map(([t,v,ok])=>`
@@ -2871,10 +2910,10 @@ function vClasses(){
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
         <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
-        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th><th class="r">Adv. trades</th><th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
-          <td class="r num">${k.week||0}</td><td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="r num">${k.week||0}</td><td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td><td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
       </div></section>`; }).join('')}
     <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
   </div>`;
@@ -2924,6 +2963,7 @@ function fullDetail(id, h){
   const act = h.activity || {};
   return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
       <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
+    ${h.challenge ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Advanced Trades Challenge</span><span class="num" style="color:var(--white)">${challengeDone(h.challenge)} of ${CHALLENGE.length} done · grade ${challengeGrade(challengeDone(h.challenge))}</span></div>${challengeList(h.challenge, true)}` : ''}
     ${holdTableHtml(h)}
     ${closedHtml(h)}
     ${tradeLogHtml(h)}
