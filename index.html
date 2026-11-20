@@ -1928,11 +1928,12 @@ function vStandings(){
     if (UI.sec!==null) l = l.filter(s=>s.sec===UI.sec);
     const total = l.length;
     l = l.slice().sort((a,b)=>b.ret-a.ret);
-    let top = l.slice(0,12); if (!top.includes(ME) && l.includes(ME)) top = top.concat([ME]);
-    if (UI.sec!==null){ const sec=D.sections[UI.sec]; title=secLabel(sec); cap=sec.school+' · '+sec.size+' students'; }
-    else if (UI.ti!==null){ title=T[UI.ti][0]+' Leaderboard'; cap='All classes · Top 12 of '+total+' students'; }
-    else if (UI.school){ title=UI.school+' Leaderboard'; cap='Top 12 of '+total+' students'; }
-    else { title='District Leaderboard'; cap='Top 12 of '+total+' students'; }
+    // Everyone is listed, not just the top: anyone can look up anyone.
+    const top = l;
+    if (UI.sec!==null){ const sec=D.sections[UI.sec]; title=secLabel(sec); cap=sec.school+' · all '+total+' students'; }
+    else if (UI.ti!==null){ title=T[UI.ti][0]+' Leaderboard'; cap='All classes · all '+total+' students'; }
+    else if (UI.school){ title=UI.school+' Leaderboard'; cap='All '+total+' students'; }
+    else { title='District Leaderboard'; cap='All '+total+' students'; }
     items = top.map(s=>({rank:l.indexOf(s)+1, name:s.name, school:s.school, sub:secLabel(D.sections[s.sec]), avg:s.ret, open:'student:'+s.id, me:s.isMe}));
   } else if (UI.tab==='classes'){
     title='Class Leaderboard'; cap=D.sections.length+' class periods · average student return';
