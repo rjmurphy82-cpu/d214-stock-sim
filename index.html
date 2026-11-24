@@ -1144,13 +1144,15 @@ const RESEARCH = [
   ['USO','Oil','WTI crude oil. Stands in for OIL, which no longer trades.'],
   ['GLD','Gold','Real gold in a vault.']
 ].map(([sym,name,how])=>[sym, sym+' · '+name, how]);
+const RES_GOAL = 5;   // students research any 5 of the 13
+const resGot = c => Math.min(challengeDone(c, RESEARCH), RES_GOAL);
 function researchSection(){
   const c = P.research; if (!c) return '';
-  const n = challengeDone(c, RESEARCH), all = RESEARCH.length, g = challengeGrade(n, all), good = g==='A'||g==='B';
+  const n = resGot(c), all = RES_GOAL, g = challengeGrade(n, all), good = g==='A'||g==='B';
   return `<section class="wrap" style="padding-top:56px">
     <div class="spread" style="flex-wrap:wrap;align-items:center;gap:20px">
       <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><h2 class="h2">Today’s Research</h2>
-        <p style="color:var(--dim);margin:0">Open each fund on Charts + News and fill in your worksheet with its numbers. Each one checks the moment you open it. Tap a fund below to go straight to it.</p></div>
+        <p style="color:var(--dim);margin:0">Pick any 5 of these funds. Open each one on Charts + News and fill in your worksheet with its numbers. A fund checks the moment you open it. Tap a fund below to go straight to it.</p></div>
       <div class="gc${good?'':' warn'}" style="padding:18px 30px;gap:6px;min-width:150px"><span class="label">Assignment grade</span><span class="g" style="font-size:64px;color:${good?'var(--white)':'var(--warn)'}">${g}</span><span class="num" style="font-size:17px;color:var(--white)">${n} of ${all} · ${Math.round(n/all*100)}%</span></div>
     </div>
     <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
@@ -3017,7 +3019,7 @@ function vClasses(){
         <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}${se.research?'<th class="r">Research</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
-          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}${se.research?`<td class="r num" style="color:${(k.res||0)>=RESEARCH.length?'var(--up)':'var(--soft)'}">${k.res||0}/${RESEARCH.length} · ${challengeGrade(k.res||0, RESEARCH.length)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}${se.research?`<td class="r num" style="color:${(k.res||0)>=RES_GOAL?'var(--up)':'var(--soft)'}">${Math.min(k.res||0,RES_GOAL)}/${RES_GOAL} · ${challengeGrade(Math.min(k.res||0,RES_GOAL), RES_GOAL)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
       </div></section>`; }).join('')}
     <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
   </div>`;
@@ -3067,7 +3069,7 @@ function fullDetail(id, h){
   const act = h.activity || {};
   return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
       <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
-    ${h.research ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Today’s Research</span><span class="num" style="color:var(--white)">${challengeDone(h.research, RESEARCH)} of ${RESEARCH.length} done · grade ${challengeGrade(challengeDone(h.research, RESEARCH), RESEARCH.length)}</span></div>${challengeList(h.research, true, RESEARCH)}` : ''}
+    ${h.research ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Today’s Research</span><span class="num" style="color:var(--white)">${resGot(h.research)} of ${RES_GOAL} done · grade ${challengeGrade(resGot(h.research), RES_GOAL)}</span></div>${challengeList(h.research, true, RESEARCH)}` : ''}
     ${h.walk ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Site Walkthrough</span><span class="num" style="color:var(--white)">${challengeDone(h.walk, WALK)} of ${WALK.length} done · grade ${challengeGrade(challengeDone(h.walk, WALK), WALK.length)}</span></div>${challengeList(h.walk, true, WALK)}` : ''}
     ${h.challenge ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Advanced Trades Challenge</span><span class="num" style="color:var(--white)">${challengeDone(h.challenge)} of ${CHALLENGE.length} done · grade ${challengeGrade(challengeDone(h.challenge))}</span></div>${challengeList(h.challenge, true)}` : ''}
     ${holdTableHtml(h)}
@@ -3243,7 +3245,7 @@ function moreActs(k, v, el){
     case 'tres': {
       const se = CLS && CLS.sections.find(s=>s.id===+v); if (!se) return true;
       const on = !se.research;
-      if (!confirm((on?'Turn on':'Turn off')+' Today’s Research for '+se.teacher+' · '+se.period+'? '+(on?'Students will see the 13 funds on their Checkup tab with a grade.':'It disappears from their Checkup tab.'))) return true;
+      if (!confirm((on?'Turn on':'Turn off')+' Today’s Research for '+se.teacher+' · '+se.period+'? '+(on?'Students pick any 5 of the 13 funds on their Checkup tab, with a grade.':'It disappears from their Checkup tab.'))) return true;
       call('teacher_act', {a:'research_class', sectionId:se.id, on}).then(()=>{ loadClasses(); render(); }).catch(e=>alert(e.message));
       return true;
     }
