@@ -12,7 +12,7 @@ import { runEOD } from '../lib/eod.js';
 import { practiceId } from '../lib/practice.js';
 import { challenge, challengeOn, doneCount } from '../lib/challenge.js';
 import { walkthrough, walkOn, walkDone, markSeen } from '../lib/walkthrough.js';
-import { research, researchOn, researchDone } from '../lib/research.js';
+import { research, researchOn, researchDone, quizRight } from '../lib/research.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
 const int = v => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw bad('Bad request.'); return n; };
@@ -254,7 +254,7 @@ const ROUTES = {
     return {
       spyRet: st.spyRet,
       sections: secs.map(se => {
-        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login, adv: chal[r.id] ? doneCount(chal[r.id]) : null, walk: walk[r.id] ? walkDone(walk[r.id]) : null, res: res[r.id] ? researchDone(res[r.id]) : null }));
+        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login, adv: chal[r.id] ? doneCount(chal[r.id]) : null, walk: walk[r.id] ? walkDone(walk[r.id]) : null, res: res[r.id] ? researchDone(res[r.id]) : null, rq: res[r.id] ? quizRight(res[r.id]) : null }));
         const cr = rankIn(kids);
         kids.forEach(k => { k.classRank = cr.get(k.id); k.districtRank = district.get(k.id); });
         kids.sort((a, b) => a.classRank - b.classRank);
