@@ -874,7 +874,7 @@ function loadBars(sym){
   api('/api/bars?ticker='+encodeURIComponent(sym))
     .then(d=>{ LIVE.bars[sym] = d.bars || []; })
     .catch(()=>{ LIVE.bars[sym] = []; })
-    .finally(()=>{ LIVE.loading[sym] = false; if (route()==='charts') render(); });
+    .finally(()=>{ LIVE.loading[sym] = false; if (route()==='charts' || (route()==='checkup' && P.research)) render(); });
 }
 function loadInfo(sym){
   if (LIVE.info[sym] !== undefined) return;
@@ -1114,7 +1114,7 @@ function walkSection(){
 // Record the first visit to a place on the site, only for classes with the walkthrough on.
 const SEEN_SENT = new Set();
 function seen(k){
-  if (!P || !(P.walk || (P.research && k.startsWith('res:'))) || !(ROLE==='student' || ROLE==='teacher')) return;
+  if (!P || !(P.walk || (P.research && /^(res|rq):/.test(k))) || !(ROLE==='student' || ROLE==='teacher')) return;
   P.seen = P.seen || {};
   if (P.seen[k] || SEEN_SENT.has(k)) return;
   SEEN_SENT.add(k); P.seen[k] = new Date().toISOString(); walkLocal(); researchLocal();
@@ -1158,6 +1158,56 @@ function researchSection(){
     <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
     ${challengeList(c, false, RESEARCH, 'chartsym:')}
   </section>`;
+}
+/* Research questions on Checkup: 4 about RSI and momentum, 5 that compare the funds' real numbers right now.
+   The first answer locks in. Live questions are checked against the same daily prices the charts use. */
+function qStats(sym){
+  const d = seriesFor(sym).daily; if (!d || d.length < 30) return null;
+  const px = d[d.length-1].close, yr = d.slice(-252);
+  const hi = Math.max(...yr.map(b=>b.high)), lo = Math.min(...yr.map(b=>b.low)), r = rsiArr(d);
+  return { y1:(px/d[tfStart(d,'1Y')].close-1)*100, y5:(px/d[tfStart(d,'5Y')].close-1)*100, rng: hi>lo ? (px-lo)/(hi-lo)*100 : 50, rsi: r[r.length-1] };
+}
+const fmtQ = {y1:v=>(v>=0?'+':'')+v.toFixed(1)+'% over 1Y', y5:v=>(v>=0?'+':'')+v.toFixed(1)+'% over 5Y', rng:v=>Math.round(v)+'% of the way to its 52-week high', rsi:v=>'RSI '+Math.round(v)};
+const QUIZ = [
+  {q:'A fund’s RSI is 78. What does that tell you?', a:['It has climbed fast lately, and some traders think it could cool off','It is a safe buy because it keeps going up','It has dropped fast lately','It pays a 78% dividend'], c:0,
+   why:'RSI of 70 or more means the price has been running hot. It doesn’t mean it will fall, just that it has moved up quickly.'},
+  {q:'A fund’s RSI is 24. What does that tell you?', a:['It is about to go out of business','It has dropped fast lately, and some traders think it could bounce back','It is climbing quickly','It is at its 52-week high'], c:1,
+   why:'RSI of 30 or less means the price has been running cold: it has fallen quickly over the last 14 days.'},
+  {q:'What does momentum (RSI or MACD) measure?', a:['How much the fund pays in dividends','How many companies it owns','How fast the price has been moving','How big its companies are'], c:2,
+   why:'Momentum tools look only at price: how fast and how far it has moved lately.'},
+  {q:'A fund is at 95% of its 52-week range. Where is its price?', a:['Down 95% this year','Near its highest price of the past year','Near its lowest price of the past year','Up 95% this year'], c:1,
+   why:'0% is the 52-week low and 100% is the 52-week high, so 95% is close to the high.'},
+  {q:'Which grew more over the past year?', live:['XLK','XLU','y1'], hint:'Technology vs. Utilities'},
+  {q:'Which grew more over the past 5 years?', live:['XLE','XLP','y5'], hint:'Energy vs. Consumer Staples'},
+  {q:'Which is closer to its 52-week high right now?', live:['GLD','VOO','rng'], hint:'Gold vs. the S&P 500'},
+  {q:'Which has the higher RSI (more momentum) right now?', live:['KBWB','XLY','rsi'], hint:'Banks vs. Consumer Discretionary'},
+  {q:'Over the past 5 years, which did better?', live:['BND','VOO','y5'], hint:'Bonds vs. the S&P 500'}
+];
+function quizSection(){
+  if (!P.research) return '';
+  const sn = P.seen || {}, res = n => sn['rq:'+n+':n'] ? 'n' : sn['rq:'+n+':y'] ? 'y' : null;
+  QUIZ.forEach(x=>{ if (x.live && LIVE.on){ loadBars(x.live[0]); loadBars(x.live[1]); } });
+  const right = QUIZ.filter((x,i)=>res(i+1)==='y').length, answered = QUIZ.filter((x,i)=>res(i+1)).length;
+  return `<section class="wrap" style="padding-top:44px">
+    <div class="spread" style="flex-wrap:wrap;align-items:baseline;gap:12px"><h2 class="h2">Research Questions</h2><span class="num" style="font-size:18px;color:var(--white)">${right} of ${QUIZ.length} right · ${answered} answered</span></div>
+    <p style="color:var(--dim);margin:8px 0 0;max-width:720px">Your first answer locks in. For the fund questions, check Charts + News first. The answers use today’s real numbers.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px">${QUIZ.map((x,i)=>{ const n=i+1, r=res(n);
+      let opts = x.a, ok = x.c, note = x.why, wait = false;
+      if (x.live){ const [a,b,k] = x.live, A = qStats(a), B = qStats(b); opts = [a, b];
+        if (!A || !B || A[k]==null || B[k]==null) wait = true; else { ok = A[k] >= B[k] ? 0 : 1; note = `${a}: ${fmtQ[k](A[k])}. ${b}: ${fmtQ[k](B[k])}.`; } }
+      return `<div class="side-card" style="gap:10px;border-left:4px solid ${r==='y'?'var(--up)':r==='n'?'var(--down)':'var(--line)'}">
+        <span style="color:var(--white);font-weight:600;font-size:17px">${n}. ${x.q}${x.hint?` <span style="color:var(--dim);font-weight:400">(${x.hint})</span>`:''}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${opts.map((o,j)=>`<button type="button" class="chip" ${wait?'disabled':r?'aria-disabled="true" tabindex="-1"':''} aria-pressed="${r && j===ok ? 'true':'false'}" data-act="rq:${n}:${j}" style="${r ? 'pointer-events:none;'+(j===ok ? 'border-color:var(--up);color:var(--up);background:transparent' : 'opacity:.45') : ''}">${o}</button>`).join('')}</div>
+        ${wait ? '<span style="font-size:14px;color:var(--dim)">Loading today’s numbers…</span>' : r ? `<span style="font-size:14px;color:${r==='y'?'var(--up)':'var(--down)'}">${r==='y'?'Right.':'Not quite.'} <span style="color:var(--soft)">${note}</span></span>` : ''}
+      </div>`; }).join('')}</div>
+  </section>`;
+}
+function answerQuiz(v){
+  const [n, j] = v.split(':').map(Number), x = QUIZ[n-1]; if (!x || !P.research) return;
+  const sn = P.seen || {}; if (sn['rq:'+n+':y'] || sn['rq:'+n+':n']) return;
+  let ok = x.c;
+  if (x.live){ const [a,b,k] = x.live, A = qStats(a), B = qStats(b); if (!A || !B) return; ok = A[k] >= B[k] ? 0 : 1; }
+  seen('rq:'+n+':'+(j===ok ? 'y' : 'n'));
 }
 function researchLocal(){
   const r = P.research, sn = P.seen || {}; if (!r) return;
@@ -2240,6 +2290,7 @@ function vCheckup(){
       </div>`).join('')}</div>
   </div>
   ${researchSection()}
+  ${quizSection()}
   ${walkSection()}
   ${challengeSection()}
   <section class="wrap" style="padding-block:56px 72px">
@@ -2860,6 +2911,7 @@ function act(a, el){
     case 'ctog': UI.chart[v] = !UI.chart[v]; if (v==='ext'){ try{ localStorage.setItem('d214chartExt', UI.chart.ext?'1':'0'); }catch(e){} } break;
     case 'ryrs': UI.ratioYrs = v; break;
     case 'ctype': UI.chart.type = v; try{ localStorage.setItem('d214chartType', v); }catch(e){} break;
+    case 'rq': answerQuiz(v); break;
     case 'chartsym': ensureSym(v); UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.aside = side; tr.n = 10; tr.q = ''; tr.done = null; tr.advKey = ''; location.hash = '#trade'; break; }
@@ -3016,10 +3068,10 @@ function vClasses(){
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
         <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.walkthrough}" data-act="twalk:${se.id}">Site Walkthrough: ${se.walkthrough?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.research}" data-act="tres:${se.id}">Today’s Research: ${se.research?'On today':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
-        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}${se.research?'<th class="r">Research</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}${se.research?'<th class="r">Research</th><th class="r">Questions</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
-          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}${se.research?`<td class="r num" style="color:${(k.res||0)>=RES_GOAL?'var(--up)':'var(--soft)'}">${Math.min(k.res||0,RES_GOAL)}/${RES_GOAL} · ${challengeGrade(Math.min(k.res||0,RES_GOAL), RES_GOAL)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}${se.research?`<td class="r num" style="color:${(k.res||0)>=RES_GOAL?'var(--up)':'var(--soft)'}">${Math.min(k.res||0,RES_GOAL)}/${RES_GOAL} · ${challengeGrade(Math.min(k.res||0,RES_GOAL), RES_GOAL)}</td><td class="r num">${k.rq||0}/${QUIZ.length}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
       </div></section>`; }).join('')}
     <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
   </div>`;
@@ -3069,7 +3121,7 @@ function fullDetail(id, h){
   const act = h.activity || {};
   return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
       <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
-    ${h.research ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Today’s Research</span><span class="num" style="color:var(--white)">${resGot(h.research)} of ${RES_GOAL} done · grade ${challengeGrade(resGot(h.research), RES_GOAL)}</span></div>${challengeList(h.research, true, RESEARCH)}` : ''}
+    ${h.research ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Today’s Research</span><span class="num" style="color:var(--white)">${resGot(h.research)} of ${RES_GOAL} done · grade ${challengeGrade(resGot(h.research), RES_GOAL)} · questions ${Object.values(h.research.quiz||{}).filter(v=>v==='y').length} of ${QUIZ.length} right</span></div>${challengeList(h.research, true, RESEARCH)}` : ''}
     ${h.walk ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Site Walkthrough</span><span class="num" style="color:var(--white)">${challengeDone(h.walk, WALK)} of ${WALK.length} done · grade ${challengeGrade(challengeDone(h.walk, WALK), WALK.length)}</span></div>${challengeList(h.walk, true, WALK)}` : ''}
     ${h.challenge ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Advanced Trades Challenge</span><span class="num" style="color:var(--white)">${challengeDone(h.challenge)} of ${CHALLENGE.length} done · grade ${challengeGrade(challengeDone(h.challenge))}</span></div>${challengeList(h.challenge, true)}` : ''}
     ${holdTableHtml(h)}
