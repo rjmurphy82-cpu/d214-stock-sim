@@ -1144,7 +1144,7 @@ const RESEARCH = [
   ['USO','Oil','WTI crude oil. Stands in for OIL, which no longer trades.'],
   ['GLD','Gold','Real gold in a vault.']
 ].map(([sym,name,how])=>[sym, sym+' · '+name, how]);
-const RES_GOAL = 5;   // students research any 5 of the 13
+const RES_GOAL = 13;  // students open all 13 funds
 const resGot = c => Math.min(challengeDone(c, RESEARCH), RES_GOAL);
 function researchSection(){
   const c = P.research; if (!c) return '';
@@ -1152,7 +1152,7 @@ function researchSection(){
   return `<section class="wrap" style="padding-top:56px">
     <div class="spread" style="flex-wrap:wrap;align-items:center;gap:20px">
       <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><h2 class="h2">Today’s Research</h2>
-        <p style="color:var(--dim);margin:0">Pick any 5 of these funds. Open each one on Charts + News and fill in your worksheet with its numbers. A fund checks the moment you open it. Tap a fund below to go straight to it.</p></div>
+        <p style="color:var(--dim);margin:0">Open all 13 funds on Charts + News. Each one checks the moment you open it. Then pick any 5 for your worksheet. Tap a fund below to go straight to it.</p></div>
       <div class="gc${good?'':' warn'}" style="padding:18px 30px;gap:6px;min-width:150px"><span class="label">Assignment grade</span><span class="g" style="font-size:64px;color:${good?'var(--white)':'var(--warn)'}">${g}</span><span class="num" style="font-size:17px;color:var(--white)">${n} of ${all} · ${Math.round(n/all*100)}%</span></div>
     </div>
     <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
@@ -3015,7 +3015,7 @@ function vClasses(){
           <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
-        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.walkthrough}" data-act="twalk:${se.id}">Site Walkthrough: ${se.walkthrough?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.research}" data-act="tres:${se.id}">Today’s Research: ${se.research?'On':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
+        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.walkthrough}" data-act="twalk:${se.id}">Site Walkthrough: ${se.walkthrough?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.research}" data-act="tres:${se.id}">Today’s Research: ${se.research?'On today':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
         <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}${se.research?'<th class="r">Research</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
@@ -3245,7 +3245,7 @@ function moreActs(k, v, el){
     case 'tres': {
       const se = CLS && CLS.sections.find(s=>s.id===+v); if (!se) return true;
       const on = !se.research;
-      if (!confirm((on?'Turn on':'Turn off')+' Today’s Research for '+se.teacher+' · '+se.period+'? '+(on?'Students pick any 5 of the 13 funds on their Checkup tab, with a grade.':'It disappears from their Checkup tab.'))) return true;
+      if (!confirm((on?'Turn on':'Turn off')+' Today’s Research for '+se.teacher+' · '+se.period+'? '+(on?'It’s for today only: students open all 13 funds from their Checkup tab, with a grade. It turns itself off after today.':'It disappears from their Checkup tab.'))) return true;
       call('teacher_act', {a:'research_class', sectionId:se.id, on}).then(()=>{ loadClasses(); render(); }).catch(e=>alert(e.message));
       return true;
     }

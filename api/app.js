@@ -236,7 +236,7 @@ const ROUTES = {
     requireRole(user, 'teacher', 'admin');
     const tid = user.role === 'teacher' ? user.id : (q.get('teacher') ? int(q.get('teacher')) : null);
     const secs = await sql`
-      select se.id, se.period, se.challenge, se.walkthrough, se.research, t.id as tid, t.name as teacher, sc.name as school from sections se
+      select se.id, se.period, se.challenge, se.walkthrough, (se.research and se.research_day = ${M.today()}) as research, t.id as tid, t.name as teacher, sc.name as school from sections se
       join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id
       where t.active and se.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
     const st = await standings(sql);
@@ -296,7 +296,7 @@ const ROUTES = {
       case 'research_class': {
         const secId = int(body.sectionId); await mySection(secId);
         const on = !!body.on;
-        await sql`update sections set research = ${on} where id = ${secId}`;
+        await sql`update sections set research = ${on}, research_day = ${on ? M.today() : null} where id = ${secId}`;
         return { on };
       }
       // Rename a class (its period label). Students, passwords, and portfolios stay the same.
