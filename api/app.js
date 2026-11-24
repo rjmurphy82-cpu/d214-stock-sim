@@ -12,6 +12,7 @@ import { runEOD } from '../lib/eod.js';
 import { practiceId } from '../lib/practice.js';
 import { challenge, challengeOn, doneCount } from '../lib/challenge.js';
 import { walkthrough, walkOn, walkDone, markSeen } from '../lib/walkthrough.js';
+import { research, researchOn, researchDone } from '../lib/research.js';
 
 const ip = req => String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
 const int = v => { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw bad('Bad request.'); return n; };
@@ -210,6 +211,7 @@ const ROUTES = {
     if (full) out.activity = (await activity(sql, [id]))[id];
     if (full && (await challengeOn(sql, [id])).has(id)) out.challenge = (await challenge(sql, [id]))[id];
     if (full && (await walkOn(sql, [id])).has(id)) out.walk = (await walkthrough(sql, [id]))[id];
+    if (full && (await researchOn(sql, [id])).has(id)) out.research = (await research(sql, [id]))[id];
     return out;
   } },
 
@@ -234,7 +236,7 @@ const ROUTES = {
     requireRole(user, 'teacher', 'admin');
     const tid = user.role === 'teacher' ? user.id : (q.get('teacher') ? int(q.get('teacher')) : null);
     const secs = await sql`
-      select se.id, se.period, se.challenge, se.walkthrough, t.id as tid, t.name as teacher, sc.name as school from sections se
+      select se.id, se.period, se.challenge, se.walkthrough, se.research, t.id as tid, t.name as teacher, sc.name as school from sections se
       join teachers t on t.id = se.teacher_id join schools sc on sc.id = t.school_id
       where t.active and se.active ${tid ? sql`and t.id = ${tid}` : sql``} order by sc.name, t.name, se.period`;
     const st = await standings(sql);
@@ -244,18 +246,20 @@ const ROUTES = {
     const chal = await challenge(sql, roster.filter(r => onIds.has(r.section_id)).map(r => r.id));
     const wIds = new Set(secs.filter(se => se.walkthrough).map(se => se.id));
     const walk = await walkthrough(sql, roster.filter(r => wIds.has(r.section_id)).map(r => r.id));
+    const rIds = new Set(secs.filter(se => se.research).map(se => se.id));
+    const res = await research(sql, roster.filter(r => rIds.has(r.section_id)).map(r => r.id));
     const byId = new Map(st.students.map(s => [s.id, s]));
     const rankIn = list => { const m = new Map(); list.slice().sort((a, b) => b.ret - a.ret).forEach((s, i) => m.set(s.id, i + 1)); return m; };
     const district = rankIn(st.students);
     return {
       spyRet: st.spyRet,
       sections: secs.map(se => {
-        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login, adv: chal[r.id] ? doneCount(chal[r.id]) : null, walk: walk[r.id] ? walkDone(walk[r.id]) : null }));
+        const kids = roster.filter(r => r.section_id === se.id).map(r => ({ id: r.id, name: r.display, ...(byId.get(r.id) || { value: 100000, ret: 0 }), ...act[r.id], lastLogin: r.last_login, adv: chal[r.id] ? doneCount(chal[r.id]) : null, walk: walk[r.id] ? walkDone(walk[r.id]) : null, res: res[r.id] ? researchDone(res[r.id]) : null }));
         const cr = rankIn(kids);
         kids.forEach(k => { k.classRank = cr.get(k.id); k.districtRank = district.get(k.id); });
         kids.sort((a, b) => a.classRank - b.classRank);
         const avg = kids.length ? kids.reduce((a, k) => a + k.ret, 0) / kids.length : 0;
-        return { id: se.id, period: se.period, teacher: se.teacher, tid: se.tid, school: se.school, challenge: se.challenge, walkthrough: se.walkthrough, avg, students: kids };
+        return { id: se.id, period: se.period, teacher: se.teacher, tid: se.tid, school: se.school, challenge: se.challenge, walkthrough: se.walkthrough, research: se.research, avg, students: kids };
       }),
       districtSize: st.students.length
     };
@@ -286,6 +290,13 @@ const ROUTES = {
         const secId = int(body.sectionId); await mySection(secId);
         const on = !!body.on;
         await sql`update sections set walkthrough = ${on} where id = ${secId}`;
+        return { on };
+      }
+      // Turn Today's Research (the fund research checklist) on or off for a class.
+      case 'research_class': {
+        const secId = int(body.sectionId); await mySection(secId);
+        const on = !!body.on;
+        await sql`update sections set research = ${on} where id = ${secId}`;
         return { on };
       }
       // Rename a class (its period label). Students, passwords, and portfolios stay the same.
