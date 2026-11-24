@@ -477,6 +477,10 @@ const MARKET = {
   VEA:['Vanguard Developed Markets ETF','etf',50.30,50.05], VWO:['Vanguard Emerging Markets ETF','etf',43.60,43.85],
   XLF:['Financial Select Sector ETF','etf',41.20,40.95], VNQ:['Vanguard Real Estate ETF','etf',84.50,85.10],
   SMH:['VanEck Semiconductor ETF','etf',231.70,224.40], GLD:['SPDR Gold Shares','etf',215.30,214.10],
+  KBWB:['Invesco KBW Bank ETF','etf',72.40,71.85], XLB:['Materials Select Sector ETF','etf',89.60,89.20],
+  XLI:['Industrial Select Sector ETF','etf',138.10,137.40], XLU:['Utilities Select Sector ETF','etf',81.30,81.55],
+  XLP:['Consumer Staples Select Sector ETF','etf',79.80,79.95], XLY:['Consumer Discretionary Select Sector ETF','etf',221.50,219.10],
+  USO:['United States Oil Fund','etf',74.20,75.10],
   NVDA:['NVIDIA','stock',875.22,857.22], AAPL:['Apple','stock',228.35,226.45], COST:['Costco','stock',893.10,889.99],
   JPM:['JPMorgan Chase','stock',198.73,196.90], XOM:['Exxon Mobil','stock',114.33,116.60], AMZN:['Amazon','stock',182.60,184.10],
   TSLA:['Tesla','stock',251.30,255.44], MSFT:['Microsoft','stock',418.20,415.10], GOOGL:['Alphabet','stock',162.45,160.90],
@@ -657,6 +661,13 @@ const ABOUT = {
   VNQ:['Real estate ETF','Owns companies that own buildings (REITs), like apartments, warehouses, and data centers. Pays a big dividend from the rent.'],
   SMH:['Sector ETF','Owns about 25 of the biggest computer chip companies, like NVIDIA and Taiwan Semiconductor. Big ups and downs.'],
   GLD:['Gold ETF','Owns real gold bars stored in a vault. Its price follows the price of gold, not any company.'],
+  KBWB:['Sector ETF','Owns about two dozen of the biggest U.S. banks, like JPMorgan, Bank of America, and Wells Fargo. It tracks the KBW Bank Index (BKX).'],
+  XLB:['Sector ETF','Owns the materials companies in the S&P 500: chemicals, mining, steel, and packaging.'],
+  XLI:['Sector ETF','Owns the industrial companies in the S&P 500, like airlines, railroads, defense, and machinery makers.'],
+  XLU:['Sector ETF','Owns the electric, gas, and water utilities in the S&P 500. Steady businesses that pay big dividends.'],
+  XLP:['Sector ETF','Owns companies that sell everyday needs in the S&P 500, like groceries, soap, and drinks. People buy these in good times and bad.'],
+  XLY:['Sector ETF','Owns companies that sell things people want but can skip, like cars, restaurants, travel, and online shopping.'],
+  USO:['Oil fund','Holds contracts to buy crude oil (WTI) in the future, not barrels of oil. It follows oil prices but can drift away from them over time.'],
   NVDA:['Semiconductors','Designs the chips that power AI and gaming.'],
   AAPL:['Technology','Makes the iPhone, Mac, and iPad.'], COST:['Consumer staples','Runs membership warehouse stores.'],
   JPM:['Financials','The largest bank in the United States.'], XOM:['Energy','Produces and refines oil and natural gas.'],
@@ -671,7 +682,7 @@ const ABOUT = {
   HYG:['Bond fund','Holds higher-risk “junk” bonds from less stable companies.'], MUB:['Bond fund','Holds bonds from U.S. cities and states. Interest is tax-free.'],
   BNDX:['Bond fund','Holds government and company bonds from outside the U.S.']
 };
-const START_MULT = {VOO:.62,VTI:.6,QQQ:.45,DIA:.68,IWM:.75,VXUS:.8,SCHD:.75,XLK:.42,XLE:.45,XLV:.8,ARKK:.4,IVV:.62,RSP:.7,VUG:.45,VTV:.7,VEA:.8,VWO:.85,XLF:.6,VNQ:.95,SMH:.3,GLD:.55,IBIT:.35,SPY:.62,NVDA:.10,AAPL:.5,COST:.4,JPM:.55,XOM:.38,AMZN:.6,TSLA:.85,MSFT:.5,GOOGL:.55,META:.45,V:.6,BND:1.15,AGG:1.15,TLT:1.5,SHY:.99,BIL:1.0,IEF:1.2,TIP:1.15,LQD:1.25,HYG:1.0,MUB:1.08,BNDX:1.12,GBTC:.35,ETHE:.6};
+const START_MULT = {VOO:.62,VTI:.6,QQQ:.45,DIA:.68,IWM:.75,VXUS:.8,SCHD:.75,XLK:.42,XLE:.45,XLV:.8,ARKK:.4,IVV:.62,RSP:.7,VUG:.45,VTV:.7,VEA:.8,VWO:.85,XLF:.6,VNQ:.95,SMH:.3,GLD:.55,KBWB:.6,XLB:.75,XLI:.6,XLU:.75,XLP:.8,XLY:.6,USO:.9,IBIT:.35,SPY:.62,NVDA:.10,AAPL:.5,COST:.4,JPM:.55,XOM:.38,AMZN:.6,TSLA:.85,MSFT:.5,GOOGL:.55,META:.45,V:.6,BND:1.15,AGG:1.15,TLT:1.5,SHY:.99,BIL:1.0,IEF:1.2,TIP:1.15,LQD:1.25,HYG:1.0,MUB:1.08,BNDX:1.12,GBTC:.35,ETHE:.6};
 const TDATES = (function(){ const out=[], now=new Date(); let t = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   while (out.length<1300){ const dt=new Date(t), w=dt.getUTCDay(); if (w!==0 && w!==6) out.push(dt.toISOString().slice(0,10)); t -= 86400000; }
   return out.reverse(); })();
@@ -966,7 +977,11 @@ function clockTick(){
 // [rate sensitivity, credit quality]
 // [yearly cost (expense ratio %), number of holdings]
 const ETFMETA = {SPY:[0.09,503], VOO:[0.03,504], VTI:[0.03,3600], QQQ:[0.20,101], DIA:[0.16,30], IWM:[0.19,1970], VXUS:[0.05,8500], SCHD:[0.06,103], XLK:[0.08,68], XLE:[0.08,23], XLV:[0.08,62], ARKK:[0.75,35],
-  IVV:[0.03,503], RSP:[0.20,503], VUG:[0.04,160], VTV:[0.04,330], VEA:[0.03,3900], VWO:[0.07,5900], XLF:[0.08,73], VNQ:[0.13,155], SMH:[0.35,26], GLD:[0.40,0]};
+  IVV:[0.03,503], RSP:[0.20,503], VUG:[0.04,160], VTV:[0.04,330], VEA:[0.03,3900], VWO:[0.07,5900], XLF:[0.08,73], VNQ:[0.13,155], SMH:[0.35,26], GLD:[0.40,0],
+  KBWB:[0.35,24], XLB:[0.08,26], XLI:[0.08,79], XLU:[0.08,31], XLP:[0.08,38], XLY:[0.08,51], USO:[0.60,0]};
+// What a fund with no companies holds instead.
+const NOCO = {GLD:['Gold bars','This fund owns no companies. Each share is backed by real gold stored in a vault, so it moves with the price of gold.','One share is backed by real gold in a vault, and it trades like a stock.'],
+  USO:['Oil futures','This fund owns no companies. It holds contracts to buy crude oil in the future, so it moves with oil prices, but rolling those contracts each month can make it drift from the price of oil.','One share follows the price of crude oil through futures contracts, and it trades like a stock.']};
 const BONDMETA = {
   BIL:['Very low','Highest (U.S. government)'], SHY:['Low','Highest (U.S. government)'], IEF:['Medium','Highest (U.S. government)'],
   TLT:['High','Highest (U.S. government)'], TIP:['Medium','Highest (U.S. government)'], BND:['Medium','High (mostly government)'],
@@ -1058,10 +1073,12 @@ const CHALLENGE = [
   ['dca','Auto-invest','Advanced → Buy → Auto-invest. The first buy happens right away.'],
   ['short','Short sale','Basic → Short a stock you think will go down.']
 ];
-function challengeList(c, small, list){
+// act: optional data-act prefix that turns each step into a button (Today's Research opens that fund's chart).
+function challengeList(c, small, list, act){
   return `<div class="chk"${small?' style="padding-top:6px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"':''}>${(list||CHALLENGE).map(([k,name,how])=>{ const x = (c&&c[k])||{s:'todo'};
     const sub = x.s==='done' ? `Done${x.sym?' · '+esc(x.sym):''}${x.at?' · '+stamp(x.at):''}` : x.s==='wait' ? (x.of ? `${x.n} of ${x.of} so far` : `Waiting to fill${x.sym?' · '+esc(x.sym):''}`) : (small ? 'Not yet' : how);
-    return `<div class="chki ck-${x.s}"${small?' style="padding:10px 12px"':''}><span class="bx">${x.s==='done'?'✓':x.s==='wait'?'…':''}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="color:var(--white);font-weight:600;font-size:${small?15:17}px">${name}</span><span style="font-size:13px;color:${x.s==='done'?'var(--up)':x.s==='wait'?'var(--warn)':'var(--dim)'}">${sub}</span></span></div>`; }).join('')}</div>`;
+    const tag = act ? `button type="button" data-act="${act}${k}" style="text-align:left;font:inherit;width:100%;cursor:pointer;${small?'padding:10px 12px':''}"` : `div${small?' style="padding:10px 12px"':''}`;
+    return `<${tag.replace(/^(\w+)/, '$1 class="chki ck-'+x.s+'"')}><span class="bx">${x.s==='done'?'✓':x.s==='wait'?'…':''}</span><span style="display:flex;flex-direction:column;gap:4px"><span style="color:var(--white);font-weight:600;font-size:${small?15:17}px">${name}</span><span style="font-size:13px;color:${x.s==='done'?'var(--up)':x.s==='wait'?'var(--warn)':'var(--dim)'}">${sub}</span></span></${act?'button':'div'}>`; }).join('')}</div>`;
 }
 const challengeDone = (c, list) => (list||CHALLENGE).filter(([k])=>c&&c[k]&&c[k].s==='done').length;
 // Assignment grade from how many steps are done: 7 = A, 6 = B, 5 = C, 4 = D, 3 or fewer = F.
@@ -1097,19 +1114,54 @@ function walkSection(){
 // Record the first visit to a place on the site, only for classes with the walkthrough on.
 const SEEN_SENT = new Set();
 function seen(k){
-  if (!P || !P.walk || !(ROLE==='student' || ROLE==='teacher')) return;
+  if (!P || !(P.walk || (P.research && k.startsWith('res:'))) || !(ROLE==='student' || ROLE==='teacher')) return;
   P.seen = P.seen || {};
   if (P.seen[k] || SEEN_SENT.has(k)) return;
-  SEEN_SENT.add(k); P.seen[k] = new Date().toISOString(); walkLocal();
+  SEEN_SENT.add(k); P.seen[k] = new Date().toISOString(); walkLocal(); researchLocal();
   call('seen', {k}).catch(()=>{ SEEN_SENT.delete(k); delete P.seen[k]; });
 }
 function walkLocal(){
-  const w = P.walk, sn = P.seen || {}; if (!w) return;
+  const w = P.walk, sn = P.seen || {}; if (!w || !w.tabs) return;
   const mark = (k, at) => { if (w[k] && w[k].s!=='done') w[k] = {s:'done', at}; };
   const tabs = ['portfolio','standings','checkup','charts','trade'].filter(t=>sn['tab:'+t]);
   if (tabs.length===5) mark('tabs', new Date().toISOString()); else if (tabs.length && w.tabs.s!=='done') w.tabs = {s:'wait', n:tabs.length, of:5};
   if (sn.peer) mark('standings', sn.peer);
   if (sn.cmp1y) mark('cmp1y', sn.cmp1y);
+}
+/* Today's Research: open each fund on Charts + News and fill in the worksheet. Shown on Checkup when the class has it on. */
+const RESEARCH = [
+  ['KBWB','Banks','Stands in for the KBW Bank Index (BKX), which can’t be bought.'],
+  ['XLB','Materials','Chemicals, mining, steel, and packaging.'],
+  ['XLI','Industrials','Airlines, railroads, defense, and machinery.'],
+  ['XLU','Utilities','Electric, gas, and water companies.'],
+  ['XLE','Energy','Oil and gas companies.'],
+  ['XLP','Consumer Staples','Groceries, soap, and drinks.'],
+  ['XLY','Consumer Discretionary','Cars, restaurants, travel, and online shopping.'],
+  ['XLK','Technology','Software, chips, and computers.'],
+  ['VOO','S&P 500','The Vanguard ETF version of VFINX, the S&P 500 mutual fund.'],
+  ['DIA','Dow Jones','30 well-known U.S. companies.'],
+  ['BND','Bonds','The whole U.S. bond market. Stands in for PTTAX, a bond mutual fund.'],
+  ['USO','Oil','WTI crude oil. Stands in for OIL, which no longer trades.'],
+  ['GLD','Gold','Real gold in a vault.']
+].map(([sym,name,how])=>[sym, sym+' · '+name, how]);
+const RES_GOAL = 13;  // students open all 13 funds
+const resGot = c => Math.min(challengeDone(c, RESEARCH), RES_GOAL);
+function researchSection(){
+  const c = P.research; if (!c) return '';
+  const n = resGot(c), all = RES_GOAL, g = challengeGrade(n, all), good = g==='A'||g==='B';
+  return `<section class="wrap" style="padding-top:56px">
+    <div class="spread" style="flex-wrap:wrap;align-items:center;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><h2 class="h2">Today’s Research</h2>
+        <p style="color:var(--dim);margin:0">Open all 13 funds on Charts + News. Each one checks the moment you open it. Then pick any 5 for your worksheet. Tap a fund below to go straight to it.</p></div>
+      <div class="gc${good?'':' warn'}" style="padding:18px 30px;gap:6px;min-width:150px"><span class="label">Assignment grade</span><span class="g" style="font-size:64px;color:${good?'var(--white)':'var(--warn)'}">${g}</span><span class="num" style="font-size:17px;color:var(--white)">${n} of ${all} · ${Math.round(n/all*100)}%</span></div>
+    </div>
+    <div class="chkbar"><i style="width:${n/all*100}%"></i></div>
+    ${challengeList(c, false, RESEARCH, 'chartsym:')}
+  </section>`;
+}
+function researchLocal(){
+  const r = P.research, sn = P.seen || {}; if (!r) return;
+  RESEARCH.forEach(([k])=>{ if (sn['res:'+k] && r[k] && r[k].s!=='done') r[k] = {s:'done', at: sn['res:'+k]}; });
 }
 function challengeSection(){
   const c = P.challenge; if (!c) return '';
@@ -1351,6 +1403,7 @@ function vCharts(){
       ${missing ? '' : `<button type="button" class="chip" data-act="csym:SPY">See SPY instead</button>`}</div></div>`;
   }
   if (c.cmp && c.tf==='1Y') seen('cmp1y');
+  if (RESEARCH.some(([k])=>k===sym)) seen('res:'+sym);
   const S = seriesFor(sym), d = S.daily, N = d.length;
   const d0 = d[tfStart(d, c.tf)], intra = isIntra(c.tf);
   const ib = intra ? intraFor(sym, c.tf) : null;
@@ -1396,7 +1449,7 @@ function vCharts(){
     const em = ETFMETA[sym];
     kn = (em ? row('Yearly cost', em[0].toFixed(2)+'%', 'The expense ratio: what the fund charges each year to run it. '+em[0].toFixed(2)+'% means about $'+(em[0]*10).toFixed(2)+' a year on every $1,000 you invest. Lower is better.')
         + (em[1] ? row('Holdings', em[1].toLocaleString('en-US')+' '+(em[1]===1?'stock':'stocks'), 'About how many companies one share gives you a piece of. More holdings means more diversified.')
-                 : row('Holdings', 'Gold bars', 'This fund owns no companies. Each share is backed by real gold stored in a vault, so it moves with the price of gold.')) : '')
+                 : row('Holdings', (NOCO[sym]||NOCO.GLD)[0], (NOCO[sym]||NOCO.GLD)[1])) : '')
       + row('Dividend yield', yld(f[2], 1), 'Cash the fund paid over the past year from the dividends of the companies it holds, as a percent of its price.');
   } else if (ty==='crypto'){
     kn = row('Dividend yield', 'None', 'Crypto funds don’t earn profits or pay dividends. The price only moves with the coin it tracks.');
@@ -2186,6 +2239,7 @@ function vCheckup(){
         <span class="fix"><b>To improve:</b> ${g.fix}</span>
       </div>`).join('')}</div>
   </div>
+  ${researchSection()}
   ${walkSection()}
   ${challengeSection()}
   <section class="wrap" style="padding-block:56px 72px">
@@ -2247,7 +2301,7 @@ function vTrade(){
         <span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="num" style="font-size:44px;color:var(--white)">${money(price)}</span><span class="num ${cls(chg)}" style="font-size:19px">${pct(chg)} today</span></span></div>
       ${ownedHtml(sym)}
       ${!canShort ? `<div class="bondnote"><span class="tag" style="color:var(--bond)">BOND</span><span>Pays interest every month${realYield(sym)!==null ? `, about <b style="color:var(--white)">${realYield(sym).toFixed(1)}%</b> a year` : ''}. ${rateTip('Rate sensitivity')}: ${(BONDMETA[sym]||['Medium'])[0].toLowerCase()}. Own it on ${fmtDay(nextEx(todayStr()))} to get the next payment.</span></div>` : ''}
-      ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>${ETFMETA[sym] && !ETFMETA[sym][1] ? `One share is backed by real gold in a vault, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : ETFMETA[sym] ? `One share gives you a slice of about <b style="color:var(--white)">${ETFMETA[sym][1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : 'One share gives you a slice of many companies, and it trades like a stock.'}</span></div>` : ''}
+      ${tr.type==='etf' ? `<div class="bondnote"><span class="tag" style="color:#9a86c9">ETF</span><span>${ETFMETA[sym] && !ETFMETA[sym][1] ? `${(NOCO[sym]||NOCO.GLD)[2]} Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : ETFMETA[sym] ? `One share gives you a slice of about <b style="color:var(--white)">${ETFMETA[sym][1].toLocaleString('en-US')}</b> companies, and it trades like a stock. Yearly cost: <b style="color:var(--white)">${ETFMETA[sym][0].toFixed(2)}%</b>.` : 'One share gives you a slice of many companies, and it trades like a stock.'}</span></div>` : ''}
       ${tr.mode==='adv' ? advHtml(sym, price) : `
       ${canShort?`<div class="side"><button type="button" class="buy" aria-pressed="${isBuy}" data-act="side:buy"><span class="w">Buy</span><span class="d">Win if it goes up</span></button><button type="button" class="short" aria-pressed="${!isBuy}" data-act="side:short"><span class="w">Short</span><span class="d">Win if it goes down</span></button></div>`:''}
       <div class="line"><span class="label">Shares</span><div class="stepper"><button type="button" data-act="n:-" aria-label="Fewer shares">−</button>${numIn('n', tr.n)}<button type="button" data-act="n:+" aria-label="More shares">+</button></div></div>
@@ -2806,7 +2860,7 @@ function act(a, el){
     case 'ctog': UI.chart[v] = !UI.chart[v]; if (v==='ext'){ try{ localStorage.setItem('d214chartExt', UI.chart.ext?'1':'0'); }catch(e){} } break;
     case 'ryrs': UI.ratioYrs = v; break;
     case 'ctype': UI.chart.type = v; try{ localStorage.setItem('d214chartType', v); }catch(e){} break;
-    case 'chartsym': UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
+    case 'chartsym': ensureSym(v); UI.chart.sym = v; UI.sheet = null; UI.drawer = null; location.hash = '#charts'; break;
     case 'go': { const [side, sym] = v.split(':'); const ty = MARKET[sym][1];
       tr.type = ty; tr.pick[ty] = sym; tr.side = side; tr.aside = side; tr.n = 10; tr.q = ''; tr.done = null; tr.advKey = ''; location.hash = '#trade'; break; }
     case 'drip': change({a:'drip', sym:v}, el); return;
@@ -2961,11 +3015,11 @@ function vClasses(){
           <div style="display:flex;align-items:center;gap:14px">${logo(se.school,44)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:30px;color:var(--white)">${esc(se.teacher)} · ${esc(se.period)}</span><span class="small">${esc(se.school)} · ${se.students.length} students${cr ? ' · '+ord(cr[0])+' of '+cr[1]+' classes' : ''}</span></span></div>
           <span style="display:flex;flex-direction:column;align-items:flex-end"><span class="num ${cls(se.avg)}" style="font-size:30px">${pct(se.avg)}</span><span class="small">class average</span></span>
         </div>
-        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.walkthrough}" data-act="twalk:${se.id}">Site Walkthrough: ${se.walkthrough?'On':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
-        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
+        <div class="btnrow"><button type="button" class="chip" data-act="tprint:${se.id}">Print sign-in slips</button><button type="button" class="chip" data-act="tadd:${se.id}">+ Add a student</button><button type="button" class="chip" data-act="tresetclass:${se.id}">New passwords for this class</button><button type="button" class="chip" data-act="trename:${se.id}">Rename class</button><button type="button" class="chip" aria-pressed="${!!se.challenge}" data-act="tchal:${se.id}">Advanced Trades Challenge: ${se.challenge?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.walkthrough}" data-act="twalk:${se.id}">Site Walkthrough: ${se.walkthrough?'On':'Off'}</button><button type="button" class="chip" aria-pressed="${!!se.research}" data-act="tres:${se.id}">Today’s Research: ${se.research?'On today':'Off'}</button>${ROLE==='admin' ? `<button type="button" class="chip" style="color:var(--down)" data-act="aclassremove:${se.id}">Remove class</button>` : ''}</div>
+        <div class="tscroll"><table class="tbl"><thead><tr><th>#</th><th>Student</th><th class="r">Value</th><th class="r">Return</th><th class="r">District</th><th class="r">Trades this week</th>${se.challenge?'<th class="r">Adv. trades</th>':''}${se.walkthrough?'<th class="r">Walkthrough</th>':''}${se.research?'<th class="r">Research</th>':''}<th>Last trade</th><th>Last sign-in</th></tr></thead>
         <tbody>${se.students.map(k=>`<tr class="click" data-act="tstu:${k.id}" tabindex="0"><td class="num" style="color:var(--dim)">${k.classRank}</td><td style="color:var(--white);font-weight:600">${esc(k.name)}</td>
           <td class="r num">${whole(k.value)}</td><td class="r num ${cls(k.ret)}">${pct(k.ret)}</td><td class="r num" style="color:var(--soft)">${k.districtRank ? ord(k.districtRank) : '—'}</td>
-          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="r num">${k.week||0}</td>${se.challenge?`<td class="r num" style="color:${(k.adv||0)>=7?'var(--up)':'var(--soft)'}">${k.adv||0}/7 · ${challengeGrade(k.adv||0)}</td>`:''}${se.walkthrough?`<td class="r num" style="color:${(k.walk||0)>=WALK.length?'var(--up)':'var(--soft)'}">${k.walk||0}/${WALK.length} · ${challengeGrade(k.walk||0, WALK.length)}</td>`:''}${se.research?`<td class="r num" style="color:${(k.res||0)>=RES_GOAL?'var(--up)':'var(--soft)'}">${Math.min(k.res||0,RES_GOAL)}/${RES_GOAL} · ${challengeGrade(Math.min(k.res||0,RES_GOAL), RES_GOAL)}</td>`:''}<td class="small">${ago(k.lastTrade)}</td><td class="small">${k.lastLogin ? ago(k.lastLogin) : '<span style="color:var(--warn)">never</span>'}</td></tr>`).join('')}</tbody></table></div>
       </div></section>`; }).join('')}
     <p class="small" style="padding-block:28px 64px">Values update every minute while the market is open. Click a student to see their holdings and trades or to reset their password.</p>
   </div>`;
@@ -3015,6 +3069,7 @@ function fullDetail(id, h){
   const act = h.activity || {};
   return `<div class="kv"><span><span class="k">Trades this week</span><span class="v">${act.week||0}</span></span><span><span class="k">All trades</span><span class="v">${act.total||0}</span></span>
       <span><span class="k">Last trade</span><span class="v" style="font-size:16px">${ago(act.lastTrade)}</span></span><span><span class="k">Last sign-in</span><span class="v" style="font-size:16px">${act.lastLogin ? ago(act.lastLogin) : 'never'}</span></span></div>
+    ${h.research ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Today’s Research</span><span class="num" style="color:var(--white)">${resGot(h.research)} of ${RES_GOAL} done · grade ${challengeGrade(resGot(h.research), RES_GOAL)}</span></div>${challengeList(h.research, true, RESEARCH)}` : ''}
     ${h.walk ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Site Walkthrough</span><span class="num" style="color:var(--white)">${challengeDone(h.walk, WALK)} of ${WALK.length} done · grade ${challengeGrade(challengeDone(h.walk, WALK), WALK.length)}</span></div>${challengeList(h.walk, true, WALK)}` : ''}
     ${h.challenge ? `<div class="spread" style="flex-wrap:wrap"><span class="label">Advanced Trades Challenge</span><span class="num" style="color:var(--white)">${challengeDone(h.challenge)} of ${CHALLENGE.length} done · grade ${challengeGrade(challengeDone(h.challenge))}</span></div>${challengeList(h.challenge, true)}` : ''}
     ${holdTableHtml(h)}
@@ -3185,6 +3240,13 @@ function moreActs(k, v, el){
       }).catch(e=>alert(e.message));
       if (el) el.setAttribute('aria-busy','true');
       go(false).finally(()=>{ if (el) el.removeAttribute('aria-busy'); });
+      return true;
+    }
+    case 'tres': {
+      const se = CLS && CLS.sections.find(s=>s.id===+v); if (!se) return true;
+      const on = !se.research;
+      if (!confirm((on?'Turn on':'Turn off')+' Today’s Research for '+se.teacher+' · '+se.period+'? '+(on?'It’s for today only: students open all 13 funds from their Checkup tab, with a grade. It turns itself off after today.':'It disappears from their Checkup tab.'))) return true;
+      call('teacher_act', {a:'research_class', sectionId:se.id, on}).then(()=>{ loadClasses(); render(); }).catch(e=>alert(e.message));
       return true;
     }
     case 'twalk': {
