@@ -1793,6 +1793,7 @@ function vGuide(){
       ${t(320,214,'Down day','middle')}
     </svg>
     <div class="gls">
+      ${item('<i style="width:22px;height:14px;display:block;border-top:3px solid #e8edf3;background:linear-gradient(rgba(69,192,138,.45) 50%,rgba(240,96,111,.45) 50%)"></i>','Green and red on the Line chart','The gold line is where the price started on the left side of the chart. Green means the price is above where it started, and red means it’s below. HIGH and LOW mark the top and bottom of the range. If you own the stock, a dashed gold line shows your cost: above it you’re making money, below it you’re losing money.')}
       ${item('<i style="width:22px;height:3px;background:#45c08a;display:block"></i>','Line, Candle, or Bar','Pick how the price is drawn. Line connects each closing price and is the easiest way to see the trend. Candle and Bar show the same four prices for each period (open, high, low, close), just drawn differently.')}
       ${item('<i style="width:10px;height:22px;background:#45c08a;border-radius:2px;display:block"></i>','Candles','Each candle is one day. The thick body runs from the opening price to the closing price. The thin wicks show the highest and lowest price that day.')}
       ${item('<i style="width:12px;height:22px;display:block;background:linear-gradient(#45c08a,#45c08a) center/2px 100% no-repeat,linear-gradient(#45c08a,#45c08a) left 30%/6px 2px no-repeat,linear-gradient(#45c08a,#45c08a) right 70%/6px 2px no-repeat"></i>','Bars','A bar shows the same prices as a candle. The line runs from the low to the high. The tick on the left is the opening price, and the tick on the right is the closing price.')}
@@ -1852,12 +1853,36 @@ function mountChart(){
     const type = ['candle','bar'].includes(c.type) ? c.type : 'line'; out.type = type;
     let candle;
     if (type==='line'){
-      const base = c.tf==='1D' ? prev[sym] : bars[fromIdx].close, up = bars[bars.length-1].close >= base;
-      const col = up ? '#45c08a' : '#f0606f';
-      const rgb = up ? '69,192,138' : '240,96,111';
-      candle = chart.addAreaSeries({lineColor:col, lineWidth:2, topColor:'rgba('+rgb+',.28)', bottomColor:'rgba(20,30,41,0)', priceLineVisible:true});
-      out.pt = b => isExt(b) ? {time:b.time, value:b.close, lineColor:'rgba('+rgb+',.5)', topColor:'rgba('+rgb+',.08)', bottomColor:'rgba(20,30,41,0)'} : {time:b.time, value:b.close};
+      // One chart style everywhere: a thick white price line over a gold "start" line.
+      // Above the start fills green, below fills red, and the high and low of the range are labeled.
+      const base = c.tf==='1D' ? prev[sym] : bars[fromIdx].close;
+      out.fill = chart.addBaselineSeries({baseValue:{type:'price', price:base},
+        topLineColor:'rgba(0,0,0,0)', bottomLineColor:'rgba(0,0,0,0)', lineWidth:1,
+        topFillColor1:'rgba(69,192,138,.38)', topFillColor2:'rgba(69,192,138,.06)',
+        bottomFillColor1:'rgba(240,96,111,.06)', bottomFillColor2:'rgba(240,96,111,.38)',
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false});
+      out.fillPt = b => ({time:b.time, value:b.close});
+      out.fill.setData(bars.map(out.fillPt));
+      // Your cost: a dashed gold line when "My trades" is on and you own this stock. The price scale always stretches to show it.
+      const own = (typeof P!=='undefined' && P && P.pos ? P.pos : []).filter(p=>p.sym===sym && p.side==='long' && p.b>0);
+      const ownSh = own.reduce((a,p)=>a+p.n,0), cost = c.marks && ownSh>0 ? own.reduce((a,p)=>a+p.n*p.b,0)/ownSh : 0;
+      const fit = orig => { const r = orig(); if (!r || !r.priceRange || !cost) return r;
+        return {...r, priceRange:{minValue:Math.min(r.priceRange.minValue, cost), maxValue:Math.max(r.priceRange.maxValue, cost)}}; };
+      candle = chart.addLineSeries({color:'#e8edf3', lineWidth:3, autoscaleInfoProvider:fit, lineType:0, priceLineVisible:true, priceLineColor:'#e8edf3', priceLineStyle:3,
+        crosshairMarkerRadius:5, crosshairMarkerBorderColor:'#141e29', crosshairMarkerBackgroundColor:'#e8edf3'});
+      out.pt = b => isExt(b) ? {time:b.time, value:b.close, color:'rgba(232,237,243,.45)'} : {time:b.time, value:b.close};
       candle.setData(bars.map(out.pt));
+      candle.createPriceLine({price:base, color:'#c9a34e', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:c.tf==='1D' ? 'yesterday' : 'start'});
+      if (cost) candle.createPriceLine({price:cost, color:'#c9a34e', lineWidth:2, lineStyle:2, axisLabelVisible:true, title:'your cost'});
+      // HIGH and LOW callouts for the range on screen (regular-session prices only).
+      let hi = -1, lo = -1;
+      for (let i=fromIdx; i<bars.length; i++){ if (isExt(bars[i])) continue;
+        if (hi<0 || bars[i].close>bars[hi].close) hi = i; if (lo<0 || bars[i].close<bars[lo].close) lo = i; }
+      if (hi>=0 && lo>=0 && hi!==lo){
+        marks.push({time:bars[hi].time, position:'aboveBar', shape:'circle', color:'#45c08a', text:'HIGH '+money(bars[hi].close)});
+        marks.push({time:bars[lo].time, position:'belowBar', shape:'circle', color:'#f0606f', text:'LOW '+money(bars[lo].close)});
+        marks.sort((a,b)=> a.time<b.time?-1 : a.time>b.time?1 : 0);
+      }
     } else if (type==='bar'){
       candle = chart.addBarSeries({upColor:'#45c08a', downColor:'#f0606f', thinBars:false, openVisible:true});
       out.pt = b => ({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close, ...(isExt(b) ? {color:b.close>=b.open?'rgba(69,192,138,.5)':'rgba(240,96,111,.5)'} : {})});
@@ -1956,6 +1981,7 @@ function tickChart(){
   if (!CH.intra || liveFits(CH.bars[i])){
     CH.bars[i] = liveBar(CH.bars[i], CH.intra ? p : shownPx(sym)); const b = CH.bars[i];
     if (CH.pt) CH.main.update(CH.pt(b));
+    if (CH.fill) CH.fill.update(CH.fillPt(b));
     if (CH.band) CH.band.update(bandPt(b));
     if (!CH.hover) CH.showAt(i);
     if (CH.momTick) CH.momTick();
