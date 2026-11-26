@@ -1428,7 +1428,10 @@ function vCharts(){
   const tog = (k,l) => `<button type="button" class="chip" aria-pressed="${!!c[k]}" data-act="ctog:${k}" ${((k==='ma'||k==='mom')&&c.cmp) || (intra && k!=='cmp' && k!=='ext') ?'disabled':''}>${l}</button>`;
   const unit = tfUnit(d, c.tf), wk = !!unit, ab = unit==='month' ? 'mo' : 'wk';
   const sw = (col,dash) => `<i style="width:18px;${dash?'border-top:2px dashed '+col:'height:3px;background:'+col};display:block"></i>`;
+  const dot = col => `<i style="width:18px;border-top:2px dotted ${col};display:block"></i>`;
+  const owns = (P && P.pos ? P.pos : []).some(p=>p.sym===sym && p.side==='long' && p.b>0);
   const keys = [
+    !c.cmp ? `<span>${sw('#c9a34e')}${c.tf==='1D'?'yesterday’s close':'start'}</span>${c.marks && owns ? `<span>${sw('#c9a34e',1)}cost per share</span>` : ''}<span>${dot('#e8edf3')}price now</span>` : '',
     c.cmp ? `<span>${sw('#ef5b70')}${sym}</span><span>${sw('#8a97a8',1)}S&amp;P 500</span>` : '',
     !c.cmp && c.ma ? `<span>${sw('#c9a34e')}${wk?'10-'+ab:'50-day'}</span><span>${sw('#6b8fbf')}${wk?'40-'+ab:'200-day'}</span>` : '',
     c.marks ? `<span><b class="up">▲</b>buy</span><span><b class="down">▼</b>sell</span>` : '',
@@ -1793,7 +1796,7 @@ function vGuide(){
       ${t(320,214,'Down day','middle')}
     </svg>
     <div class="gls">
-      ${item('<i style="width:22px;height:14px;display:block;border-top:3px solid #e8edf3;background:linear-gradient(rgba(69,192,138,.45) 50%,rgba(240,96,111,.45) 50%)"></i>','Green and red on the chart','The gold line is where the price started on the left side of the chart. Green means the price is above where it started, and red means it’s below. HIGH and LOW mark the top and bottom of the range. If you own the stock, a dashed gold line shows your cost per share: above it you’re making money, below it you’re losing money.')}
+      ${item('<i style="width:22px;height:14px;display:block;border-top:3px solid #e8edf3;background:linear-gradient(rgba(69,192,138,.45) 50%,rgba(240,96,111,.45) 50%)"></i>','Green and red on the chart','The gold line is where the price started on the left side of the chart. Green means the price is above where it started, and red means it’s below. HIGH and LOW mark the top and bottom of the range. The white dotted line is the price right now, so you can compare it with anywhere on the chart. If you own the stock, a dashed gold line shows your cost per share: above it you’re making money, below it you’re losing money.')}
       ${item('<i style="width:22px;height:3px;background:#45c08a;display:block"></i>','Line, Candle, or Bar','Pick how the price is drawn. Line connects each closing price and is the easiest way to see the trend. Candle and Bar show the same four prices for each period (open, high, low, close), just drawn differently.')}
       ${item('<i style="width:10px;height:22px;background:#45c08a;border-radius:2px;display:block"></i>','Candles','Each candle is one day. The thick body runs from the opening price to the closing price. The thin wicks show the highest and lowest price that day.')}
       ${item('<i style="width:12px;height:22px;display:block;background:linear-gradient(#45c08a,#45c08a) center/2px 100% no-repeat,linear-gradient(#45c08a,#45c08a) left 30%/6px 2px no-repeat,linear-gradient(#45c08a,#45c08a) right 70%/6px 2px no-repeat"></i>','Bars','A bar shows the same prices as a candle. The line runs from the low to the high. The tick on the left is the opening price, and the tick on the right is the closing price.')}
@@ -1867,14 +1870,14 @@ function mountChart(){
       return {...r, priceRange:{minValue:Math.min(r.priceRange.minValue, cost), maxValue:Math.max(r.priceRange.maxValue, cost)}}; };
     let candle;
     if (type==='line'){
-      candle = chart.addLineSeries({color:'#e8edf3', lineWidth:3, autoscaleInfoProvider:fit, lineType:0, priceLineVisible:true, priceLineColor:'#e8edf3', priceLineStyle:3,
+      candle = chart.addLineSeries({color:'#e8edf3', lineWidth:3, autoscaleInfoProvider:fit, lineType:0, priceLineVisible:true, priceLineColor:'#e8edf3', priceLineStyle:1,
         crosshairMarkerRadius:5, crosshairMarkerBorderColor:'#141e29', crosshairMarkerBackgroundColor:'#e8edf3'});
       out.pt = b => isExt(b) ? {time:b.time, value:b.close, color:'rgba(232,237,243,.45)'} : {time:b.time, value:b.close};
     } else if (type==='bar'){
-      candle = chart.addBarSeries({upColor:'#45c08a', downColor:'#f0606f', thinBars:false, openVisible:true, autoscaleInfoProvider:fit});
+      candle = chart.addBarSeries({upColor:'#45c08a', downColor:'#f0606f', thinBars:false, openVisible:true, autoscaleInfoProvider:fit, priceLineColor:'#e8edf3', priceLineStyle:1});
       out.pt = b => ({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close, ...(isExt(b) ? {color:b.close>=b.open?'rgba(69,192,138,.5)':'rgba(240,96,111,.5)'} : {})});
     } else {
-      candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f', autoscaleInfoProvider:fit});
+      candle = chart.addCandlestickSeries({upColor:'#45c08a', downColor:'#f0606f', borderVisible:false, wickUpColor:'#45c08a', wickDownColor:'#f0606f', autoscaleInfoProvider:fit, priceLineColor:'#e8edf3', priceLineStyle:1});
       out.pt = b => { const p = {time:b.time, open:b.open, high:b.high, low:b.low, close:b.close};
         if (isExt(b)){ const k = b.close>=b.open ? 'rgba(69,192,138,.5)' : 'rgba(240,96,111,.5)'; p.color = k; p.wickColor = k; } return p; };
     }
