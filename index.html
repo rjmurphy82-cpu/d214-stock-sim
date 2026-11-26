@@ -150,6 +150,9 @@ section{padding-block:12px}
 .dnut.hot .dh-hov{opacity:1}
 .dh-n{flex-shrink:0;font-size:15px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mix div[data-dk],.mini div[data-dk]{cursor:default;transition:background .15s,box-shadow .15s}
+.mini div.lnk{cursor:pointer}
+.mini div.lnk:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.dnut path[data-dsym]{cursor:pointer}
 .mix div.on,.mini div.on{background:var(--card-hi);box-shadow:inset 3px 0 0 var(--hl,#ef5b70)}
 .mix div.on{margin-inline:-8px;padding-inline:8px}
 @media (prefers-reduced-motion:reduce){.dnut path,.dhole>div,.mix div,.mini div{transition:none}}
@@ -577,12 +580,15 @@ function donutSvg(key, parts, o){
     const s1 = s + gap, e1 = Math.min(e - gap, s + Math.PI*2 - 0.0001), big = (e1 - s1) > Math.PI ? 1 : 0, mid = (s + e)/2;
     const d = `M${pt(R,s1)} A${R} ${R} 0 ${big} 1 ${pt(R,e1)} L${pt(r,e1)} A${r} ${r} 0 ${big} 0 ${pt(r,s1)}Z`;
     return `<path d="${d}" fill="${p.color}" data-dk="${key}" data-di="${i}" style="--dx:${(Math.sin(mid)*7).toFixed(2)}px;--dy:${(-Math.cos(mid)*7).toFixed(2)}px"
-      data-dn="${esc(p.label)}" data-dt="${esc(p.sub||'')}" data-dp="${p.pct.toFixed(1)}%" data-dv="${whole(p.v)}"${p.g===null||p.g===undefined?'':` data-dg="${p.g}"`}></path>`;
+      data-dn="${esc(p.label)}"${p.sym?` data-dsym="${esc(p.sym)}"`:''} data-dt="${esc(p.sub||'')}" data-dp="${p.pct.toFixed(1)}%" data-dv="${whole(p.v)}"${p.g===null||p.g===undefined?'':` data-dg="${p.g}"`}></path>`;
   }).join('');
   return `<div class="dnut" data-dnut="${key}" style="width:${o.size}px;height:${o.size}px">
     <svg viewBox="0 0 200 200" role="img" aria-label="${esc(parts.map(p=>p.label+' '+p.pct.toFixed(1)+' percent').join(', '))}">${slices}</svg>
     <div class="dhole"><div class="dh-def">${o.center}</div><div class="dh-hov" aria-live="polite"></div></div></div>`;
 }
+/* a holding in someone's portfolio that has a chart (everything but cash and the money market) */
+const chartable = h => h && h.ty!=='Cash' && h.ty!=='MM';
+const holdLink = h => chartable(h) ? ` class="lnk" data-act="chartsym:${esc(h.s)}" role="link" tabindex="0" title="See the ${esc(h.s)} chart"` : '';
 let DONUT_ON = null;
 function donutSet(key, i){
   document.querySelectorAll('[data-dk].on').forEach(el=>el.classList.remove('on'));
@@ -2594,9 +2600,10 @@ function vDrawer(){
     html = `<div class="who">${logo(t[1],64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(t[0])}</span><span style="color:var(--dim)">Practice portfolio · not ranked</span></span></div>
       ${!h || h.loading ? '<p class="empty">Loading…</p>' : `
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(h.value)}</span><span class="num ${cls(h.ret)}" style="font-size:20px">${pct(h.ret)} · ${signed(h.value-100000)}</span></div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(x=>({...x,label:x.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(x=>({...x,label:x.s,sym:chartable(x)?x.s:''})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${hs.filter(x=>x.ty!=='Cash'&&x.ty!=='MM').length}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
+      <p class="small" style="margin:0;color:var(--dim)">Tap a holding to see its chart.</p>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
-        ${parts.map((x,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${x.color}"><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
+        ${parts.map((x,i)=>`<div data-dk="who" data-di="${i}"${holdLink(x)} style="--hl:${x.color}"><span class="sw" style="background:${x.color}"></span><span style="color:var(--white)">${esc(x.s)} <span style="color:var(--dim);font-size:11px">${esc(x.ty).toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${x.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(x.v)}</span><span style="text-align:right" class="${x.g===null?'':cls(x.g)}">${x.g===null?'—':pct(x.g)}</span></div>`).join('')}</div>
       ${h.trades ? publicDetail(h) : ''}
       <p class="empty">Teachers practice with their own $100,000 too. It doesn’t count in the standings.</p>`}`;
   } else if (kind==='student'){
@@ -2608,9 +2615,10 @@ function vDrawer(){
     html = `${UI.back ? `<button type="button" class="backlink" data-act="open:${UI.back}">← Back to ${esc(secLabel(D.sections[+UI.back.split(':')[1]]))}</button>` : ''}<div class="who">${logo(s.school,64)}<span style="display:flex;flex-direction:column;gap:2px"><span class="disp" style="font-size:36px;color:var(--white)">${esc(s.name)}</span><span style="color:var(--dim)">${secLabel(sec)} · ${s.school}</span></span></div>
       <div class="line"><span class="num" style="font-size:36px;color:var(--white)">${whole(value)}</span><span class="num ${cls(s.ret)}" style="font-size:20px">${pct(s.ret)} · ${signed(value-100000)}</span></div>
       <div class="kv">${[[rk(D.students.filter(x=>x.sec===s.sec)),'of '+sec.size+' in class'],[rk(D.students.filter(x=>x.school===s.school)),'of '+schoolSize(s.school)+' at '+s.school],[rk(D.students),'of '+D.students.length+' in district']].map(([r,l])=>`<span><span class="disp" style="font-size:30px;color:${r<=3?'var(--red)':'var(--white)'}">${ord(r)}</span> <span style="color:var(--muted);font-size:14px">${l}</span></span>`).join('')}</div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(h=>({...h,label:h.s})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">${donutSvg('who', parts.map(h=>({...h,label:h.s,sym:chartable(h)?h.s:''})), {size:150, center:`<span class="num" style="font-size:26px;color:var(--white)">${Math.max(0,hs.length-1-(hs.some(h=>h.ty==='MM')?1:0))}</span><span class="label" style="font-size:10px;color:var(--dim)">Holdings</span>`})}</div>
+      <p class="small" style="margin:0;color:var(--dim)">Tap a holding to see its chart.</p>
       <div class="mini"><div style="border-top:0;color:var(--dim);font-family:var(--body);font-size:11px;letter-spacing:.14em"><span></span><span>HOLDING</span><span style="text-align:right">WEIGHT</span><span style="text-align:right">VALUE</span><span style="text-align:right">GAIN</span></div>
-        ${parts.map((h,i)=>`<div data-dk="who" data-di="${i}" style="--hl:${h.color}"><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
+        ${parts.map((h,i)=>`<div data-dk="who" data-di="${i}"${holdLink(h)} style="--hl:${h.color}"><span class="sw" style="background:${h.color}"></span><span style="color:var(--white)">${h.s} <span style="color:var(--dim);font-size:11px">${h.ty.toUpperCase()}</span></span><span style="text-align:right;color:var(--soft)">${h.w.toFixed(1)}%</span><span style="text-align:right;color:var(--soft)">${whole(h.v)}</span><span style="text-align:right" class="${h.g===null?'':cls(h.g)}">${h.g===null?'—':pct(h.g)}</span></div>`).join('')}</div>
       ${!s.isMe && (!hd || hd.loading) ? '<p class="empty">Loading…</p>' : ''}
       ${s.isMe?'<a class="cta" href="#portfolio" data-act="close">Open my full portfolio</a>' : hd && hd.trades ? (hd.activity ? teacherDetail(s, hd) : publicDetail(hd)) : ''}`;
   } else if (kind==='award'){
@@ -3438,7 +3446,9 @@ document.addEventListener('mouseout', e=>{
 });
 document.addEventListener('click', e=>{
   const t = e.target.closest && e.target.closest('[data-dk][data-di]');
-  if (t){ const same = DONUT_ON && DONUT_ON.key===t.dataset.dk && DONUT_ON.i===t.dataset.di; donutSet(same && e.pointerType!=='mouse' ? null : t.dataset.dk, t.dataset.di); }
+  if (t){ const same = DONUT_ON && DONUT_ON.key===t.dataset.dk && DONUT_ON.i===t.dataset.di;
+    if (t.dataset.dsym && (e.pointerType==='mouse' || same)){ e.stopImmediatePropagation(); donutSet(null); act('chartsym:'+t.dataset.dsym, t); return; }
+    donutSet(same && e.pointerType!=='mouse' ? null : t.dataset.dk, t.dataset.di); }
   else if (DONUT_ON && !(e.target.closest && e.target.closest('.dnut'))) donutSet(null);
 });
 document.addEventListener('click', e=>{
@@ -3463,7 +3473,7 @@ document.addEventListener('mousemove', e=>{ const tip = document.getElementById(
 document.addEventListener('mouseout', e=>{ const tip = document.getElementById('ftip'), t = e.target.closest && e.target.closest('[data-tip]'); if (!tip || !t) return; const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-tip]'); if (!to) tip.hidden = true; });
 document.addEventListener('keydown', e=>{
   if (e.key==='Escape' && (UI.drawer||UI.sheet||UI.guide||UI.modal)){ UI.drawer=null; UI.sheet=null; UI.guide=false; UI.modal=null; render(); }
-  if (e.key==='Enter' && e.target.matches && e.target.matches('tr[data-act]')) act(e.target.dataset.act, e.target);
+  if (e.key==='Enter' && e.target.matches && e.target.matches('tr[data-act],div.lnk[data-act]')) act(e.target.dataset.act, e.target);
 });
 document.addEventListener('submit', e=>{
   if (e.target.id==='lform'){ e.preventDefault(); signIn(); }
