@@ -46,6 +46,10 @@ nav a:hover{color:var(--white)}
 .tape .wrap{display:flex;gap:36px;height:46px;align-items:center;white-space:nowrap;overflow:hidden;font-family:var(--mono);font-size:14px}
 .tape span.s{color:var(--muted)}
 .tape .flash{animation:flash 1s ease-out}
+.tape .tk{all:unset;display:flex;gap:9px;cursor:pointer;border-radius:4px;padding:2px 4px;margin:0 -4px}
+.tape .tk:hover{background:var(--card-hi)}
+.tape .tk:hover .s{color:var(--white)}
+.tape .tk:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 @keyframes flash{from{background:rgba(255,255,255,.12)}to{background:transparent}}
 .demo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:10px;font-size:14px;color:var(--dim)}
 .demo button{color:var(--link);font-weight:600}
@@ -2915,7 +2919,7 @@ function tapeList(){
 function renderTape(changed){
   const {mine, list} = tapeList();
   document.getElementById('tape').innerHTML = (Object.keys(LIVE.quotes).length ? PWR() : '') + list.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
-    return `<span class="${changed?'flash':''}" style="display:flex;gap:9px"${mine.includes(s)?' title="You own this"':''}><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></span>`; }).join('');
+    return `<button type="button" class="tk ${changed?'flash':''}" data-act="chartsym:${s}" title="${mine.includes(s)?'You own this. ':''}See the ${s} chart"><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></button>`; }).join('');
 }
 /* ---------- sign in ---------- */
 const LOGIN = {dir:null, school:null, kind:'student', teacher:null, tdir:null, sec:null, student:null, admin:false, err:null};
