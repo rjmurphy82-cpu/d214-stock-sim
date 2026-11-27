@@ -46,6 +46,13 @@ nav a:hover{color:var(--white)}
 .tape .wrap{display:flex;gap:36px;height:46px;align-items:center;white-space:nowrap;overflow:hidden;font-family:var(--mono);font-size:14px}
 .tape span.s{color:var(--muted)}
 .tape .flash{animation:flash 1s ease-out}
+.tape .tk-pwr{flex:none;display:flex}
+.tape .tk-pwr:empty{display:none}
+.tape .tk-view{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+.tape .tk-track{display:flex;width:max-content;animation:tkscroll 40s linear infinite}
+.tape .tk-set{display:flex;gap:36px;padding-right:36px;align-items:center}
+.tape .tk-view:hover .tk-track,.tape .tk-view:focus-within .tk-track{animation-play-state:paused}
+@keyframes tkscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .tape .tk{all:unset;display:flex;gap:9px;cursor:pointer;border-radius:4px;padding:2px 4px;margin:0 -4px}
 .tape .tk:hover{background:var(--card-hi)}
 .tape .tk:hover .s{color:var(--white)}
@@ -386,7 +393,7 @@ input[type=text]{width:100%;height:60px;padding:0 20px;background:var(--card);bo
   .row .sb{display:none}
   .brand{font-size:26px}
 }
-@media (prefers-reduced-motion:reduce){.tape .flash{animation:none}}
+@media (prefers-reduced-motion:reduce){.tape .flash{animation:none}.tape .tk-track{animation:none}.tape .tk-view{overflow-x:auto}.tape .tk-set[aria-hidden]{display:none}}
 .stepin{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:30px;color:var(--muted)}
 .stepin input{width:150px;height:56px;padding:0 10px;background:var(--bg);border:1px solid var(--line-3);border-radius:6px;font-family:var(--mono);font-size:30px;text-align:center;color:var(--white)}
 .stepin input:focus{border-color:var(--link);outline:none}
@@ -2916,10 +2923,20 @@ function tapeList(){
   const mine = Object.keys(own).sort((x,y)=>own[y]-own[x]);
   return {mine, list:[...mine, ...TAPE.filter(s=>!own[s])]};
 }
+// The ticker scrolls on its own and loops. Two copies of the list sit side by side so the loop has no gap.
+// Only the items are redrawn on each price update, so the scrolling never jumps or restarts.
 function renderTape(changed){
-  const {mine, list} = tapeList();
-  document.getElementById('tape').innerHTML = (Object.keys(LIVE.quotes).length ? PWR() : '') + list.filter(s=>LIVE.quotes[s]).map(s=>{ const c=(prices[s]/prev[s]-1)*100;
-    return `<button type="button" class="tk ${changed?'flash':''}" data-act="chartsym:${s}" title="${mine.includes(s)?'You own this. ':''}See the ${s} chart"><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></button>`; }).join('');
+  const {mine, list} = tapeList(), box = document.getElementById('tape');
+  const shown = list.filter(s=>LIVE.quotes[s]);
+  const item = (s, copy) => { const c=(prices[s]/prev[s]-1)*100;
+    return `<button type="button" class="tk ${changed?'flash':''}" data-act="chartsym:${s}"${copy?' tabindex="-1"':''} title="${mine.includes(s)?'You own this. ':''}See the ${s} chart"><span class="s">${mine.includes(s)?'<span style="color:var(--link)" aria-label="owned">● </span>':''}${s}</span><span class="${cls(c)}">${c>=0?'▲':'▼'} ${prices[s].toFixed(2)}</span></button>`; };
+  if (!box.querySelector('.tk-track')) box.innerHTML = '<span class="tk-pwr"></span><div class="tk-view"><div class="tk-track"><div class="tk-set"></div><div class="tk-set" aria-hidden="true"></div></div></div>';
+  box.querySelector('.tk-pwr').innerHTML = Object.keys(LIVE.quotes).length ? PWR() : '';
+  const track = box.querySelector('.tk-track'), sets = track.querySelectorAll('.tk-set');
+  sets[0].innerHTML = shown.map(s=>item(s,false)).join('');
+  sets[1].innerHTML = shown.map(s=>item(s,true)).join('');
+  // about 3.5 seconds per stock, set only when the number of stocks changes so the scroll stays smooth
+  if (track.dataset.n !== String(shown.length)){ track.dataset.n = shown.length; track.style.animationDuration = Math.max(20, shown.length*3.5)+'s'; }
 }
 /* ---------- sign in ---------- */
 const LOGIN = {dir:null, school:null, kind:'student', teacher:null, tdir:null, sec:null, student:null, admin:false, err:null};
